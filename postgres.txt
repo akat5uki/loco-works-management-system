@@ -1,0 +1,214 @@
+CREATE SCHEMA IF NOT EXISTS "public";
+
+CREATE TABLE "public"."employee_job_ratings" (
+    "ticket_number" int NOT NULL,
+    "job_id" int NOT NULL,
+    "rating" int NOT NULL,
+    PRIMARY KEY ("ticket_number", "job_id")
+);
+
+CREATE TABLE "public"."loco_type" (
+    "loco_type_id" int NOT NULL,
+    "loco_type_name" varchar NOT NULL UNIQUE,
+    PRIMARY KEY ("loco_type_id")
+);
+
+CREATE TABLE "public"."loco" (
+    "loco_number" int NOT NULL,
+    "loco_type_id" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "stage" int NOT NULL,
+    "shift" int NOT NULL,
+    PRIMARY KEY ("loco_number")
+);
+
+CREATE TABLE "public"."employees" (
+    "ticket_number" int NOT NULL,
+    "name" varchar NOT NULL,
+    "designation_id" int NOT NULL,
+    "password" varchar NOT NULL,
+    "nonce" varchar NOT NULL,
+    PRIMARY KEY ("ticket_number")
+);
+
+CREATE TABLE "public"."tasks" (
+    "task_id" bigserial NOT NULL,
+    "task_description" text NOT NULL,
+    PRIMARY KEY ("task_id")
+);
+
+CREATE TABLE "public"."employee_category" (
+    "category_id" int NOT NULL,
+    "category_name" varchar NOT NULL UNIQUE,
+    PRIMARY KEY ("category_id")
+);
+
+CREATE TABLE "public"."designation" (
+    "designation_id" int NOT NULL,
+    "designation_name" varchar NOT NULL,
+    "category_id" int NOT NULL,
+    PRIMARY KEY ("designation_id")
+);
+
+CREATE TABLE "public"."loco_bookings" (
+    "loco_number" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "job_id" int NOT NULL,
+    "task_id" bigserial NOT NULL DEFAULT 1,
+    "ticket_number" int NOT NULL,
+    "designation_id" int NOT NULL,
+    PRIMARY KEY ("loco_number", "date_time", "job_id")
+);
+
+CREATE TABLE "public"."jobs" (
+    "job_id" int NOT NULL,
+    "job_description" varchar NOT NULL,
+    "stage" int NOT NULL,
+    PRIMARY KEY ("job_id")
+);
+
+CREATE TABLE "public"."audit_logs" (
+    "id" bigserial NOT NULL,
+    "table_name" text NOT NULL,
+    "operation" text NOT NULL,
+    "record_pk" text NOT NULL,
+    "old_data" jsonb NOT NULL,
+    "new_data" jsonb NOT NULL,
+    "changed_by" int NOT NULL,
+    "changed_at" timestamptz NOT NULL,
+    PRIMARY KEY ("changed_at", "id")
+) PARTION BY RANGE ("changed_at");
+
+-- Foreign key constraints
+-- Schema: public
+ALTER TABLE "public"."designation" ADD CONSTRAINT "fk_designation_category_id_employee_category_category_id" FOREIGN KEY("category_id") REFERENCES "public"."employee_category"("category_id");
+ALTER TABLE "public"."employee_job_ratings" ADD CONSTRAINT "fk_employee_job_ratings_job_id_jobs_job_id" FOREIGN KEY("job_id") REFERENCES "public"."jobs"("job_id");
+ALTER TABLE "public"."employees" ADD CONSTRAINT "fk_employees_designation_id_designation_designation_id" FOREIGN KEY("designation_id") REFERENCES "public"."designation"("designation_id");
+ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_designation_id_designation_designation_id" FOREIGN KEY("designation_id") REFERENCES "public"."designation"("designation_id");
+ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_job_id_jobs_job_id" FOREIGN KEY("job_id") REFERENCES "public"."jobs"("job_id");
+ALTER TABLE "public"."loco" ADD CONSTRAINT "fk_loco_loco_type_id_loco_type_loco_type_id" FOREIGN KEY("loco_type_id") REFERENCES "public"."loco_type"("loco_type_id");
+ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_task_id_tasks_task_id" FOREIGN KEY("task_id") REFERENCES "public"."tasks"("task_id");
+ALTER TABLE "public"."employee_job_ratings" ADD CONSTRAINT "fk_employee_job_ratings_ticket_number_employees" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
+ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_loco_number_loco_loco_number" FOREIGN KEY("loco_number") REFERENCES "public"."loco"("loco_number");
+ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_ticket_number_employees_ticket_number" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+-- Global Audit Trigger Function
+CREATE OR REPLACE FUNCTION public.process_audit_log()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_old_data jsonb := '{}'::jsonb;
+    v_new_data jsonb := '{}'::jsonb;
+    v_pk_value text := '';
+    v_user_id int;
+    v_pk_part text;
+    i int;
+BEGIN
+    -- 1. Grab the current user ID from a custom session variable.
+    -- If your app hasn't set it, we fallback to '0' (System/Unknown).
+    BEGIN
+        v_user_id := COALESCE(NULLIF(current_setting('app.current_user_id', true), ''), '0')::int;
+    EXCEPTION WHEN OTHERS THEN
+        v_user_id := 0;
+    END;
+
+    -- 2. Capture Old and New data payloads depending on the action
+    IF (TG_OP = 'INSERT') THEN
+        v_new_data := to_jsonb(NEW);
+    ELSIF (TG_OP = 'UPDATE') THEN
+        v_old_data := to_jsonb(OLD);
+        v_new_data := to_jsonb(NEW);
+    ELSIF (TG_OP = 'DELETE') THEN
+        v_old_data := to_jsonb(OLD);
+    END IF;
+
+    -- 3. Dynamically construct the Record PK string using the arguments passed to the trigger
+    IF TG_NARGS > 0 THEN
+        DECLARE
+            parts text[] := '{}';
+        BEGIN
+            FOR i IN 0..(TG_NARGS - 1) LOOP
+                IF (TG_OP = 'DELETE') THEN
+                    v_pk_part := v_old_data ->> TG_ARGV[i];
+                ELSE
+                    v_pk_part := v_new_data ->> TG_ARGV[i];
+                END IF;
+                parts := array_append(parts, TG_ARGV[i] || ':' || COALESCE(v_pk_part, 'NULL'));
+            END LOOP;
+            v_pk_value := array_to_string(parts, ' | ');
+        END;
+    ELSE
+        v_pk_value := 'UNKNOWN';
+    END IF;
+
+    -- 4. Ship it to the audit log table
+    INSERT INTO public.audit_logs (
+        table_name,
+        operation,
+        record_pk,
+        old_data,
+        new_data,
+        changed_by,
+        changed_at
+    ) VALUES (
+        TG_TABLE_NAME::text,
+        TG_OP,
+        v_pk_value,
+        v_old_data,
+        v_new_data,
+        v_user_id,
+        CURRENT_TIMESTAMP
+    );
+
+    -- Keep the pipeline moving smoothly
+    IF (TG_OP = 'DELETE') THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Attaching triggers to tables
+-- 1. employee_job_ratings (Composite Primary Key)
+CREATE TRIGGER trg_audit_employee_job_ratings
+AFTER INSERT OR UPDATE OR DELETE ON public.employee_job_ratings
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number', 'job_id');
+
+-- 2. loco_type
+CREATE TRIGGER trg_audit_loco_type
+AFTER INSERT OR UPDATE OR DELETE ON public.loco_type
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_type_id');
+
+-- 3. loco
+CREATE TRIGGER trg_audit_loco
+AFTER INSERT OR UPDATE OR DELETE ON public.loco
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number');
+
+-- 4. employees
+CREATE TRIGGER trg_audit_employees
+AFTER INSERT OR UPDATE OR DELETE ON public.employees
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number');
+
+-- 5. tasks
+CREATE TRIGGER trg_audit_tasks
+AFTER INSERT OR UPDATE OR DELETE ON public.tasks
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('task_id');
+
+-- 6. employee_category
+CREATE TRIGGER trg_audit_employee_category
+AFTER INSERT OR UPDATE OR DELETE ON public.employee_category
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('category_id');
+
+-- 7. designation
+CREATE TRIGGER trg_audit_designation
+AFTER INSERT OR UPDATE OR DELETE ON public.designation
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('designation_id');
+
+-- 8. loco_bookings (Composite Primary Key)
+CREATE TRIGGER trg_audit_loco_bookings
+AFTER INSERT OR UPDATE OR DELETE ON public.loco_bookings
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number', 'date_time', 'job_id');
+
+-- 9. jobs
+CREATE TRIGGER trg_audit_jobs
+AFTER INSERT OR UPDATE OR DELETE ON public.jobs
+FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('job_id');
