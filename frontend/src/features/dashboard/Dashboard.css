@@ -2,13 +2,14 @@
 .dashboard-container {
   display: flex;
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: var(--bg-secondary);
+  color: var(--text);
 }
 
 .sidebar {
   width: 260px;
-  background-color: #ffffff;
-  border-right: 1px solid #e2e8f0;
+  background-color: var(--bg-card);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -25,7 +26,7 @@
 .sidebar-header span {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text-h);
 }
 
 .sidebar-nav {
@@ -41,20 +42,20 @@
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  color: #64748b;
+  color: var(--text);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .nav-item:hover {
-  background-color: #f1f5f9;
-  color: #1e293b;
+  background-color: var(--bg-secondary);
+  color: var(--text-h);
 }
 
 .nav-item.active {
-  background-color: #eff6ff;
-  color: #2563eb;
+  background-color: var(--accent-bg);
+  color: var(--accent);
 }
 
 .logout-btn {
@@ -73,7 +74,7 @@
 }
 
 .logout-btn:hover {
-  background-color: #fef2f2;
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .dashboard-main {
@@ -92,23 +93,23 @@
 .header-user h2 {
   font-size: 1.875rem;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text-h);
   margin: 0;
 }
 
 .header-user p {
-  color: #64748b;
+  color: var(--text);
   margin-top: 0.25rem;
 }
 
 .header-date {
-  background: #ffffff;
+  background: var(--bg-card);
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   font-size: 0.875rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text);
 }
 
 .tiles-grid {
@@ -118,10 +119,10 @@
 }
 
 .tile-card {
-  background: #ffffff;
+  background: var(--bg-card);
   padding: 1.5rem;
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -131,7 +132,7 @@
 
 .tile-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow);
   border-color: var(--tile-color);
 }
 
@@ -147,13 +148,13 @@
 .tile-content h3 {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-h);
   margin: 0 0 0.5rem 0;
 }
 
 .tile-content p {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text);
   margin: 0;
   line-height: 1.4;
 }
@@ -178,3 +179,4 @@
     justify-content: center;
   }
 }
+

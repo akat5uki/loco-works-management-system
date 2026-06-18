@@ -1,15 +1,15 @@
 /* LandingPage.css */
 .landing-container {
     min-height: 100vh;
-    background-color: #f9fafb;
-    color: #111827;
-    font-family: sans-serif;
+    background-color: var(--bg-secondary);
+    color: var(--text);
+    font-family: var(--sans);
 }
 
 .header {
-    background-color: #ffffff;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    border-bottom: 1px solid #e5e7eb;
+    background-color: var(--bg-card);
+    box-shadow: var(--shadow);
+    border-bottom: 1px solid var(--border);
 }
 
 .header-content {
@@ -25,7 +25,7 @@
 .logo-box {
     width: 2rem;
     height: 2rem;
-    background-color: #2563eb;
+    background-color: var(--accent);
     border-radius: 0.25rem;
     display: flex;
     align-items: center;
@@ -43,38 +43,38 @@
 .nav-link {
     font-size: 0.875rem;
     font-weight: 500;
-    color: #4b5563;
+    color: var(--text);
     text-decoration: none;
 }
 
 .nav-link:hover {
-    color: #2563eb;
+    color: var(--accent);
 }
 
 .btn-primary {
-    background-color: #2563eb;
+    background-color: var(--accent);
     color: #ffffff;
     padding: 0.5rem 1rem;
     border-radius: 0.375rem;
     font-size: 0.875rem;
     font-weight: 500;
     text-decoration: none;
-    transition: background-color 0.2s;
+    transition: opacity 0.2s;
 }
 
 .btn-primary:hover {
-    background-color: #1d4ed8;
+    opacity: 0.9;
 }
 
 .hero {
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     padding: 3rem 0;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--border);
     text-align: center;
 }
 
 .hero-sub {
-    color: #2563eb;
+    color: var(--accent);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -85,7 +85,7 @@
     margin-top: 0.5rem;
     font-size: 2.25rem;
     font-weight: 800;
-    color: #111827;
+    color: var(--text-h);
 }
 
 .hero-desc {
@@ -94,7 +94,7 @@
     margin-left: auto;
     margin-right: auto;
     font-size: 1.25rem;
-    color: #6b7280;
+    color: var(--text);
 }
 
 .main-content {
@@ -122,16 +122,16 @@
 }
 
 .card {
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     padding: 1.5rem;
     border-radius: 0.75rem;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    border: 1px solid #f3f4f6;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
     transition: box-shadow 0.2s;
 }
 
 .card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow);
 }
 
 .card-header {
@@ -148,21 +148,22 @@
 }
 
 .bg-blue-50 {
-    background-color: #eff6ff;
-    color: #2563eb;
+    background-color: var(--accent-bg);
+    color: var(--accent);
 }
 .bg-green-50 {
-    background-color: #f0fdf4;
+    background-color: rgba(22, 163, 74, 0.15);
     color: #16a34a;
 }
 .bg-orange-50 {
-    background-color: #fff7ed;
+    background-color: rgba(234, 88, 12, 0.15);
     color: #ea580c;
 }
 
 .card-title {
     font-size: 1.125rem;
     font-weight: 700;
+    color: var(--text-h);
 }
 
 .stat-item {
@@ -170,6 +171,7 @@
     justify-content: space-between;
     padding: 0.25rem 0;
     font-size: 0.875rem;
+    color: var(--text);
 }
 
 .badge {
@@ -179,8 +181,8 @@
 }
 
 .badge-orange {
-    background-color: #ffedd5;
-    color: #9a3412;
+    background-color: rgba(234, 88, 12, 0.15);
+    color: #ea580c;
 }
 
 .quick-links {
@@ -191,6 +193,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 1.5rem;
+    color: var(--text-h);
 }
 
 .link-grid {
@@ -211,27 +214,28 @@
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 0.75rem;
     text-decoration: none;
-    color: #111827;
+    color: var(--text-h);
     transition:
         border-color 0.2s,
         color 0.2s;
 }
 
 .link-tile:hover {
-    border-color: #93c5fd;
-    color: #2563eb;
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .footer {
-    background-color: #ffffff;
-    border-top: 1px solid #e5e7eb;
+    background-color: var(--bg-card);
+    border-top: 1px solid var(--border);
     margin-top: 5rem;
     padding: 2rem 0;
     text-align: center;
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--text);
 }
+

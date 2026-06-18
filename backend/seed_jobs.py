@@ -3,8 +3,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.core.config import settings
-from src.modules.jobs.models import Job
+from app.core.config import settings
+from app.features.jobs.models import Job
 
 
 async def seed():

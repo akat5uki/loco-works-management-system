@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import api from "../../shared/services/api";
+import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./LandingPage.css";
 
 interface Stats {
@@ -61,13 +62,14 @@ const LandingPage = () => {
               LocoWorks
             </h1>
           </div>
-          <nav className="nav-links">
+          <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <Link to="/login" className="nav-link">
               Login
             </Link>
             <Link to="/login" className="btn-primary">
               Get Started
             </Link>
+            <ThemeToggle />
           </nav>
         </div>
       </header>

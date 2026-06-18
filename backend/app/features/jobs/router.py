@@ -5,9 +5,9 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from src.core.database import get_db
-from src.modules.auth.dependencies import CurrentUser
-from src.modules.jobs.models import Job, Task
+from app.core.database import get_db
+from app.features.auth.dependencies import CurrentUser, SupervisorUser
+from app.features.jobs.models import Job, Task
 
 router = APIRouter()
 
@@ -71,6 +71,49 @@ async def create_task(
         await db.commit()
         await db.refresh(db_task)
         return db_task
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{job_id}", response_model=JobRead)
+async def update_job(
+    job_id: int,
+    job: JobBase,
+    current_user: SupervisorUser,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Job).where(Job.job_id == job_id))
+    db_job = result.scalar_one_or_none()
+    if not db_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    for key, value in job.model_dump().items():
+        setattr(db_job, key, value)
+    
+    try:
+        await db.commit()
+        await db.refresh(db_job)
+        return db_job
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job(
+    job_id: int,
+    current_user: SupervisorUser,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Job).where(Job.job_id == job_id))
+    db_job = result.scalar_one_or_none()
+    if not db_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    await db.delete(db_job)
+    try:
+        await db.commit()
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))

@@ -5,11 +5,11 @@ from typing import Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from src.core.config import settings
+from app.core.config import settings
 
 router = APIRouter()
 
-from src.core.redis import redis_client
+from app.core.redis import redis_client
 
 # Track active websocket connections in memory
 active_connections: Set[WebSocket] = set()

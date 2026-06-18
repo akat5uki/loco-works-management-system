@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { User, Lock, BadgeInfo } from "lucide-react";
 import axios from "axios";
 import api from "../../shared/services/api";
+import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./Auth.css";
 
 interface Designation {
@@ -69,6 +70,9 @@ const RegisterPage = () => {
 
   return (
     <div className="auth-container">
+      <div style={{ position: "absolute", top: "1.5rem", right: "1.5rem" }}>
+        <ThemeToggle />
+      </div>
       <div className="auth-card">
         <div className="auth-header">
           <div className="logo-box">L</div>
@@ -122,7 +126,9 @@ const RegisterPage = () => {
                   width: "100%",
                   padding: "0.75rem",
                   borderRadius: "0.5rem",
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--bg)",
+                  color: "var(--text-h)",
                 }}
                 value={formData.designation_id}
                 onChange={(e) =>

@@ -1,6 +1,6 @@
 from redis.asyncio import Redis, Sentinel
 
-from src.core.config import settings
+from app.core.config import settings
 
 # Sentinel configuration
 if settings.REDIS_SENTINELS:

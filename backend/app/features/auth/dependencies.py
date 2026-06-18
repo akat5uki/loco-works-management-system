@@ -3,13 +3,15 @@ from typing import Annotated, Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
-from src.core.config import settings
-from src.core.database import get_db
-from src.core.redis import redis_client
-from src.modules.employees.models import Employee
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.redis import redis_client
+from app.features.employees.models import Employee
 
 # OAuth2 scheme for the Authorization header
 oauth2_scheme = OAuth2PasswordBearer(
@@ -66,6 +68,9 @@ async def get_current_user(
                 detail="Session expired or invalid",
             )
 
+        # Extend session lifetime on activity (Sliding Expiration)
+        await redis_client.expire(session_key, 1800)
+
     except (JWTError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,7 +78,9 @@ async def get_current_user(
         )
 
     result = await db.execute(
-        select(Employee).where(Employee.ticket_number == ticket_number)
+        select(Employee)
+        .options(joinedload(Employee.designation))
+        .where(Employee.ticket_number == ticket_number)
     )
     user = result.scalar_one_or_none()
 
@@ -82,8 +89,25 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+
+    # Set PG audit context session variable
+    await db.execute(
+        text("SELECT set_config('app.current_user_id', :user_id, true)"),
+        {"user_id": str(user.ticket_number)}
+    )
+
     return user
+
+
+def require_supervisor(current_user: Annotated[Employee, Depends(get_current_user)]):
+    if not current_user.designation or current_user.designation.category_id != 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions. Supervisor access required.",
+        )
+    return current_user
 
 
 # Type alias for cleaner dependency injection
 CurrentUser = Annotated[Employee, Depends(get_current_user)]
+SupervisorUser = Annotated[Employee, Depends(require_supervisor)]

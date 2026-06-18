@@ -81,11 +81,7 @@ INSERT INTO "public"."jobs" ("job_id", "job_description", "stage") VALUES
 (2, 'WAP-5 Scheduled Testing work', 0)
 ON CONFLICT (job_id) DO NOTHING;
 
-CREATE TABLE "public"."tasks" (
-    "task_id" bigint NOT NULL,
-    "task_description" text NOT NULL,
-    PRIMARY KEY ("task_id")
-);
+
 
 CREATE TABLE "public"."loco_type" (
     "loco_type_id" int NOT NULL,
@@ -113,10 +109,22 @@ CREATE TABLE "public"."loco_bookings" (
     "loco_number" int NOT NULL,
     "date_time" timestamptz NOT NULL,
     "job_id" int NOT NULL,
-    "task_id" bigint NOT NULL DEFAULT 1,
     "ticket_number" int NOT NULL,
     "designation_id" int NOT NULL,
     PRIMARY KEY ("loco_number", "date_time", "job_id")
+);
+
+CREATE TABLE "public"."booking_tasks" (
+    "task_id" bigserial NOT NULL,
+    "loco_number" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "job_id" int NOT NULL,
+    "task_description" text NOT NULL,
+    PRIMARY KEY ("task_id"),
+    CONSTRAINT "fk_booking_tasks_loco_bookings" 
+        FOREIGN KEY ("loco_number", "date_time", "job_id") 
+        REFERENCES "public"."loco_bookings"("loco_number", "date_time", "job_id") 
+        ON DELETE CASCADE
 );
 
 CREATE TABLE "public"."audit_logs" (
@@ -139,7 +147,7 @@ ALTER TABLE "public"."employee_job_ratings" ADD CONSTRAINT "fk_employee_job_rati
 ALTER TABLE "public"."employee_job_ratings" ADD CONSTRAINT "fk_employee_job_ratings_ticket_number_employees" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
 ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_designation_id_designation_designation_id" FOREIGN KEY("designation_id") REFERENCES "public"."designation"("designation_id");
 ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_job_id_jobs_job_id" FOREIGN KEY("job_id") REFERENCES "public"."jobs"("job_id");
-ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_task_id_tasks_task_id" FOREIGN KEY("task_id") REFERENCES "public"."tasks"("task_id");
+
 ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_loco_number_loco_loco_number" FOREIGN KEY("loco_number") REFERENCES "public"."loco"("loco_number");
 ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_ticket_number_employees_ticket_number" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
 
@@ -217,7 +225,7 @@ CREATE TRIGGER trg_audit_employee_job_ratings AFTER INSERT OR UPDATE OR DELETE O
 CREATE TRIGGER trg_audit_loco_type AFTER INSERT OR UPDATE OR DELETE ON public.loco_type FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_type_id');
 CREATE TRIGGER trg_audit_loco AFTER INSERT OR UPDATE OR DELETE ON public.loco FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number');
 CREATE TRIGGER trg_audit_employees AFTER INSERT OR UPDATE OR DELETE ON public.employees FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number');
-CREATE TRIGGER trg_audit_tasks AFTER INSERT OR UPDATE OR DELETE ON public.tasks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('task_id');
+CREATE TRIGGER trg_audit_booking_tasks AFTER INSERT OR UPDATE OR DELETE ON public.booking_tasks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('task_id');
 CREATE TRIGGER trg_audit_employee_category AFTER INSERT OR UPDATE OR DELETE ON public.employee_category FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('category_id');
 CREATE TRIGGER trg_audit_designation AFTER INSERT OR UPDATE OR DELETE ON public.designation FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('designation_id');
 CREATE TRIGGER trg_audit_loco_bookings AFTER INSERT OR UPDATE OR DELETE ON public.loco_bookings FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number', 'date_time', 'job_id');

@@ -4,19 +4,22 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 
-from src.core.config import settings
-from src.core.database import route_to_primary
-from src.modules.auth.router import router as auth_router
-from src.modules.bookings.router import router as bookings_router
-from src.modules.employees.router import router as employees_router
-from src.modules.jobs.router import router as jobs_router
-from src.modules.locos.router import router as locos_router
-from src.modules.realtime.router import redis_stream_listener
-from src.modules.realtime.router import router as realtime_router
+from app.core.config import settings
+from app.core.database import route_to_primary
+from app.features.auth.router import router as auth_router
+from app.features.bookings.router import router as bookings_router
+from app.features.employees.router import router as employees_router
+from app.features.jobs.router import router as jobs_router
+from app.features.locos.router import router as locos_router
+from app.features.realtime.router import redis_stream_listener
+from app.features.realtime.router import router as realtime_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Seeding tasks is no longer needed since the child booking_tasks table is normalized
+    pass
+
     # Start the Redis Stream listener for websockets
     task = asyncio.create_task(redis_stream_listener())
     yield
@@ -31,20 +34,20 @@ app = FastAPI(
 
 
 @app.middleware("http")
-async def write_window_lag_mitigation(request: Request, call_next):
+async def db_routing_middleware(request: Request, call_next):
     # Check if request is mutating
     is_mutating = request.method in ["POST", "PUT", "DELETE", "PATCH"]
 
     # Check for the lag mitigation cookie
     has_lag_cookie = request.cookies.get("write_window_lag") == "1"
 
-    # Route to primary if mutating or if the lag cookie is present
+    # Route to primary if mutating (writes) or if lag cookie is present
     token = route_to_primary.set(is_mutating or has_lag_cookie)
 
     try:
         response: Response = await call_next(request)
 
-        # If the request was mutating, set the 2-second lag cookie on the response
+        # If the request was mutating and succeeded, set the 2-second lag cookie on the response
         if is_mutating and response.status_code < 400:
             response.set_cookie(
                 key="write_window_lag",

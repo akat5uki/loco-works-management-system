@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from src.core.database import get_db
-from src.core.redis import redis_client
-from src.core.security import create_access_token, get_password_hash, verify_password
-from src.modules.auth.dependencies import CurrentUser
-from src.modules.auth.schemas import LoginRequest, Token, UserRegister
-from src.modules.employees.models import Employee
+from app.core.database import get_db
+from app.core.redis import redis_client
+from app.core.security import create_access_token, get_password_hash, verify_password
+from app.features.auth.dependencies import CurrentUser
+from app.features.auth.schemas import LoginRequest, Token, UserRegister
+from app.features.employees.models import Employee
 
 router = APIRouter()
 
@@ -20,6 +20,8 @@ async def get_me(current_user: CurrentUser):
         "ticket_number": current_user.ticket_number,
         "name": current_user.name,
         "designation_id": current_user.designation_id,
+        "is_supervisor": current_user.designation
+        and current_user.designation.category_id == 1,
     }
 
 

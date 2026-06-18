@@ -94,7 +94,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend/src:/app/src
+      - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/main.py:/app/main.py
       - ./backend/pyproject.toml:/app/pyproject.toml
@@ -116,7 +116,29 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend/src:/app/src
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/main.py:/app/main.py
+      - ./backend/pyproject.toml:/app/pyproject.toml
+      - ./backend/uv.lock:/app/uv.lock
+    depends_on:
+      - db-primary
+      - db-replica
+      - redis-master
+      - redis-sentinel-1
+      - redis-sentinel-2
+      - redis-sentinel-3
+
+  web-3:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: loco_web_3
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/main.py:/app/main.py
       - ./backend/pyproject.toml:/app/pyproject.toml
@@ -142,6 +164,7 @@ services:
     depends_on:
       - web-1
       - web-2
+      - web-3
 
 volumes:
   postgres_primary_data:

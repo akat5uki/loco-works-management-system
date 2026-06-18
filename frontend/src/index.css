@@ -2,6 +2,8 @@
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
@@ -31,10 +33,12 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
+    --bg-secondary: #0f1015;
+    --bg-card: #1e2028;
     --border: #2e303a;
     --code-bg: #1f2028;
     --accent: #c084fc;
@@ -48,6 +52,38 @@
   #social .button-icon {
     filter: invert(1) brightness(2);
   }
+}
+
+:root.dark {
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #16171d;
+  --bg-secondary: #0f1015;
+  --bg-card: #1e2028;
+  --border: #2e303a;
+  --code-bg: #1f2028;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
+  --social-bg: rgba(47, 48, 58, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+}
+
+:root.light {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 }
 
 #root {
@@ -109,3 +145,67 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Theme Toggle Button & Smooth Transitions */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.08);
+  box-shadow: var(--shadow);
+}
+
+.theme-icon {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle-btn:hover .theme-icon.sun {
+  transform: rotate(45deg);
+}
+
+.theme-toggle-btn:hover .theme-icon.moon {
+  transform: rotate(-15deg);
+}
+
+body, 
+input, 
+select, 
+textarea, 
+button, 
+.auth-card, 
+.master-container, 
+.master-header, 
+.master-tabs, 
+.crud-form, 
+.table-wrapper, 
+.dashboard-container, 
+.sidebar, 
+.header-date, 
+.tile-card, 
+.landing-container, 
+.header, 
+.card, 
+.link-tile, 
+.footer, 
+.loco-booking-workspace, 
+.panel-card {
+  transition: background 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+

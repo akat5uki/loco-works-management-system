@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Lock, User, RefreshCw } from "lucide-react";
 import axios from "axios";
 import api from "../../shared/services/api";
+import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./Auth.css";
 
 const LoginPage = () => {
@@ -49,6 +50,9 @@ const LoginPage = () => {
 
   return (
     <div className="auth-container">
+      <div style={{ position: "absolute", top: "1.5rem", right: "1.5rem" }}>
+        <ThemeToggle />
+      </div>
       <div className="auth-card">
         <div className="auth-header">
           <div className="logo-box">L</div>

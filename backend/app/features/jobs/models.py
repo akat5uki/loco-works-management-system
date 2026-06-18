@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.core.database import Base
+from app.core.database import Base
 
 
 class Job(Base):

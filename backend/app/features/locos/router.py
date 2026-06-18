@@ -7,10 +7,10 @@ from sqlalchemy import extract, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from src.core.database import get_db
-from src.modules.auth.dependencies import CurrentUser
-from src.modules.jobs.models import Job
-from src.modules.locos.models import Loco, LocoType
+from app.core.database import get_db
+from app.features.auth.dependencies import CurrentUser, SupervisorUser
+from app.features.jobs.models import Job
+from app.features.locos.models import Loco, LocoType
 
 router = APIRouter()
 
@@ -99,7 +99,7 @@ async def get_locos(current_user: CurrentUser, db: AsyncSession = Depends(get_db
 
 @router.post("/", response_model=LocoRead, status_code=status.HTTP_201_CREATED)
 async def create_loco(
-    loco: LocoBase, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+    loco: LocoBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
 ):
     db_loco = Loco(**loco.model_dump())
     db.add(db_loco)
@@ -117,3 +117,90 @@ async def get_ongoing_jobs(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Job).where(Job.stage > 0))
     jobs = result.scalars().all()
     return jobs
+
+
+@router.put("/types/{loco_type_id}", response_model=LocoTypeRead)
+async def update_loco_type(
+    loco_type_id: int,
+    loco_type: LocoTypeBase,
+    current_user: SupervisorUser,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(LocoType).where(LocoType.loco_type_id == loco_type_id))
+    db_type = result.scalar_one_or_none()
+    if not db_type:
+        raise HTTPException(status_code=404, detail="Loco type not found")
+    
+    for key, value in loco_type.model_dump().items():
+        setattr(db_type, key, value)
+    
+    try:
+        await db.commit()
+        await db.refresh(db_type)
+        return db_type
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/types/{loco_type_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_loco_type(
+    loco_type_id: int,
+    current_user: SupervisorUser,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(LocoType).where(LocoType.loco_type_id == loco_type_id))
+    db_type = result.scalar_one_or_none()
+    if not db_type:
+        raise HTTPException(status_code=404, detail="Loco type not found")
+    
+    await db.delete(db_type)
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{loco_number}", response_model=LocoRead)
+async def update_loco(
+    loco_number: int,
+    loco: LocoBase,
+    current_user: SupervisorUser,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Loco).where(Loco.loco_number == loco_number))
+    db_loco = result.scalar_one_or_none()
+    if not db_loco:
+        raise HTTPException(status_code=404, detail="Locomotive not found")
+    
+    for key, value in loco.model_dump().items():
+        setattr(db_loco, key, value)
+    
+    try:
+        await db.commit()
+        await db.refresh(db_loco)
+        return db_loco
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{loco_number}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_loco(
+    loco_number: int,
+    current_user: SupervisorUser,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Loco).where(Loco.loco_number == loco_number))
+    db_loco = result.scalar_one_or_none()
+    if not db_loco:
+        raise HTTPException(status_code=404, detail="Locomotive not found")
+    
+    await db.delete(db_loco)
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+

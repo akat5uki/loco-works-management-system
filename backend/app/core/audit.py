@@ -4,7 +4,7 @@ from sqlalchemy import BigInteger, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.core.database import Base
+from app.core.database import Base
 
 
 class AuditLog(Base):

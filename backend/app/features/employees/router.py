@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from src.core.database import get_db
-from src.modules.employees.models import Designation, EmployeeCategory
+from app.core.database import get_db
+from app.features.employees.models import Designation, EmployeeCategory
 
 router = APIRouter()
 

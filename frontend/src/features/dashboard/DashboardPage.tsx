@@ -11,17 +11,20 @@ import {
   BarChart3,
 } from "lucide-react";
 import api from "../../shared/services/api";
+import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./Dashboard.css";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("Employee");
+  const [isSupervisor, setIsSupervisor] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const response = await api.get("/auth/me");
         setUserName(response.data.name);
+        setIsSupervisor(response.data.is_supervisor);
       } catch (error) {
         console.error("Failed to fetch user info", error);
       }
@@ -30,27 +33,31 @@ const DashboardPage = () => {
   }, []);
 
   const tiles = [
-    {
-      title: "Loco Booking",
-      icon: <Train size={32} />,
-      color: "#3b82f6",
-      description: "Book a locomotive for a job",
-      path: "/bookings/loco",
-    },
-    {
-      title: "Staff Booking",
-      icon: <Users size={32} />,
-      color: "#10b981",
-      description: "Assign staff to ongoing tasks",
-      path: "/bookings/staff",
-    },
-    {
-      title: "CRUD Operations",
-      icon: <Settings size={32} />,
-      color: "#6366f1",
-      description: "Manage locos, jobs, and staff",
-      path: "/crud",
-    },
+    ...(isSupervisor
+      ? [
+          {
+            title: "Loco Booking",
+            icon: <Train size={32} />,
+            color: "#3b82f6",
+            description: "Book a locomotive for a job",
+            path: "/bookings/loco",
+          },
+          {
+            title: "Staff Booking",
+            icon: <Users size={32} />,
+            color: "#10b981",
+            description: "Assign staff to ongoing tasks",
+            path: "/bookings/staff",
+          },
+          {
+            title: "CRUD Operations",
+            icon: <Settings size={32} />,
+            color: "#6366f1",
+            description: "Manage locos, jobs, and staff",
+            path: "/crud",
+          },
+        ]
+      : []),
     {
       title: "Job Reports",
       icon: <FileText size={32} />,
@@ -120,12 +127,15 @@ const DashboardPage = () => {
             <h2>Welcome back, {userName}</h2>
             <p>Workplace Overview & Quick Actions</p>
           </div>
-          <div className="header-date">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <ThemeToggle />
+            <div className="header-date">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
           </div>
         </header>
 

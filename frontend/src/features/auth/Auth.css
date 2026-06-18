@@ -4,15 +4,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f3f4f6;
+    background-color: var(--bg-secondary);
     padding: 1rem;
 }
 
 .auth-card {
-    background: #ffffff;
+    background: var(--bg-card);
     padding: 2.5rem;
     border-radius: 1rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
     width: 100%;
     max-width: 400px;
 }
@@ -26,11 +27,11 @@
     font-size: 1.5rem;
     font-weight: 800;
     margin: 1rem 0 0.5rem;
-    color: #111827;
+    color: var(--text-h);
 }
 
 .auth-header p {
-    color: #6b7280;
+    color: var(--text);
     font-size: 0.875rem;
 }
 
@@ -43,7 +44,7 @@
     font-size: 0.875rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #374151;
+    color: var(--text-h);
 }
 
 .input-wrapper {
@@ -55,21 +56,24 @@
 .input-icon {
     position: absolute;
     left: 0.75rem;
-    color: #9ca3af;
+    color: var(--text);
+    opacity: 0.7;
 }
 
 .input-wrapper input {
     width: 100%;
     padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border);
     border-radius: 0.5rem;
+    background-color: var(--bg);
+    color: var(--text-h);
     outline: none;
     transition: border-color 0.2s;
 }
 
 .input-wrapper input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px #bfdbfe;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
 .captcha-row {
@@ -79,19 +83,21 @@
 }
 
 .captcha-box {
-    background: #e5e7eb;
+    background: var(--bg-secondary);
+    color: var(--text-h);
     padding: 0.5rem 1rem;
     border-radius: 0.375rem;
     font-weight: 800;
     letter-spacing: 0.25em;
     font-style: italic;
     user-select: none;
+    border: 1px solid var(--border);
 }
 
 .refresh-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text);
     cursor: pointer;
     padding: 0.25rem;
 }
@@ -99,14 +105,20 @@
 .captcha-row input {
     flex: 1;
     padding: 0.75rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border);
     border-radius: 0.5rem;
+    background-color: var(--bg);
+    color: var(--text-h);
     outline: none;
+}
+
+.captcha-row input:focus {
+    border-color: var(--accent);
 }
 
 .btn-auth {
     width: 100%;
-    background: #2563eb;
+    background: var(--accent);
     color: white;
     padding: 0.75rem;
     border-radius: 0.5rem;
@@ -114,37 +126,38 @@
     border: none;
     cursor: pointer;
     margin-top: 1rem;
-    transition: background 0.2s;
+    transition: opacity 0.2s;
 }
 
 .btn-auth:hover:not(:disabled) {
-    background: #1d4ed8;
+    opacity: 0.9;
 }
 
 .btn-auth:disabled {
-    opacity: 0.7;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
 .error-message {
-    background: #fef2f2;
-    color: #991b1b;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
     padding: 0.75rem;
     border-radius: 0.5rem;
     font-size: 0.875rem;
     margin-bottom: 1.25rem;
-    border: 1px solid #fee2e2;
+    border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .auth-footer {
     margin-top: 1.5rem;
     text-align: center;
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--text);
 }
 
 .auth-footer a {
-    color: #2563eb;
+    color: var(--accent);
     font-weight: 600;
     text-decoration: none;
 }
+

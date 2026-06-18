@@ -3,10 +3,10 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.core.database import Base
+from app.core.database import Base
 
 if TYPE_CHECKING:
-    from src.modules.employees.models import Designation, EmployeeCategory
+    from app.features.employees.models import Designation, EmployeeCategory
 
 
 class EmployeeCategory(Base):
