@@ -6,7 +6,33 @@
     justify-content: center;
     background-color: var(--bg-secondary);
     padding: 1rem;
+    position: relative;
 }
+
+.auth-home-btn {
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    box-shadow: var(--shadow);
+    transition: color 0.2s, background 0.2s, transform 0.15s;
+}
+
+.auth-home-btn:hover {
+    color: var(--accent);
+    background: var(--accent-bg);
+    transform: translateY(-1px);
+}
+
 
 .auth-card {
     background: var(--bg-card);
