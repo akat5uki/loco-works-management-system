@@ -99,9 +99,15 @@ const DashboardPage = () => {
     },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login", { replace: true });
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Failed to log out on server", error);
+    } finally {
+      localStorage.removeItem("token");
+      navigate("/login", { replace: true });
+    }
   };
 
   return (
