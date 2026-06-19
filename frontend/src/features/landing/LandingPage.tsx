@@ -4,9 +4,10 @@ import { Link } from "react-router-dom";
 import {
   BarChart,
   Gauge,
-  Briefcase,
+  Users,
   ChevronRight,
   LayoutDashboard,
+  Train,
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -17,33 +18,39 @@ interface Stats {
   month_wise: { month: number; count: number }[];
 }
 
-interface LocoType {
+interface LocoTypeCount {
   loco_type_id: number;
   loco_type_name: string;
+  total: number;
+  active: number;
+  despatched: number;
 }
 
-interface Job {
-  job_id: number;
-  job_description: string;
-  stage: number;
+interface EmployeeStats {
+  total: number;
+  by_designation: {
+    designation_name: string;
+    category_name: string;
+    count: number;
+  }[];
 }
 
 const LandingPage = () => {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [types, setTypes] = useState<LocoType[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [typeCounts, setTypeCounts] = useState<LocoTypeCount[]>([]);
+  const [empStats, setEmpStats] = useState<EmployeeStats | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, typesRes, jobsRes] = await Promise.all([
+        const [statsRes, typeCountsRes, empStatsRes] = await Promise.all([
           api.get("/locos/stats/production"),
-          api.get("/locos/types"),
-          api.get("/locos/ongoing-jobs"),
+          api.get("/locos/type-counts"),
+          api.get("/employees/stats"),
         ]);
         setStats(statsRes.data);
-        setTypes(typesRes.data);
-        setJobs(jobsRes.data);
+        setTypeCounts(typeCountsRes.data);
+        setEmpStats(empStatsRes.data);
       } catch (error) {
         console.error("Error fetching landing data", error);
       }
@@ -131,7 +138,7 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Loco Types Card */}
+          {/* Loco Types Card — with per-type counts */}
           <div className="card">
             <div className="card-header">
               <div className="icon-bg bg-green-50">
@@ -140,7 +147,7 @@ const LandingPage = () => {
               <h3 className="card-title">Locomotive Types</h3>
             </div>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {types.slice(0, 6).map((t) => (
+              {typeCounts.slice(0, 7).map((t) => (
                 <li
                   key={t.loco_type_id}
                   style={{
@@ -148,86 +155,117 @@ const LandingPage = () => {
                     alignItems: "center",
                     gap: "0.5rem",
                     fontSize: "0.875rem",
-                    color: "#4b5563",
-                    marginBottom: "0.5rem",
+                    marginBottom: "0.6rem",
                   }}
                 >
-                  <ChevronRight size={14} style={{ color: "#d1d5db" }} />
-                  <span>{t.loco_type_name}</span>
+                  <ChevronRight size={14} style={{ color: "#d1d5db", flexShrink: 0 }} />
+                  <span style={{ color: "var(--text-h)", flex: 1 }}>{t.loco_type_name}</span>
+                  <span style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                    {/* Active count */}
+                    <span style={{
+                      fontSize: "0.7rem", fontWeight: 700,
+                      padding: "0.1rem 0.45rem", borderRadius: "9999px",
+                      background: "rgba(16,185,129,0.12)", color: "#10b981",
+                    }} title="Active locos">
+                      <Train size={10} style={{ display: "inline", marginRight: 3 }} />
+                      {t.active}
+                    </span>
+                    {/* Despatched count — only if > 0 */}
+                    {t.despatched > 0 && (
+                      <span style={{
+                        fontSize: "0.7rem", fontWeight: 700,
+                        padding: "0.1rem 0.45rem", borderRadius: "9999px",
+                        background: "rgba(239,68,68,0.10)", color: "#ef4444",
+                      }} title="Despatched locos">
+                        ✈ {t.despatched}
+                      </span>
+                    )}
+                    {/* Total */}
+                    <span style={{
+                      fontSize: "0.7rem", fontWeight: 700,
+                      padding: "0.1rem 0.45rem", borderRadius: "9999px",
+                      background: "var(--accent-bg)", color: "var(--accent)",
+                    }} title="Total">
+                      {t.total} total
+                    </span>
+                  </span>
                 </li>
               ))}
-              {types.length > 6 && (
-                <li
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#9ca3af",
-                    fontStyle: "italic",
-                    paddingLeft: "1.5rem",
-                  }}
-                >
-                  & more...
+              {typeCounts.length > 7 && (
+                <li style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", paddingLeft: "1.5rem" }}>
+                  & {typeCounts.length - 7} more types...
                 </li>
               )}
-              {types.length === 0 && (
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#9ca3af",
-                    fontStyle: "italic",
-                  }}
-                >
+              {typeCounts.length === 0 && (
+                <p style={{ fontSize: "0.875rem", color: "#9ca3af", fontStyle: "italic" }}>
                   No types listed
                 </p>
               )}
             </ul>
           </div>
 
-          {/* Ongoing Jobs Card */}
+          {/* Active Employees Card */}
           <div className="card">
             <div className="card-header">
               <div className="icon-bg bg-orange-50">
-                <Briefcase size={20} />
+                <Users size={20} />
               </div>
-              <h3 className="card-title">Ongoing Jobs</h3>
+              <h3 className="card-title">
+                Active Employees
+                {empStats && (
+                  <span style={{
+                    marginLeft: "0.6rem",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    padding: "0.15rem 0.55rem",
+                    borderRadius: "9999px",
+                    background: "var(--accent-bg)",
+                    color: "var(--accent)",
+                    verticalAlign: "middle",
+                  }}>
+                    {empStats.total}
+                  </span>
+                )}
+              </h3>
             </div>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {jobs.slice(0, 6).map((j) => (
+              {empStats?.by_designation.slice(0, 7).map((d) => (
                 <li
-                  key={j.job_id}
+                  key={d.designation_name}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
+                    alignItems: "center",
                     fontSize: "0.875rem",
-                    color: "#4b5563",
-                    marginBottom: "0.5rem",
+                    marginBottom: "0.55rem",
                   }}
                 >
-                  <span>{j.job_description}</span>
-                  <span className="badge badge-orange">Stage {j.stage}</span>
+                  <span style={{ color: "var(--text-h)" }}>{d.designation_name}</span>
+                  <span style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                    <span style={{
+                      fontSize: "0.7rem", fontWeight: 700,
+                      padding: "0.1rem 0.45rem", borderRadius: "9999px",
+                      background: "rgba(99,102,241,0.10)", color: "#6366f1",
+                    }}>
+                      {d.category_name}
+                    </span>
+                    <span style={{
+                      fontSize: "0.75rem", fontWeight: 700, minWidth: "1.5rem",
+                      textAlign: "right", color: "var(--text-h)",
+                    }}>
+                      {d.count}
+                    </span>
+                  </span>
                 </li>
               ))}
-              {jobs.length > 6 && (
-                <li
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#9ca3af",
-                    fontStyle: "italic",
-                    textAlign: "center",
-                    marginTop: "0.5rem",
-                  }}
-                >
-                  + {jobs.length - 6} more jobs...
+              {(empStats?.by_designation.length ?? 0) > 7 && (
+                <li style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", textAlign: "center", marginTop: "0.5rem" }}>
+                  + {(empStats?.by_designation.length ?? 0) - 7} more designations...
                 </li>
               )}
-              {jobs.length === 0 && (
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#9ca3af",
-                    fontStyle: "italic",
-                  }}
-                >
-                  No active jobs
+              {(!empStats || empStats.total === 0) && (
+                <p style={{ fontSize: "0.875rem", color: "#9ca3af", fontStyle: "italic" }}>
+                  No employees registered
                 </p>
               )}
             </ul>
@@ -254,7 +292,7 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="footer">
         <div style={{ maxWidth: "80rem", margin: "0 auto", padding: "0 1rem" }}>
-          &copy; 2026 Loco Works Management System. Built with FastAPI & React.
+          &copy; 2026 Loco Works Management System. Built with FastAPI &amp; React.
         </div>
       </footer>
     </div>

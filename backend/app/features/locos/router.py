@@ -3,7 +3,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import extract, func
+from sqlalchemy import Integer, extract, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -96,6 +96,33 @@ async def create_loco_type(
 async def get_locos(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Loco))
     return result.scalars().all()
+
+
+@router.get("/type-counts")
+async def get_loco_type_counts(db: AsyncSession = Depends(get_db)):
+    """Return each loco type with total, active and despatched counts. Public endpoint."""
+    result = await db.execute(
+        select(
+            LocoType.loco_type_id,
+            LocoType.loco_type_name,
+            func.count(Loco.loco_number).label("total"),
+            func.sum(func.cast(Loco.despatched, Integer)).label("despatched_count"),
+        )
+        .outerjoin(Loco, Loco.loco_type_id == LocoType.loco_type_id)
+        .group_by(LocoType.loco_type_id, LocoType.loco_type_name)
+        .order_by(LocoType.loco_type_name)
+    )
+    rows = result.all()
+    return [
+        {
+            "loco_type_id": r.loco_type_id,
+            "loco_type_name": r.loco_type_name,
+            "total": r.total or 0,
+            "active": (r.total or 0) - (r.despatched_count or 0),
+            "despatched": r.despatched_count or 0,
+        }
+        for r in rows
+    ]
 
 
 @router.post("/", response_model=LocoRead, status_code=status.HTTP_201_CREATED)
