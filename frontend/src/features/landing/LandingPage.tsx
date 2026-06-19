@@ -7,7 +7,6 @@ import {
   Users,
   ChevronRight,
   LayoutDashboard,
-  Train,
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -153,38 +152,51 @@ const LandingPage = () => {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.5rem",
+                    justifyContent: "space-between",
+                    gap: "0.75rem",
                     fontSize: "0.875rem",
-                    marginBottom: "0.6rem",
+                    marginBottom: "0.65rem",
+                    minWidth: 0,
                   }}
                 >
-                  <ChevronRight size={14} style={{ color: "#d1d5db", flexShrink: 0 }} />
-                  <span style={{ color: "var(--text-h)", flex: 1 }}>{t.loco_type_name}</span>
-                  <span style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
-                    {/* Active count */}
+                  {/* Left: icon + name */}
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
+                    <ChevronRight size={13} style={{ color: "#d1d5db", flexShrink: 0 }} />
                     <span style={{
-                      fontSize: "0.7rem", fontWeight: 700,
-                      padding: "0.1rem 0.45rem", borderRadius: "9999px",
-                      background: "rgba(16,185,129,0.12)", color: "#10b981",
-                    }} title="Active locos">
-                      <Train size={10} style={{ display: "inline", marginRight: 3 }} />
-                      {t.active}
+                      color: "var(--text-h)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {t.loco_type_name}
                     </span>
-                    {/* Despatched count — only if > 0 */}
+                  </span>
+
+                  {/* Right: count pills — never shrink or wrap */}
+                  <span style={{ display: "flex", gap: "0.3rem", alignItems: "center", flexShrink: 0 }}>
+                    <span style={{
+                      fontSize: "0.68rem", fontWeight: 700, lineHeight: 1,
+                      padding: "0.2rem 0.5rem", borderRadius: "9999px",
+                      background: "rgba(16,185,129,0.12)", color: "#10b981",
+                      whiteSpace: "nowrap",
+                    }} title="Active locos">
+                      ● {t.active} active
+                    </span>
                     {t.despatched > 0 && (
                       <span style={{
-                        fontSize: "0.7rem", fontWeight: 700,
-                        padding: "0.1rem 0.45rem", borderRadius: "9999px",
+                        fontSize: "0.68rem", fontWeight: 700, lineHeight: 1,
+                        padding: "0.2rem 0.5rem", borderRadius: "9999px",
                         background: "rgba(239,68,68,0.10)", color: "#ef4444",
+                        whiteSpace: "nowrap",
                       }} title="Despatched locos">
                         ✈ {t.despatched}
                       </span>
                     )}
-                    {/* Total */}
                     <span style={{
-                      fontSize: "0.7rem", fontWeight: 700,
-                      padding: "0.1rem 0.45rem", borderRadius: "9999px",
+                      fontSize: "0.68rem", fontWeight: 700, lineHeight: 1,
+                      padding: "0.2rem 0.5rem", borderRadius: "9999px",
                       background: "var(--accent-bg)", color: "var(--accent)",
+                      whiteSpace: "nowrap",
                     }} title="Total">
                       {t.total} total
                     </span>
