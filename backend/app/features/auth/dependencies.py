@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.redis import redis_client
-from app.features.employees.models import Employee
+from app.features.employees.models import Employee, Designation
 
 # OAuth2 scheme for the Authorization header
 oauth2_scheme = OAuth2PasswordBearer(
@@ -79,7 +79,7 @@ async def get_current_user(
 
     result = await db.execute(
         select(Employee)
-        .options(joinedload(Employee.designation))
+        .options(joinedload(Employee.designation).joinedload(Designation.category))
         .where(Employee.ticket_number == ticket_number)
     )
     user = result.scalar_one_or_none()

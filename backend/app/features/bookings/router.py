@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -30,7 +30,22 @@ class JobBookingInput(BaseModel):
 class BookingCreateBatch(BaseModel):
     loco_number: int
     date_time: datetime
+    shift: int          # now supplied by the user, not inferred from loco
     bookings: List[JobBookingInput]
+
+
+class SingleTaskAddInput(BaseModel):
+    loco_number: int
+    date_time: datetime
+    job_id: int
+    task_description: str
+
+
+class SingleJobAddInput(BaseModel):
+    loco_number: int
+    date_time: datetime
+    job_id: int
+    shift: int
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -39,7 +54,7 @@ async def create_booking(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
-    # Fetch the loco to get its shift
+    # Verify loco exists
     result = await db.execute(
         select(Loco).where(Loco.loco_number == booking.loco_number)
     )
@@ -50,51 +65,54 @@ async def create_booking(
             detail=f"Locomotive #{booking.loco_number} not found."
         )
 
-    # Check if a booking already exists for this loco on the same day and shift
-    input_date = booking.date_time.date()
+    # Check if a booking already exists for this loco on the same date + shift
+    from zoneinfo import ZoneInfo
+    local_tz = ZoneInfo("Asia/Kolkata")
+    dt = booking.date_time
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    input_date = dt.astimezone(local_tz).date()
+
     existing_query = (
         select(LocoBooking)
-        .join(Loco, LocoBooking.loco_number == Loco.loco_number)
         .where(
             LocoBooking.loco_number == booking.loco_number,
-            func.date(LocoBooking.date_time) == input_date,
-            Loco.shift == db_loco.shift
+            func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == input_date,
+            LocoBooking.shift == booking.shift,
         )
     )
     existing_result = await db.execute(existing_query)
     existing_bookings = existing_result.scalars().all()
     if existing_bookings:
-        # Edit Mode: Delete existing bookings (associated BookingTasks are deleted via SQLAlchemy cascading)
+        # Edit Mode: delete old records; BookingTasks cascade automatically
         for b in existing_bookings:
             await db.delete(b)
         await db.flush()
 
     created_bookings = []
     for job_booking in booking.bookings:
-        # Create a single booking record for the job
         new_booking = LocoBooking(
             loco_number=booking.loco_number,
             date_time=booking.date_time,
             job_id=job_booking.job_id,
             ticket_number=current_user.ticket_number,
             designation_id=current_user.designation_id,
+            shift=booking.shift,
         )
         db.add(new_booking)
         created_bookings.append(new_booking)
 
-        # Create tasks for this job booking
         for task_in in job_booking.tasks:
             db_task = BookingTask(
                 loco_number=booking.loco_number,
                 date_time=booking.date_time,
                 job_id=job_booking.job_id,
-                task_description=task_in.task_description
+                task_description=task_in.task_description,
             )
             db.add(db_task)
 
     await db.commit()
 
-    # Broadcast workshop telemetry event
     await broadcast_event(
         "booking_created",
         {
@@ -106,22 +124,88 @@ async def create_booking(
     return {"message": f"Successfully created {len(created_bookings)} bookings"}
 
 
-@router.get("/")
-async def get_bookings(
-    current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+@router.post("/tasks", status_code=status.HTTP_201_CREATED)
+async def add_booking_task(
+    task_in: SingleTaskAddInput,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
 ):
-    # Fetch bookings, joining Loco, Job, BookingTask, and Employee
-    query = (
+    query = select(LocoBooking).where(
+        LocoBooking.loco_number == task_in.loco_number,
+        LocoBooking.date_time == task_in.date_time,
+        LocoBooking.job_id == task_in.job_id
+    )
+    result = await db.execute(query)
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Parent job booking not found")
+    
+    db_task = BookingTask(
+        loco_number=task_in.loco_number,
+        date_time=task_in.date_time,
+        job_id=task_in.job_id,
+        task_description=task_in.task_description
+    )
+    db.add(db_task)
+    await db.commit()
+    return {"message": "Task added successfully", "task_id": db_task.task_id}
+
+
+@router.post("/jobs", status_code=status.HTTP_201_CREATED)
+async def add_job_booking(
+    job_in: SingleJobAddInput,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(LocoBooking).where(
+        LocoBooking.loco_number == job_in.loco_number,
+        LocoBooking.date_time == job_in.date_time,
+        LocoBooking.job_id == job_in.job_id
+    )
+    result = await db.execute(query)
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="This job is already booked for this locomotive at this time.")
+    
+    new_booking = LocoBooking(
+        loco_number=job_in.loco_number,
+        date_time=job_in.date_time,
+        job_id=job_in.job_id,
+        ticket_number=current_user.ticket_number,
+        designation_id=current_user.designation_id,
+        shift=job_in.shift
+    )
+    db.add(new_booking)
+    await db.commit()
+    return {"message": "Job added successfully"}
+
+
+def _booking_row_to_dict(row) -> dict:
+    return {
+        "loco_number": row.loco_number,
+        "date_time": row.date_time.isoformat() if row.date_time else None,
+        "job_id": row.job_id,
+        "job_description": row.job_description,
+        "task_id": row.task_id,
+        "task_description": row.task_description,
+        "ticket_number": row.ticket_number,
+        "employee_name": row.employee_name,
+        "shift": row.shift,
+    }
+
+
+def _base_booking_query():
+    """Shared SELECT … FROM … JOIN … that both list endpoints reuse."""
+    return (
         select(
             LocoBooking.loco_number,
             LocoBooking.date_time,
             LocoBooking.job_id,
+            LocoBooking.shift,
             Job.job_description,
             BookingTask.task_id,
             BookingTask.task_description,
             LocoBooking.ticket_number,
             Employee.name.label("employee_name"),
-            Loco.shift,
         )
         .join(Job, LocoBooking.job_id == Job.job_id)
         .outerjoin(
@@ -133,23 +217,182 @@ async def get_bookings(
             ),
         )
         .join(Employee, LocoBooking.ticket_number == Employee.ticket_number)
-        .join(Loco, LocoBooking.loco_number == Loco.loco_number)
         .order_by(LocoBooking.date_time.desc())
     )
+
+
+@router.get("/")
+async def get_bookings(
+    current_user: CurrentUser,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    tz: str = "Asia/Kolkata",
+    db: AsyncSession = Depends(get_db)
+):
+    """Return bookings, optionally filtered by start_date and end_date."""
+    query = _base_booking_query()
+    if start_date:
+        query = query.where(func.date(func.timezone(tz, LocoBooking.date_time)) >= start_date)
+    if end_date:
+        query = query.where(func.date(func.timezone(tz, LocoBooking.date_time)) <= end_date)
     result = await db.execute(query)
-    bookings = []
-    for row in result.all():
-        bookings.append(
-            {
-                "loco_number": row.loco_number,
-                "date_time": row.date_time.isoformat() if row.date_time else None,
-                "job_id": row.job_id,
-                "job_description": row.job_description,
-                "task_id": row.task_id,
-                "task_description": row.task_description,
-                "ticket_number": row.ticket_number,
-                "employee_name": row.employee_name,
-                "shift": row.shift,
-            }
+    return [_booking_row_to_dict(row) for row in result.all()]
+
+
+@router.get("/loco/{loco_number}")
+async def get_loco_history(
+    loco_number: int,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the full job history for a single locomotive, newest first."""
+    query = _base_booking_query().where(
+        LocoBooking.loco_number == loco_number
+    )
+    result = await db.execute(query)
+    rows = result.all()
+    if not rows:
+        # Verify loco even exists
+        loco_check = await db.execute(
+            select(Loco).where(Loco.loco_number == loco_number)
         )
-    return bookings
+        if not loco_check.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Locomotive not found")
+    return [_booking_row_to_dict(row) for row in rows]
+@router.delete("/{loco_number}/{date_time}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_loco_booking_batch(
+    loco_number: int,
+    date_time: datetime,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(LocoBooking).where(
+        LocoBooking.loco_number == loco_number,
+        LocoBooking.date_time == date_time
+    )
+    result = await db.execute(query)
+    bookings = result.scalars().all()
+    if not bookings:
+        raise HTTPException(status_code=404, detail="Bookings not found")
+    for booking in bookings:
+        await db.delete(booking)
+    await db.commit()
+
+@router.delete("/{loco_number}/{date_time}/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job_booking(
+    loco_number: int,
+    date_time: datetime,
+    job_id: int,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(LocoBooking).where(
+        LocoBooking.loco_number == loco_number,
+        LocoBooking.date_time == date_time,
+        LocoBooking.job_id == job_id
+    )
+    result = await db.execute(query)
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    await db.delete(booking)
+    await db.commit()
+
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_booking_task(
+    task_id: int,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(BookingTask).where(BookingTask.task_id == task_id)
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await db.delete(task)
+    await db.commit()
+
+class TaskUpdateInput(BaseModel):
+    task_description: str
+
+@router.put("/tasks/{task_id}")
+async def update_booking_task(
+    task_id: int,
+    task_in: TaskUpdateInput,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(BookingTask).where(BookingTask.task_id == task_id)
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task.task_description = task_in.task_description
+    await db.commit()
+    return {"message": "Task updated successfully"}
+
+class JobUpdateInput(BaseModel):
+    new_job_id: int
+
+@router.put("/{loco_number}/{date_time}/{job_id}")
+async def update_job_booking(
+    loco_number: int,
+    date_time: datetime,
+    job_id: int,
+    job_in: JobUpdateInput,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    # This is tricky because job_id is part of the primary key.
+    # The safest way is to insert a new LocoBooking and its tasks, then delete the old one.
+    query = select(LocoBooking).where(
+        LocoBooking.loco_number == loco_number,
+        LocoBooking.date_time == date_time,
+        LocoBooking.job_id == job_id
+    )
+    result = await db.execute(query)
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Check if target job already exists
+    check_q = select(LocoBooking).where(
+        LocoBooking.loco_number == loco_number,
+        LocoBooking.date_time == date_time,
+        LocoBooking.job_id == job_in.new_job_id
+    )
+    check_res = await db.execute(check_q)
+    if check_res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="This job is already booked for this loco at this time.")
+
+    tasks_query = select(BookingTask).where(
+        BookingTask.loco_number == loco_number,
+        BookingTask.date_time == date_time,
+        BookingTask.job_id == job_id
+    )
+    tasks_res = await db.execute(tasks_query)
+    tasks = tasks_res.scalars().all()
+
+    new_booking = LocoBooking(
+        loco_number=booking.loco_number,
+        date_time=booking.date_time,
+        job_id=job_in.new_job_id,
+        ticket_number=booking.ticket_number,
+        designation_id=booking.designation_id,
+        shift=booking.shift
+    )
+    db.add(new_booking)
+    await db.flush()
+
+    for t in tasks:
+        new_task = BookingTask(
+            loco_number=new_booking.loco_number,
+            date_time=new_booking.date_time,
+            job_id=new_booking.job_id,
+            task_description=t.task_description
+        )
+        db.add(new_task)
+
+    await db.delete(booking)
+    await db.commit()
+    return {"message": "Job updated successfully"}

@@ -24,6 +24,7 @@ class LocoBooking(Base):
     designation_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("designation.designation_id"), nullable=False
     )
+    shift: Mapped[int] = mapped_column(Integer, nullable=False)
 
     tasks: Mapped[List["BookingTask"]] = relationship(
         "BookingTask",

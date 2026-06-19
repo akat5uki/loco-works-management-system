@@ -20,6 +20,8 @@ async def get_me(current_user: CurrentUser):
         "ticket_number": current_user.ticket_number,
         "name": current_user.name,
         "designation_id": current_user.designation_id,
+        "designation_name": current_user.designation.designation_name if current_user.designation else None,
+        "category_name": current_user.designation.category.category_name if current_user.designation and current_user.designation.category else None,
         "is_supervisor": current_user.designation
         and current_user.designation.category_id == 1,
     }

@@ -14,10 +14,20 @@ import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./Dashboard.css";
 
+interface UserProfile {
+  ticket_number: number;
+  name: string;
+  designation_name: string | null;
+  category_name: string | null;
+  is_supervisor: boolean;
+}
+
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("Employee");
   const [isSupervisor, setIsSupervisor] = useState(false);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "profile">("dashboard");
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -25,6 +35,7 @@ const DashboardPage = () => {
         const response = await api.get("/auth/me");
         setUserName(response.data.name);
         setIsSupervisor(response.data.is_supervisor);
+        setUserProfile(response.data);
       } catch (error) {
         console.error("Failed to fetch user info", error);
       }
@@ -102,21 +113,32 @@ const DashboardPage = () => {
           <span>LocoWorks</span>
         </div>
         <nav className="sidebar-nav">
-          <div className="nav-item active">
-            <BarChart3 size={20} /> Dashboard
+          <div
+            className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
+            onClick={() => setActiveTab("dashboard")}
+            style={{ cursor: "pointer" }}
+          >
+            <BarChart3 size={20} /> <span>Dashboard</span>
           </div>
-          <div className="nav-item">
-            <Train size={20} /> Locomotives
+          <div
+            className={`nav-item ${activeTab === "profile" ? "active" : ""}`}
+            onClick={() => setActiveTab("profile")}
+            style={{ cursor: "pointer" }}
+          >
+            <Users size={20} /> <span>Profile</span>
           </div>
-          <div className="nav-item">
-            <Users size={20} /> Staff
+          <div className="nav-item" onClick={() => navigate("/stages")} style={{ cursor: "pointer" }}>
+            <Train size={20} /> <span>Locomotives</span>
           </div>
-          <div className="nav-item">
-            <FileText size={20} /> Reports
+          <div className="nav-item" onClick={() => navigate("/tasks")} style={{ cursor: "pointer" }}>
+            <Users size={20} /> <span>Staff</span>
+          </div>
+          <div className="nav-item" onClick={() => navigate("/reports")} style={{ cursor: "pointer" }}>
+            <FileText size={20} /> <span>Reports</span>
           </div>
         </nav>
         <button className="logout-btn" onClick={handleLogout}>
-          <LogOut size={20} /> Logout
+          <LogOut size={20} /> <span>Logout</span>
         </button>
       </aside>
 
@@ -139,30 +161,72 @@ const DashboardPage = () => {
           </div>
         </header>
 
-        <section className="tiles-grid">
-          {tiles.map((tile, index) => (
-            <div
-              key={index}
-              className="tile-card"
-              style={{ "--tile-color": tile.color } as React.CSSProperties}
-              onClick={() => navigate(tile.path)}
-            >
+        {activeTab === "dashboard" ? (
+          <section className="tiles-grid">
+            {tiles.map((tile, index) => (
               <div
-                className="tile-icon"
-                style={{
-                  backgroundColor: tile.color + "15",
-                  color: tile.color,
-                }}
+                key={index}
+                className="tile-card"
+                style={{ "--tile-color": tile.color } as React.CSSProperties}
+                onClick={() => navigate(tile.path)}
               >
-                {tile.icon}
+                <div
+                  className="tile-icon"
+                  style={{
+                    backgroundColor: tile.color + "15",
+                    color: tile.color,
+                  }}
+                >
+                  {tile.icon}
+                </div>
+                <div className="tile-content">
+                  <h3>{tile.title}</h3>
+                  <p>{tile.description}</p>
+                </div>
               </div>
-              <div className="tile-content">
-                <h3>{tile.title}</h3>
-                <p>{tile.description}</p>
+            ))}
+          </section>
+        ) : (
+          <section className="profile-container">
+            {userProfile && (
+              <div className="profile-card">
+                <div className="profile-card-header">
+                  <div className="profile-avatar">
+                    {userProfile.name
+                      ? userProfile.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : "E"}
+                  </div>
+                  <div className="profile-header-meta">
+                    <h3>{userProfile.name}</h3>
+                    <div className="profile-role-badge">
+                      {userProfile.category_name || (userProfile.is_supervisor ? "Supervisor" : "Staff")}
+                    </div>
+                  </div>
+                </div>
+                <div className="profile-body">
+                  <div className="profile-info-grid">
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">Ticket / Employee ID</span>
+                      <span className="profile-info-value">#{userProfile.ticket_number}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">Designation</span>
+                      <span className="profile-info-value">{userProfile.designation_name || "Not Specified"}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">Role Category</span>
+                      <span className="profile-info-value">{userProfile.category_name || "Employee"}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </section>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );

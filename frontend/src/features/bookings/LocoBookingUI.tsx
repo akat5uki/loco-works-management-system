@@ -1,313 +1,394 @@
-import { useState, useEffect } from "react";
-import { Train, Search, Plus, Trash2, Calendar, ClipboardList, Clock, User, FileText, ArrowLeft } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Train, Search, Plus, Trash2, Calendar, ClipboardList,
+  Clock, User, FileText, ArrowLeft, History, X, ChevronDown, ChevronUp
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Edit2 } from "lucide-react";
 import api from "../../shared/services/api";
+import { AxiosError } from "axios";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./LocoBooking.css";
 
-interface Loco {
-  loco_number: number;
-  loco_type_id: number;
-  date_time: string;
-  stage: number;
-  shift: number;
-}
-
-interface LocoType {
-  loco_type_id: number;
-  loco_type_name: string;
-}
-
-interface Job {
-  job_id: number;
-  job_description: string;
-  stage: number;
-}
-
+/* ── types ─────────────────────────────────────────────────────────── */
+interface Loco { loco_number: number; loco_type_id: number; date_time: string; stage: number; shift: number; }
+interface LocoType { loco_type_id: number; loco_type_name: string; }
+interface Job { job_id: number; job_description: string; stage: number; }
 interface RawBooking {
-  booking_id: number;
-  loco_number: number;
-  date_time: string;
-  job_id: number;
-  job_description: string;
-  task_id: number | null;
-  task_description: string | null;
-  ticket_number: number;
-  employee_name: string;
-  shift: number;
+  loco_number: number; date_time: string; job_id: number; job_description: string;
+  task_id: number | null; task_description: string | null;
+  ticket_number: number; employee_name: string; shift: number;
 }
 
+/* ── helpers ────────────────────────────────────────────────────────── */
+const getLocalDateString = (dateInput: Date | string) => {
+  const d = new Date(dateInput);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const todayISO = () => getLocalDateString(new Date());
+
+
+
+/** Guess current shift from hour-of-day (rough approximation). */
+const guessShift = () => {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 14) return 1;
+  if (h >= 14 && h < 22) return 2;
+  return 3;
+};
+
+function groupBookings(list: RawBooking[]) {
+  const groups: Record<string, Record<number, Record<number, { employee_name: string; date_time: string; jobs: Record<number, { job_description: string; tasks: { id: number, desc: string }[] }> }>>> = {};
+  list.forEach((b) => {
+    const dateStr = new Date(b.date_time).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const shift = b.shift;
+    const loco = b.loco_number;
+    if (!groups[dateStr]) groups[dateStr] = {};
+    if (!groups[dateStr][shift]) groups[dateStr][shift] = {};
+    if (!groups[dateStr][shift][loco]) groups[dateStr][shift][loco] = { employee_name: b.employee_name, date_time: b.date_time, jobs: {} };
+    if (!groups[dateStr][shift][loco].jobs[b.job_id])
+      groups[dateStr][shift][loco].jobs[b.job_id] = { job_description: b.job_description, tasks: [] };
+    if (b.task_description && b.task_id)
+      groups[dateStr][shift][loco].jobs[b.job_id].tasks.push({ id: b.task_id, desc: b.task_description });
+  });
+  return groups;
+}
+
+/* ── component ──────────────────────────────────────────────────────── */
 const LocoBookingUI = () => {
   const navigate = useNavigate();
 
-  // Access check
-  useEffect(() => {
-    const checkAccess = async () => {
-      try {
-        const response = await api.get("/auth/me");
-        if (!response.data.is_supervisor) {
-          alert("Access Denied: Supervisor only area.");
-          navigate("/dashboard", { replace: true });
-        }
-      } catch (error) {
-        navigate("/login", { replace: true });
-      }
-    };
-    checkAccess();
-  }, [navigate]);
-
-  // Core Data
+  /* data */
   const [locos, setLocos] = useState<Loco[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [locoTypes, setLocoTypes] = useState<LocoType[]>([]);
   const [bookings, setBookings] = useState<RawBooking[]>([]);
+  const [todayBookings, setTodayBookings] = useState<RawBooking[]>([]);
 
-  // Search & Selection
+  /* search + selection */
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLoco, setSelectedLoco] = useState<Loco | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<Job[]>([]);
   const [jobTasks, setJobTasks] = useState<Record<number, string[]>>({});
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
 
-  // Adding Loco Modal/Inline Form State
+  /* booking date/shift (user-supplied) */
+  const [bookingDate, setBookingDate] = useState(todayISO());
+  const [bookingShift, setBookingShift] = useState<number>(guessShift());
+
+  /* add-loco form */
   const [isAddingLoco, setIsAddingLoco] = useState(false);
   const [newLcoNum, setNewLcoNum] = useState("");
   const [newLcoType, setNewLcoType] = useState("");
   const [newLcoStage, setNewLcoStage] = useState("5");
   const [newLcoShift, setNewLcoShift] = useState("1");
 
-  // Loading & Message
+  /* tabs */
+  const [activeTab, setActiveTab] = useState<"booking" | "list" | "history">("booking");
+  const [expandedLocos, setExpandedLocos] = useState<Set<string>>(new Set());
+
+  /* list & history search/filter states */
+  const [historyBookings, setHistoryBookings] = useState<RawBooking[]>([]);
+  const [listSearch, setListSearch] = useState("");
+  const [listShift, setListShift] = useState<string>("all");
+
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyShift, setHistoryShift] = useState<string>("all");
+
+  const [historyStartDate, setHistoryStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return getLocalDateString(d);
+  });
+  const [historyEndDate, setHistoryEndDate] = useState(todayISO);
+
+  /* misc */
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Fetch initial data
-  const fetchData = async () => {
-    try {
-      const [locosRes, jobsRes, typesRes, bookingsRes] = await Promise.all([
-        api.get("/locos/"),
-        api.get("/jobs/"),
-        api.get("/locos/types"),
-        api.get("/bookings/"),
-      ]);
-      setLocos(locosRes.data);
-      setJobs(jobsRes.data);
-      setLocoTypes(typesRes.data);
-      setBookings(bookingsRes.data);
-    } catch (error) {
-      console.error("Error fetching data", error);
+  /* edit modal states */
+  const [editingJob, setEditingJob] = useState<{ locoNum: number; dateTime: string; oldJobId: number; newJobId: number } | null>(null);
+  const [editingTask, setEditingTask] = useState<{ taskId: number; description: string } | null>(null);
+
+  /* add single job/task modal/input states */
+  const [addingJobLoco, setAddingJobLoco] = useState<{ locoNum: number; dateTime: string; shift: number } | null>(null);
+  const [selectedAddJobId, setSelectedAddJobId] = useState<number | "">("");
+  const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
+
+  /* ── access guard ── */
+  useEffect(() => {
+    api.get("/auth/me").then(r => {
+      if (!r.data.is_supervisor) { alert("Access Denied: Supervisor only area."); navigate("/dashboard", { replace: true }); }
+    }).catch(() => navigate("/login", { replace: true }));
+  }, [navigate]);
+
+  /* ── fetch initial data ── */
+  const fetchData = useCallback(async () => {
+    const today = todayISO();
+    const promises = [
+      api.get("/locos/"),
+      api.get("/jobs/"),
+      api.get("/locos/types"),
+      api.get(`/bookings/?start_date=${bookingDate}&end_date=${bookingDate}`),
+    ];
+    if (bookingDate !== today) {
+      promises.push(api.get(`/bookings/?start_date=${today}&end_date=${today}`));
     }
-  };
+    const [locosRes, jobsRes, typesRes, bookingsRes, todayBookingsRes] = await Promise.all(promises);
+    setLocos(locosRes.data);
+    setJobs(jobsRes.data);
+    setLocoTypes(typesRes.data);
+    setBookings(bookingsRes.data);
+    if (bookingDate === today) {
+      setTodayBookings(bookingsRes.data);
+    } else if (todayBookingsRes) {
+      setTodayBookings(todayBookingsRes.data);
+    }
+  }, [bookingDate]);
+
+  const fetchHistoryData = useCallback(async () => {
+    try {
+      const res = await api.get(`/bookings/?start_date=${historyStartDate}&end_date=${historyEndDate}`);
+      setHistoryBookings(res.data);
+    } catch (err) {
+      console.error("Failed to fetch history bookings", err);
+    }
+  }, [historyStartDate, historyEndDate]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  // Filter locos by search term
-  const filteredLocos = locos.filter((l) =>
-    l.loco_number.toString().includes(searchTerm),
-  );
+  useEffect(() => {
+    if (activeTab === "history") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchHistoryData();
+    }
+  }, [activeTab, fetchHistoryData]);
 
+  /* ── loco type name helper ── */
+  const typeName = (id: number) => locoTypes.find(t => t.loco_type_id === id)?.loco_type_name ?? String(id);
+
+  /* ── select loco → preload existing booking for chosen date+shift ── */
   const handleSelectLoco = (loco: Loco) => {
     setSelectedLoco(loco);
     setSearchTerm(loco.loco_number.toString());
     setIsAddingLoco(false);
 
-    // Load existing bookings for this loco on its current shift and day (today)
-    const todayStr = new Date().toDateString();
-    const existingForLoco = bookings.filter(
-      (b) =>
-        b.loco_number === loco.loco_number &&
-        b.shift === loco.shift &&
-        new Date(b.date_time).toDateString() === todayStr
+    const existing = bookings.filter(b =>
+      b.loco_number === loco.loco_number &&
+      b.shift === bookingShift &&
+      getLocalDateString(b.date_time) === bookingDate
     );
 
-    if (existingForLoco.length > 0) {
-      const preselectedJobs: Job[] = [];
-      const preselectedTasks: Record<number, string[]> = {};
-
-      existingForLoco.forEach((b) => {
-        const jobObj = jobs.find((j) => j.job_id === b.job_id);
-        if (jobObj && !preselectedJobs.some((j) => j.job_id === jobObj.job_id)) {
-          preselectedJobs.push(jobObj);
-        }
+    if (existing.length > 0) {
+      const preJobs: Job[] = [];
+      const preTasks: Record<number, string[]> = {};
+      existing.forEach(b => {
+        const jobObj = jobs.find(j => j.job_id === b.job_id);
+        if (jobObj && !preJobs.some(j => j.job_id === jobObj.job_id)) preJobs.push(jobObj);
         if (b.task_description) {
-          if (!preselectedTasks[b.job_id]) {
-            preselectedTasks[b.job_id] = [];
-          }
-          preselectedTasks[b.job_id].push(b.task_description);
+          if (!preTasks[b.job_id]) preTasks[b.job_id] = [];
+          preTasks[b.job_id].push(b.task_description);
         }
       });
+      setSelectedJobs(preJobs); setJobTasks(preTasks);
+      setMessage("Editing existing booking for this locomotive.");
+    } else {
+      setSelectedJobs([]); setJobTasks({}); setMessage("");
+    }
+  };
 
-      setSelectedJobs(preselectedJobs);
-      setJobTasks(preselectedTasks);
+  /* ── when date or shift changes, reload preloaded booking ── */
+  useEffect(() => {
+    if (!selectedLoco) return;
+    const existing = bookings.filter(b =>
+      b.loco_number === selectedLoco.loco_number &&
+      b.shift === bookingShift &&
+      getLocalDateString(b.date_time) === bookingDate
+    );
+    if (existing.length > 0) {
+      const preJobs: Job[] = [];
+      const preTasks: Record<number, string[]> = {};
+      existing.forEach(b => {
+        const jobObj = jobs.find(j => j.job_id === b.job_id);
+        if (jobObj && !preJobs.some(j => j.job_id === jobObj.job_id)) preJobs.push(jobObj);
+        if (b.task_description) { if (!preTasks[b.job_id]) preTasks[b.job_id] = []; preTasks[b.job_id].push(b.task_description); }
+      });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedJobs(preJobs);
+      setJobTasks(preTasks);
       setMessage("Editing existing booking for this locomotive.");
     } else {
       setSelectedJobs([]);
       setJobTasks({});
       setMessage("");
     }
-  };
+  }, [bookingDate, bookingShift, selectedLoco, bookings, jobs]);
 
-  // Triggered when adding a brand new loco
-  const handleAddLocoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLcoNum || !newLcoType || !newLcoStage || !newLcoShift) return;
-
+  /* ── add new loco ── */
+  const handleAddLocoSubmit = async () => {
+    if (!newLcoNum || !newLcoType) return;
     setLoading(true);
     try {
-      const payload = {
-        loco_number: parseInt(newLcoNum),
-        loco_type_id: parseInt(newLcoType),
-        date_time: new Date().toISOString(),
-        stage: parseInt(newLcoStage),
-        shift: parseInt(newLcoShift),
-      };
-      const response = await api.post("/locos/", payload);
-      const newLoco: Loco = response.data;
-      setLocos((prev) => [...prev, newLoco]);
-      setSelectedLoco(newLoco);
-      setSearchTerm(newLoco.loco_number.toString());
-      setIsAddingLoco(false);
-      // Reset form
-      setNewLcoNum("");
-      setNewLcoType("");
-    } catch (error: any) {
-      alert("Failed to add locomotive: " + (error.response?.data?.detail || "Unknown error"));
-    } finally {
-      setLoading(false);
+      const res = await api.post("/locos/", {
+        loco_number: parseInt(newLcoNum), loco_type_id: parseInt(newLcoType),
+        date_time: new Date().toISOString(), stage: parseInt(newLcoStage), shift: parseInt(newLcoShift),
+      });
+      const nl: Loco = res.data;
+      setLocos(p => [...p, nl]); setSelectedLoco(nl); setSearchTerm(nl.loco_number.toString());
+      setIsAddingLoco(false); setNewLcoNum(""); setNewLcoType("");
+    } catch (err) {
+      const axiosError = err as AxiosError<{ detail?: string }>;
+      alert("Failed to add locomotive: " + (axiosError.response?.data?.detail ?? "Unknown error"));
     }
+    finally { setLoading(false); }
   };
 
-  // Toggle job selection
+  /* ── job selection ── */
   const handleToggleJob = (job: Job) => {
-    if (selectedJobs.some((j) => j.job_id === job.job_id)) {
-      setSelectedJobs((prev) => prev.filter((j) => j.job_id !== job.job_id));
-      const updatedTasks = { ...jobTasks };
-      delete updatedTasks[job.job_id];
-      setJobTasks(updatedTasks);
+    if (selectedJobs.some(j => j.job_id === job.job_id)) {
+      setSelectedJobs(p => p.filter(j => j.job_id !== job.job_id));
+      setJobTasks(p => { const n = { ...p }; delete n[job.job_id]; return n; });
     } else {
-      setSelectedJobs((prev) => [...prev, job]);
-      setJobTasks((prev) => ({ ...prev, [job.job_id]: [] }));
+      setSelectedJobs(p => [...p, job]);
+      setJobTasks(p => ({ ...p, [job.job_id]: [] }));
     }
   };
 
-  // Add a task to a job
+  /* ── task management ── */
   const handleAddTask = (jobId: number) => {
-    const desc = taskInputs[jobId]?.trim();
-    if (!desc) return;
-
-    setJobTasks((prev) => ({
-      ...prev,
-      [jobId]: [...(prev[jobId] || []), desc],
-    }));
-    setTaskInputs((prev) => ({ ...prev, [jobId]: "" }));
+    const desc = taskInputs[jobId]?.trim(); if (!desc) return;
+    setJobTasks(p => ({ ...p, [jobId]: [...(p[jobId] || []), desc] }));
+    setTaskInputs(p => ({ ...p, [jobId]: "" }));
   };
+  const handleRemoveTask = (jobId: number, idx: number) =>
+    setJobTasks(p => ({ ...p, [jobId]: p[jobId].filter((_, i) => i !== idx) }));
 
-  // Remove a task from a job
-  const handleRemoveTask = (jobId: number, index: number) => {
-    setJobTasks((prev) => ({
-      ...prev,
-      [jobId]: prev[jobId].filter((_, idx) => idx !== index),
-    }));
-  };
-
-  // Save Booking
+  /* ── save booking ── */
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLoco || selectedJobs.length === 0) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const payload = {
-      loco_number: selectedLoco.loco_number,
-      date_time: new Date().toISOString(),
-      bookings: selectedJobs.map((job) => ({
-        job_id: job.job_id,
-        tasks: (jobTasks[job.job_id] || []).map((t) => ({ task_description: t })),
-      })),
-    };
-
+    setLoading(true); setMessage("");
     try {
-      await api.post("/bookings/", payload);
+      // Build datetime from chosen date + current time-of-day
+      const dateTimeISO = new Date(`${bookingDate}T${new Date().toTimeString().slice(0, 8)}`).toISOString();
+      await api.post("/bookings/", {
+        loco_number: selectedLoco.loco_number,
+        date_time: dateTimeISO,
+        shift: bookingShift,
+        bookings: selectedJobs.map(job => ({
+          job_id: job.job_id,
+          tasks: (jobTasks[job.job_id] || []).map(t => ({ task_description: t })),
+        })),
+      });
       setMessage("Locomotive booking saved successfully!");
-      // Reset state
-      setSelectedLoco(null);
-      setSelectedJobs([]);
-      setJobTasks({});
-      setSearchTerm("");
-      // Refresh list
-      const bookingsRes = await api.get("/bookings/");
-      setBookings(bookingsRes.data);
-    } catch (error: any) {
-      setMessage("Booking failed: " + (error.response?.data?.detail || "Unknown error"));
-    } finally {
-      setLoading(false);
+      setSelectedLoco(null); setSelectedJobs([]); setJobTasks({}); setSearchTerm("");
+      fetchData();
+    } catch (err) {
+      const axiosError = err as AxiosError<{ detail?: string }>;
+      setMessage("Booking failed: " + (axiosError.response?.data?.detail ?? "Unknown error"));
+    }
+    finally { setLoading(false); }
+  };
+
+  /* ── main bookings feed ── */
+
+  /* accordion utility */
+
+  const toggleLoco = (key: string) => {
+    setExpandedLocos(p => {
+      const n = new Set(p);
+      if (n.has(key)) {
+        n.delete(key);
+      } else {
+        n.add(key);
+      }
+      return n;
+    });
+  };
+
+  const handleDeleteJob = async (locoNum: number, dateTime: string, jobId: number) => {
+    if (!confirm("Delete this job?")) return;
+    try { await api.delete(`/bookings/${locoNum}/${dateTime}/${jobId}`); fetchData(); }
+    catch { alert("Failed to delete job"); }
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (!confirm("Delete this task?")) return;
+    try { await api.delete(`/bookings/tasks/${taskId}`); fetchData(); }
+    catch { alert("Failed to delete task"); }
+  };
+
+  const handleEditTask = (taskId: number, oldDesc: string) => {
+    setEditingTask({ taskId, description: oldDesc });
+  };
+
+  const handleEditJob = (locoNum: number, dateTime: string, oldJobId: number) => {
+    setEditingJob({ locoNum, dateTime, oldJobId, newJobId: oldJobId });
+  };
+
+  const handleDeleteLocoBooking = async (locoNum: number, dateTime: string) => {
+    if (!confirm(`Delete all bookings for Locomotive #${locoNum} on this shift?`)) return;
+    try {
+      await api.delete(`/bookings/${locoNum}/${dateTime}`);
+      fetchData();
+    } catch {
+      alert("Failed to delete locomotive booking");
     }
   };
 
-  // Group Bookings: Date -> Shift -> Loco Number -> Jobs
-  const groupBookings = (list: RawBooking[]) => {
-    const groups: Record<
-      string,
-      Record<
-        number,
-        Record<
-          number,
-          {
-            employee_name: string;
-            jobs: Record<number, { job_description: string; tasks: string[] }>;
-          }
-        >
-      >
-    > = {};
-
-    list.forEach((b) => {
-      const date = new Date(b.date_time);
-      const dateStr = date.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+  const handleAddSingleTask = async (locoNum: number, dateTime: string, jobId: number) => {
+    const key = `${locoNum}-${dateTime}-${jobId}`;
+    const desc = newTaskInputs[key]?.trim();
+    if (!desc) return;
+    try {
+      await api.post("/bookings/tasks", {
+        loco_number: locoNum,
+        date_time: dateTime,
+        job_id: jobId,
+        task_description: desc
       });
-      const shift = b.shift;
-      const loco = b.loco_number;
-
-      if (!groups[dateStr]) groups[dateStr] = {};
-      if (!groups[dateStr][shift]) groups[dateStr][shift] = {};
-      if (!groups[dateStr][shift][loco]) {
-        groups[dateStr][shift][loco] = {
-          employee_name: b.employee_name,
-          jobs: {},
-        };
-      }
-
-      if (!groups[dateStr][shift][loco].jobs[b.job_id]) {
-        groups[dateStr][shift][loco].jobs[b.job_id] = {
-          job_description: b.job_description,
-          tasks: [],
-        };
-      }
-
-      if (b.task_description) {
-        groups[dateStr][shift][loco].jobs[b.job_id].tasks.push(b.task_description);
-      }
-    });
-
-    return groups;
+      setNewTaskInputs(p => ({ ...p, [key]: "" }));
+      fetchData();
+    } catch (err) {
+      const axiosError = err as AxiosError<{ detail?: string }>;
+      alert("Failed to add task: " + (axiosError.response?.data?.detail ?? "Unknown error"));
+    }
   };
 
-  const groupedBookings = groupBookings(bookings);
+  const filteredTodayBookings = todayBookings.filter(b => {
+    const matchesSearch = b.loco_number.toString().includes(listSearch.trim());
+    const matchesShift = listShift === "all" || b.shift.toString() === listShift;
+    return getLocalDateString(b.date_time) === todayISO() && matchesSearch && matchesShift;
+  });
+  const groupedToday = groupBookings(filteredTodayBookings);
 
+  const filteredHistoryBookings = historyBookings.filter(b => {
+    const matchesSearch = b.loco_number.toString().includes(historySearch.trim());
+    const matchesShift = historyShift === "all" || b.shift.toString() === historyShift;
+    return matchesSearch && matchesShift;
+  });
+  const groupedAll = groupBookings(filteredHistoryBookings);
+
+  /* ── filtered search ── */
+  const filteredLocos = locos.filter(l => l.loco_number.toString().includes(searchTerm));
+
+  /* ─────────────────────── RENDER ──────────────────────────────────── */
   return (
     <div className="loco-booking-workspace">
+      {/* ── HEADER ── */}
       <header className="workspace-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <button className="back-btn" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft size={18} /> Dashboard
-          </button>
+        <div className="header-actions">
+          <button className="back-btn" onClick={() => navigate("/dashboard")}><ArrowLeft size={18} /> Dashboard</button>
           <ThemeToggle />
         </div>
+        
         <div className="title-area">
           <Train className="header-icon" />
           <div>
@@ -315,59 +396,58 @@ const LocoBookingUI = () => {
             <p>Assign tasks, schedule jobs, and track workshop activity.</p>
           </div>
         </div>
+        
+        <div className="tabs-navigation">
+          <button className={`tab-btn ${activeTab === 'booking' ? 'active' : ''}`} onClick={() => setActiveTab('booking')}>Loco Booking</button>
+          <button className={`tab-btn ${activeTab === 'list' ? 'active' : ''}`} onClick={() => setActiveTab('list')}>Booking List</button>
+          <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Booking History</button>
+        </div>
       </header>
 
       <div className="workspace-grid">
-        <section className="booking-entry-panel">
-          <div className="panel-card">
-            <h2>Book Locomotive & Jobs</h2>
-            <form onSubmit={handleBookingSubmit} className="booking-wizard-form">
-              {message && (
-                <div className={`wizard-message ${message.includes("failed") ? "error" : "success"}`}>
-                  {message}
-                </div>
-              )}
-
+        {activeTab === 'booking' && (
+          <section className="booking-entry-panel" style={{ width: '100%' }}>
+            <div className="panel-card">
+              <h2>Book Locomotive &amp; Jobs</h2>
+              <form onSubmit={handleBookingSubmit} className="booking-wizard-form">
+                {/* STEP 1 – Loco search */}
               <div className="wizard-step">
-                <label className="step-label">1. Search & Select Locomotive</label>
+                <label className="step-label">1. Search &amp; Select Locomotive</label>
                 <div className="search-box-wrapper">
                   <Search className="search-icon" size={18} />
                   <input
                     type="text"
-                    placeholder="Type Loco Number (e.g. 31012)..."
+                    placeholder="Type Loco Number (e.g. 31012)…"
                     value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setSelectedLoco(null);
+                    onChange={e => {
+                      const val = e.target.value;
+                      setSearchTerm(val);
+                      const found = locos.find(l => l.loco_number.toString() === val.trim());
+                      if (found) {
+                        handleSelectLoco(found);
+                      } else {
+                        setSelectedLoco(null);
+                        setSelectedJobs([]);
+                        setJobTasks({});
+                        setMessage("");
+                      }
                     }}
                   />
                 </div>
 
                 {searchTerm && !selectedLoco && !isAddingLoco && (
                   <div className="search-results-dropdown">
-                    {filteredLocos.map((l) => (
-                      <div
-                        key={l.loco_number}
-                        className="search-item"
-                        onClick={() => handleSelectLoco(l)}
-                      >
+                    {filteredLocos.map(l => (
+                      <div key={l.loco_number} className="search-item" onClick={() => handleSelectLoco(l)}>
                         <Train size={16} />
-                        <span>
-                          Locomotive #{l.loco_number} ({locoTypes.find((t) => t.loco_type_id === l.loco_type_id)?.loco_type_name || l.loco_type_id})
-                        </span>
+                        <span>Locomotive #{l.loco_number} ({typeName(l.loco_type_id)})</span>
                       </div>
                     ))}
                     {filteredLocos.length === 0 && (
                       <div className="no-loco-banner">
                         <p>Locomotive #{searchTerm} is not in the system.</p>
-                        <button
-                          type="button"
-                          className="btn-add-loco-trigger"
-                          onClick={() => {
-                            setNewLcoNum(searchTerm);
-                            setIsAddingLoco(true);
-                          }}
-                        >
+                        <button type="button" className="btn-add-loco-trigger"
+                          onClick={() => { setNewLcoNum(searchTerm); setIsAddingLoco(true); }}>
                           <Plus size={16} /> Add Locomotive #{searchTerm}
                         </button>
                       </div>
@@ -379,24 +459,19 @@ const LocoBookingUI = () => {
                   <div className="selected-loco-tag">
                     <Train size={18} />
                     <div className="tag-details">
-                      <strong>
-                        Locomotive #{selectedLoco.loco_number} ({locoTypes.find((t) => t.loco_type_id === selectedLoco.loco_type_id)?.loco_type_name || selectedLoco.loco_type_id})
-                      </strong>
-                      <span>Stage: {selectedLoco.stage} | Shift: {selectedLoco.shift}</span>
+                      <strong>Locomotive #{selectedLoco.loco_number} ({typeName(selectedLoco.loco_type_id)})</strong>
+                      <span>Stage: {selectedLoco.stage}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="clear-loco-btn"
-                      onClick={() => {
-                        setSelectedLoco(null);
-                        setSearchTerm("");
-                        setSelectedJobs([]);
-                        setJobTasks({});
-                        setMessage("");
-                      }}
-                    >
-                      Change
-                    </button>
+                    <div className="loco-tag-actions">
+                      <button type="button" className="btn-history"
+                        onClick={() => setActiveTab('history')}>
+                        <History size={14} /> View History
+                      </button>
+                      <button type="button" className="clear-loco-btn"
+                        onClick={() => { setSelectedLoco(null); setSearchTerm(""); setSelectedJobs([]); setJobTasks({}); setMessage(""); }}>
+                        Change
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -406,143 +481,110 @@ const LocoBookingUI = () => {
                     <div className="inline-grid">
                       <div className="form-group">
                         <label>Loco Number</label>
-                        <input
-                          type="number"
-                          value={newLcoNum}
-                          onChange={(e) => setNewLcoNum(e.target.value)}
-                          required
-                        />
+                        <input type="number" value={newLcoNum} onChange={e => setNewLcoNum(e.target.value)} required />
                       </div>
                       <div className="form-group">
                         <label>Loco Type</label>
-                        <select
-                          value={newLcoType}
-                          onChange={(e) => setNewLcoType(e.target.value)}
-                          required
-                        >
+                        <select value={newLcoType} onChange={e => setNewLcoType(e.target.value)} required>
                           <option value="">-- Select Type --</option>
-                          {locoTypes.map((t) => (
-                            <option key={t.loco_type_id} value={t.loco_type_id}>
-                              {t.loco_type_name}
-                            </option>
-                          ))}
+                          {locoTypes.map(t => <option key={t.loco_type_id} value={t.loco_type_id}>{t.loco_type_name}</option>)}
                         </select>
                       </div>
                       <div className="form-group">
                         <label>Current Stage</label>
-                        <input
-                          type="number"
-                          value={newLcoStage}
-                          onChange={(e) => setNewLcoStage(e.target.value)}
-                          required
-                        />
+                        <input type="number" value={newLcoStage} onChange={e => setNewLcoStage(e.target.value)} required />
                       </div>
                       <div className="form-group">
                         <label>Current Shift</label>
-                        <select
-                          value={newLcoShift}
-                          onChange={(e) => setNewLcoShift(e.target.value)}
-                          required
-                        >
-                          <option value="1">Shift 1</option>
-                          <option value="2">Shift 2</option>
-                          <option value="3">Shift 3</option>
+                        <select value={newLcoShift} onChange={e => setNewLcoShift(e.target.value)} required>
+                          <option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option>
                         </select>
                       </div>
                     </div>
                     <div className="form-actions">
-                      <button
-                        type="button"
-                        className="btn-cancel"
-                        onClick={() => setIsAddingLoco(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-submit"
-                        onClick={handleAddLocoSubmit}
-                      >
-                        Create & Select
-                      </button>
+                      <button type="button" className="btn-cancel" onClick={() => setIsAddingLoco(false)}>Cancel</button>
+                      <button type="button" className="btn-submit" onClick={handleAddLocoSubmit} disabled={loading}>Create &amp; Select</button>
                     </div>
                   </div>
                 )}
               </div>
 
+              {/* STEP 2 – Date & Shift */}
               {selectedLoco && (
                 <div className="wizard-step">
-                  <label className="step-label">2. Select Jobs</label>
+                  <label className="step-label">2. Select Booking Date &amp; Shift</label>
+                  <div className="date-shift-row">
+                    <div className="form-group date-field">
+                      <label><Calendar size={14} /> Date</label>
+                      <input
+                        type="date"
+                        value={bookingDate}
+                        max={todayISO()}
+                        onChange={e => setBookingDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group shift-field">
+                      <label><Clock size={14} /> Shift</label>
+                      <div className="shift-btn-group">
+                        {[1, 2, 3].map(s => (
+                          <button key={s} type="button"
+                            className={`shift-btn${bookingShift === s ? " active" : ""}`}
+                            onClick={() => setBookingShift(s)}>
+                            Shift {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {message.includes("Editing") && (
+                    <p className="editing-hint">⚠️ An existing booking for this date &amp; shift will be replaced.</p>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 3 – Job selection */}
+              {selectedLoco && (
+                <div className="wizard-step">
+                  <label className="step-label">3. Select Jobs</label>
                   <div className="jobs-checkbox-list">
-                    {jobs.map((job) => (
+                    {jobs.map(job => (
                       <label key={job.job_id} className="job-checkbox-item">
-                        <input
-                          type="checkbox"
-                          checked={selectedJobs.some((j) => j.job_id === job.job_id)}
-                          onChange={() => handleToggleJob(job)}
-                        />
-                        <span className="job-desc">
-                          {job.job_description} (Stage {job.stage})
-                        </span>
+                        <input type="checkbox"
+                          checked={selectedJobs.some(j => j.job_id === job.job_id)}
+                          onChange={() => handleToggleJob(job)} />
+                        <span className="job-desc">{job.job_description} (Stage {job.stage})</span>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* STEP 4 – Tasks */}
               {selectedLoco && selectedJobs.length > 0 && (
                 <div className="wizard-step">
-                  <label className="step-label">3. Write Tasks for Selected Jobs</label>
+                  <label className="step-label">4. Write Tasks for Selected Jobs</label>
                   <div className="selected-jobs-tasks-panel">
-                    {selectedJobs.map((job) => (
+                    {selectedJobs.map(job => (
                       <div key={job.job_id} className="selected-job-card">
-                        <div className="card-header">
-                          <h4>{job.job_description}</h4>
-                        </div>
-
+                        <div className="card-header"><h4>{job.job_description}</h4></div>
                         <div className="added-tasks-list">
                           {(jobTasks[job.job_id] || []).map((taskDesc, idx) => (
                             <div key={idx} className="added-task-item">
                               <span>{taskDesc}</span>
-                              <button
-                                type="button"
-                                className="remove-task-btn"
-                                onClick={() => handleRemoveTask(job.job_id, idx)}
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              <button type="button" className="remove-task-btn" onClick={() => handleRemoveTask(job.job_id, idx)}><Trash2 size={14} /></button>
                             </div>
                           ))}
                           {(jobTasks[job.job_id] || []).length === 0 && (
                             <p className="no-tasks-hint">No tasks written yet. (Will book job without tasks)</p>
                           )}
                         </div>
-
                         <div className="task-entry-row">
-                          <input
-                            type="text"
-                            placeholder="Add task details..."
+                          <input type="text" placeholder="Add task details…"
                             value={taskInputs[job.job_id] || ""}
-                            onChange={(e) =>
-                              setTaskInputs((prev) => ({
-                                ...prev,
-                                [job.job_id]: e.target.value,
-                              }))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleAddTask(job.job_id);
-                              }
-                            }}
+                            onChange={e => setTaskInputs(p => ({ ...p, [job.job_id]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddTask(job.job_id); } }}
                           />
-                          <button
-                            type="button"
-                            className="btn-add-task"
-                            onClick={() => handleAddTask(job.job_id)}
-                          >
-                            Add
-                          </button>
+                          <button type="button" className="btn-add-task" onClick={() => handleAddTask(job.job_id)}>Add</button>
                         </div>
                       </div>
                     ))}
@@ -552,86 +594,445 @@ const LocoBookingUI = () => {
 
               {selectedLoco && selectedJobs.length > 0 && (
                 <button type="submit" className="btn-confirm-booking" disabled={loading}>
-                  {loading ? "Processing..." : "Confirm & Save Booking"}
+                  {loading ? "Processing…" : "Confirm & Save Booking"}
                 </button>
               )}
             </form>
           </div>
         </section>
+      )}
 
-        <section className="bookings-list-panel">
-          <div className="panel-card scrollable">
-            <h2>Booked Workshop Operations</h2>
-            <div className="timeline-grouped-bookings">
-              {Object.keys(groupedBookings).map((dateStr) => (
-                <div key={dateStr} className="date-group-card">
-                  <div className="date-header">
-                    <Calendar size={16} />
-                    <h3>{dateStr}</h3>
+
+        {activeTab === 'list' && (
+          <section className="bookings-list-panel" style={{ width: '100%' }}>
+            <div className="panel-card scrollable">
+              <h2>Booked Workshop Operations (Today)</h2>
+              
+              <div className="list-filters-bar" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div className="filter-group" style={{ flexGrow: 1, minWidth: '200px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Search Locomotive</label>
+                  <div className="search-box-wrapper">
+                    <Search className="search-icon" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Search by Loco Number..."
+                      value={listSearch}
+                      onChange={e => setListSearch(e.target.value)}
+                      style={{ paddingLeft: '2.25rem' }}
+                    />
                   </div>
-
-                  {Object.keys(groupedBookings[dateStr]).map((shift) => (
-                    <div key={shift} className="shift-block">
-                      <div className="shift-header">
-                        <Clock size={14} />
-                        <h4>Shift {shift}</h4>
-                      </div>
-
-                      <div className="locos-list">
-                        {Object.keys(groupedBookings[dateStr][parseInt(shift)]).map((locoNumStr) => {
-                          const locoNum = parseInt(locoNumStr);
-                          const record = groupedBookings[dateStr][parseInt(shift)][locoNum];
-                          const matchedLoco = locos.find((l) => l.loco_number === locoNum);
-                          const matchedTypeName = matchedLoco ? (locoTypes.find((t) => t.loco_type_id === matchedLoco.loco_type_id)?.loco_type_name) : null;
-                          return (
-                            <div key={locoNum} className="loco-booking-card">
-                              <div className="loco-card-title">
-                                <Train size={16} className="text-blue-600" />
-                                <h5>Locomotive #{locoNum} {matchedTypeName ? `(${matchedTypeName})` : ""}</h5>
-                                <span className="booked-by-badge">
-                                  <User size={12} /> {record.employee_name}
-                                </span>
-                              </div>
-                              <div className="loco-jobs-list">
-                                {Object.keys(record.jobs).map((jobIdStr) => {
-                                  const jobId = parseInt(jobIdStr);
-                                  const job = record.jobs[jobId];
-                                  return (
-                                    <div key={jobId} className="loco-job-item">
-                                      <div className="job-meta">
-                                        <ClipboardList size={14} />
-                                        <h6>{job.job_description}</h6>
-                                      </div>
-                                      {job.tasks.length > 0 && (
-                                        <ul className="job-tasks-sublist">
-                                          {job.tasks.map((task, index) => (
-                                            <li key={index}>
-                                              <FileText size={12} />
-                                              <span>{task}</span>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              ))}
+                <div className="filter-group" style={{ minWidth: '150px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Filter by Shift</label>
+                  <select
+                    className="modal-select"
+                    value={listShift}
+                    onChange={e => setListShift(e.target.value)}
+                    style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.85rem' }}
+                  >
+                    <option value="all">All Shifts</option>
+                    <option value="1">Shift 1</option>
+                    <option value="2">Shift 2</option>
+                    <option value="3">Shift 3</option>
+                  </select>
+                </div>
+              </div>
 
-              {bookings.length === 0 && (
-                <p className="no-records-hint">No workshop operations booked yet.</p>
-              )}
+              <div className="timeline-grouped-bookings">
+                {Object.keys(groupedToday).map(dateStr => (
+                  <div key={dateStr} className="date-group-card">
+                    <div className="date-header"><Calendar size={16} /><h3>{dateStr}</h3></div>
+                    {Object.keys(groupedToday[dateStr]).map(shift => (
+                      <div key={shift} className="shift-block">
+                        <div className="shift-header"><Clock size={14} /><h4>Shift {shift}</h4></div>
+                        <div className="locos-list">
+                          {Object.keys(groupedToday[dateStr][parseInt(shift)]).map(locoStr => {
+                            const locoNum = parseInt(locoStr);
+                            const record = groupedToday[dateStr][parseInt(shift)][locoNum];
+                            const ml = locos.find(l => l.loco_number === locoNum);
+                            const tn = ml ? typeName(ml.loco_type_id) : null;
+                            const isExpanded = expandedLocos.has(`${dateStr}-${shift}-${locoNum}`);
+                            return (
+                              <div key={locoNum} className="loco-booking-card collapsible">
+                                <div className="loco-card-title" onClick={() => toggleLoco(`${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
+                                  <Train size={16} />
+                                  <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
+                                  <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
+                                  <div style={{flexGrow:1}}/>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteLocoBooking(locoNum, record.date_time);
+                                    }}
+                                    className="delete-loco-btn"
+                                    title="Delete entire locomotive booking"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                  {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                                </div>
+                                {isExpanded && (
+                                  <div className="loco-jobs-list">
+                                    {Object.keys(record.jobs).map(jobIdStr => {
+                                      const jobId = parseInt(jobIdStr);
+                                      const job = record.jobs[jobId];
+                                      return (
+                                        <div key={jobIdStr} className="loco-job-item">
+                                          <div className="job-meta">
+                                            <ClipboardList size={14} /><h6>{job.job_description}</h6>
+                                            <div className="action-buttons">
+                                              <button onClick={() => handleEditJob(locoNum, record.date_time, jobId)}><Edit2 size={12}/></button>
+                                              <button onClick={() => handleDeleteJob(locoNum, record.date_time, jobId)}><Trash2 size={12}/></button>
+                                            </div>
+                                          </div>
+                                          {job.tasks.length > 0 && (
+                                            <ul className="job-tasks-sublist">
+                                              {job.tasks.map((t, i) => (
+                                                <li key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                                  <span><FileText size={12} style={{marginRight:4}}/>{t.desc}</span>
+                                                  <div className="action-buttons">
+                                                    <button onClick={() => handleEditTask(t.id, t.desc)}><Edit2 size={12}/></button>
+                                                    <button onClick={() => handleDeleteTask(t.id)}><Trash2 size={12}/></button>
+                                                  </div>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                          <div className="job-add-task-row" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.65rem', paddingLeft: '1.5rem' }}>
+                                            <input
+                                              type="text"
+                                              placeholder="Add new task..."
+                                              className="list-add-task-input"
+                                              value={newTaskInputs[`${locoNum}-${record.date_time}-${jobId}`] || ""}
+                                              onChange={e => setNewTaskInputs(p => ({ ...p, [`${locoNum}-${record.date_time}-${jobId}`]: e.target.value }))}
+                                              onKeyDown={async e => {
+                                                if (e.key === "Enter") {
+                                                  e.preventDefault();
+                                                  await handleAddSingleTask(locoNum, record.date_time, jobId);
+                                                }
+                                              }}
+                                              style={{
+                                                flexGrow: 1,
+                                                fontSize: "0.75rem",
+                                                padding: "0.25rem 0.5rem",
+                                                borderRadius: "0.25rem",
+                                                border: "1px solid var(--border)",
+                                                background: "var(--bg)",
+                                                color: "var(--text)"
+                                              }}
+                                            />
+                                            <button
+                                              onClick={() => handleAddSingleTask(locoNum, record.date_time, jobId)}
+                                              style={{
+                                                fontSize: "0.75rem",
+                                                padding: "0.25rem 0.5rem",
+                                                background: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "0.25rem",
+                                                cursor: "pointer",
+                                                fontWeight: 600
+                                              }}
+                                            >
+                                              Add
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                    <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-start' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAddingJobLoco({ locoNum, dateTime: record.date_time, shift: parseInt(shift) })}
+                                        className="add-job-list-btn"
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "0.35rem",
+                                          fontSize: "0.8rem",
+                                          fontWeight: 600,
+                                          color: "#2563eb",
+                                          background: "none",
+                                          border: "none",
+                                          cursor: "pointer",
+                                          padding: "0.4rem 0.6rem",
+                                          borderRadius: "0.375rem",
+                                          transition: "background 0.15s"
+                                        }}
+                                      >
+                                        <Plus size={14} /> Add Job
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {filteredTodayBookings.length === 0 && <p className="no-records-hint">No workshop operations booked for today.</p>}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'history' && (
+          <section className="bookings-list-panel" style={{ width: '100%' }}>
+            <div className="panel-card scrollable">
+              <h2>Booked Workshop Operations History</h2>
+
+              <div className="history-filters-bar" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div className="filter-group" style={{ flexGrow: 1, minWidth: '200px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Search Locomotive</label>
+                  <div className="search-box-wrapper">
+                    <Search className="search-icon" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Search by Loco Number..."
+                      value={historySearch}
+                      onChange={e => setHistorySearch(e.target.value)}
+                      style={{ paddingLeft: '2.25rem' }}
+                    />
+                  </div>
+                </div>
+                <div className="filter-group" style={{ width: '120px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Shift</label>
+                  <select
+                    className="modal-select"
+                    value={historyShift}
+                    onChange={e => setHistoryShift(e.target.value)}
+                    style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.85rem' }}
+                  >
+                    <option value="all">All Shifts</option>
+                    <option value="1">Shift 1</option>
+                    <option value="2">Shift 2</option>
+                    <option value="3">Shift 3</option>
+                  </select>
+                </div>
+                <div className="filter-group" style={{ width: '160px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> Start Date</label>
+                  <input
+                    type="date"
+                    value={historyStartDate}
+                    onChange={e => setHistoryStartDate(e.target.value)}
+                    style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
+                  />
+                </div>
+                <div className="filter-group" style={{ width: '160px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> End Date</label>
+                  <input
+                    type="date"
+                    value={historyEndDate}
+                    onChange={e => setHistoryEndDate(e.target.value)}
+                    style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div className="timeline-grouped-bookings">
+                {Object.keys(groupedAll).map(dateStr => (
+                  <div key={dateStr} className="date-group-card">
+                    <div className="date-header"><Calendar size={16} /><h3>{dateStr}</h3></div>
+                    {Object.keys(groupedAll[dateStr]).map(shift => (
+                      <div key={shift} className="shift-block">
+                        <div className="shift-header"><Clock size={14} /><h4>Shift {shift}</h4></div>
+                        <div className="locos-list">
+                          {Object.keys(groupedAll[dateStr][parseInt(shift)]).map(locoStr => {
+                            const locoNum = parseInt(locoStr);
+                            const record = groupedAll[dateStr][parseInt(shift)][locoNum];
+                            const ml = locos.find(l => l.loco_number === locoNum);
+                            const tn = ml ? typeName(ml.loco_type_id) : null;
+                            const isExpanded = expandedLocos.has(`hist-${dateStr}-${shift}-${locoNum}`);
+                            return (
+                              <div key={locoNum} className="loco-booking-card collapsible">
+                                <div className="loco-card-title" onClick={() => toggleLoco(`hist-${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
+                                  <Train size={16} />
+                                  <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
+                                  <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
+                                  <div style={{flexGrow:1}}/>
+                                  {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                                </div>
+                                {isExpanded && (
+                                  <div className="loco-jobs-list">
+                                    {Object.keys(record.jobs).map(jobIdStr => {
+                                      const jobId = parseInt(jobIdStr);
+                                      const job = record.jobs[jobId];
+                                      return (
+                                        <div key={jobIdStr} className="loco-job-item">
+                                          <div className="job-meta">
+                                            <ClipboardList size={14} /><h6>{job.job_description}</h6>
+                                          </div>
+                                          {job.tasks.length > 0 && (
+                                            <ul className="job-tasks-sublist">
+                                              {job.tasks.map((t, i) => (
+                                                <li key={i}>
+                                                  <FileText size={12} style={{marginRight:4}}/><span>{t.desc}</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {filteredHistoryBookings.length === 0 && <p className="no-records-hint">No workshop operations booked in this range.</p>}
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* ── EDIT JOB MODAL ── */}
+      {editingJob && (
+        <div className="modal-overlay" onClick={() => setEditingJob(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Job Assignment</h3>
+              <button className="close-modal-btn" onClick={() => setEditingJob(null)}><X size={18} /></button>
+            </div>
+            <div className="modal-body">
+              <label className="form-label">Select Job</label>
+              <select
+                className="modal-select"
+                value={editingJob.newJobId}
+                onChange={e => setEditingJob({ ...editingJob, newJobId: parseInt(e.target.value) })}
+              >
+                {jobs.map(j => (
+                  <option key={j.job_id} value={j.job_id}>
+                    {j.job_description} (Stage {j.stage})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setEditingJob(null)}>Cancel</button>
+              <button
+                className="btn-submit"
+                onClick={async () => {
+                  try {
+                    await api.put(`/bookings/${editingJob.locoNum}/${editingJob.dateTime}/${editingJob.oldJobId}`, {
+                      new_job_id: editingJob.newJobId
+                    });
+                    setEditingJob(null);
+                    fetchData();
+                  } catch (err) {
+                    const axiosError = err as AxiosError<{ detail?: string }>;
+                    alert("Failed to update job: " + (axiosError.response?.data?.detail ?? "Unknown error"));
+                  }
+                }}
+              >
+                Save Changes
+              </button>
             </div>
           </div>
-        </section>
-      </div>
+        </div>
+      )}
+
+      {/* ── EDIT TASK MODAL ── */}
+      {editingTask && (
+        <div className="modal-overlay" onClick={() => setEditingTask(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Task Description</h3>
+              <button className="close-modal-btn" onClick={() => setEditingTask(null)}><X size={18} /></button>
+            </div>
+            <div className="modal-body">
+              <label className="form-label">Task Details</label>
+              <textarea
+                className="modal-textarea"
+                rows={3}
+                value={editingTask.description}
+                onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setEditingTask(null)}>Cancel</button>
+              <button
+                className="btn-submit"
+                onClick={async () => {
+                  try {
+                    await api.put(`/bookings/tasks/${editingTask.taskId}`, {
+                      task_description: editingTask.description
+                    });
+                    setEditingTask(null);
+                    fetchData();
+                  } catch (err) {
+                    const axiosError = err as AxiosError<{ detail?: string }>;
+                    alert("Failed to update task: " + (axiosError.response?.data?.detail ?? "Unknown error"));
+                  }
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD JOB MODAL ── */}
+      {addingJobLoco && (
+        <div className="modal-overlay" onClick={() => setAddingJobLoco(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add Job Assignment</h3>
+              <button className="close-modal-btn" onClick={() => setAddingJobLoco(null)}><X size={18} /></button>
+            </div>
+            <div className="modal-body">
+              <label className="form-label">Select Job to Add</label>
+              <select
+                className="modal-select"
+                value={selectedAddJobId}
+                onChange={e => setSelectedAddJobId(e.target.value ? parseInt(e.target.value) : "")}
+              >
+                <option value="">-- Choose Job --</option>
+                {jobs.map(j => (
+                  <option key={j.job_id} value={j.job_id}>
+                    {j.job_description} (Stage {j.stage})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setAddingJobLoco(null)}>Cancel</button>
+              <button
+                className="btn-submit"
+                disabled={!selectedAddJobId}
+                onClick={async () => {
+                  if (!selectedAddJobId) return;
+                  try {
+                    await api.post("/bookings/jobs", {
+                      loco_number: addingJobLoco.locoNum,
+                      date_time: addingJobLoco.dateTime,
+                      job_id: selectedAddJobId,
+                      shift: addingJobLoco.shift
+                    });
+                    setAddingJobLoco(null);
+                    setSelectedAddJobId("");
+                    fetchData();
+                  } catch (err) {
+                    const axiosError = err as AxiosError<{ detail?: string }>;
+                    alert("Failed to add job: " + (axiosError.response?.data?.detail ?? "Unknown error"));
+                  }
+                }}
+              >
+                Add Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

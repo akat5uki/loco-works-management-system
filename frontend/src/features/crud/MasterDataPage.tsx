@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
+import { AxiosError } from "axios";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./MasterData.css";
 
@@ -44,7 +45,7 @@ const MasterDataPage = () => {
           alert("Access Denied: Supervisor only area.");
           navigate("/dashboard", { replace: true });
         }
-      } catch (error) {
+      } catch {
         navigate("/login", { replace: true });
       }
     };
@@ -61,6 +62,7 @@ const MasterDataPage = () => {
   const [locoTypes, setLocoTypes] = useState<LocoType[]>([]);
 
   // Form States
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -94,6 +96,7 @@ const MasterDataPage = () => {
 
   useEffect(() => {
     // Reset form states and fetch data when tab changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowForm(false);
     setIsEditing(false);
     setFormData({});
@@ -128,9 +131,10 @@ const MasterDataPage = () => {
       setIsEditing(false);
       setFormData({});
       fetchData();
-    } catch (err: any) {
-      console.error("Save error details:", err.response?.data);
-      const detail = err.response?.data?.detail || "Ensure fields are correct and IDs are unique.";
+    } catch (err) {
+      const axiosError = err as AxiosError<{ detail?: unknown }>;
+      console.error("Save error details:", axiosError.response?.data);
+      const detail = axiosError.response?.data?.detail || "Ensure fields are correct and IDs are unique.";
       alert(`Failed to save data: ${typeof detail === "object" ? JSON.stringify(detail) : detail}`);
     } finally {
       setLoading(false);

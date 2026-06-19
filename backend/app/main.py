@@ -47,16 +47,26 @@ async def db_routing_middleware(request: Request, call_next):
     try:
         response: Response = await call_next(request)
 
-        # If the request was mutating and succeeded, set the 2-second lag cookie on the response
         if is_mutating and response.status_code < 400:
+            # Write succeeded → plant a 2-second lag cookie so the next read
+            # is also routed to the primary (read-your-own-writes).
             response.set_cookie(
                 key="write_window_lag",
                 value="1",
                 max_age=2,
                 httponly=True,
                 samesite="lax",
-                secure=False,  # Set true if HTTPS
+                secure=False,  # Set True if HTTPS
             )
+        elif has_lag_cookie and not is_mutating:
+            # Read request consumed the lag cookie → delete it immediately
+            # so it doesn't linger past its intended single-use window.
+            response.delete_cookie(
+                key="write_window_lag",
+                httponly=True,
+                samesite="lax",
+            )
+
         return response
     finally:
         route_to_primary.reset(token)
