@@ -105,7 +105,6 @@ const DashboardPage = () => {
     } catch (error) {
       console.error("Failed to log out on server", error);
     } finally {
-      localStorage.removeItem("token");
       navigate("/login", { replace: true });
     }
   };

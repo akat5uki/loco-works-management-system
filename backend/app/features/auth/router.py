@@ -1,6 +1,8 @@
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
+from jose import jwt
+from app.core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -76,17 +78,27 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(current_user: CurrentUser, response: Response):
-    # Clear session from Redis
-    session_key = f"session:{current_user.ticket_number}"
-    await redis_client.delete(session_key)
+async def logout(request: Request, response: Response):
+    # Try to clear session from Redis if cookies exist
+    token = request.cookies.get("session_id_strict") or request.cookies.get("session_id_embed")
+    if token:
+        try:
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
+            ticket_number_raw = payload.get("sub")
+            if ticket_number_raw:
+                session_key = f"session:{ticket_number_raw}"
+                await redis_client.delete(session_key)
+        except Exception:
+            pass
 
-    # Clear both standalone and embedded sessions
+    # Clear both standalone and embedded sessions in browser
     response.delete_cookie(
-        key="session_id_strict", httponly=True, secure=True, samesite="strict"
+        key="session_id_strict", path="/", httponly=True, secure=True, samesite="strict"
     )
     response.delete_cookie(
-        key="session_id_embed", httponly=True, secure=True, samesite="none"
+        key="session_id_embed", path="/", httponly=True, secure=True, samesite="none"
     )
 
     # Add Partitioned attribute to deletion cookie for CHIPS compliance

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Lock, User, RefreshCw } from "lucide-react";
 import axios from "axios";
@@ -14,11 +14,12 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      navigate("/dashboard", { replace: true });
-    }
+  // If a valid session cookie already exists, skip the login page
+  useEffect(() => {
+    api
+      .get("/auth/me")
+      .then(() => navigate("/dashboard", { replace: true }))
+      .catch(() => {/* not authenticated — stay on login page */});
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -32,7 +33,8 @@ const LoginPage = () => {
         password,
         captcha,
       });
-      localStorage.setItem("token", response.data.access_token);
+      // The server sets an HttpOnly cookie — no token storage needed
+      void response; // token returned but stored server-side via cookie
       navigate("/dashboard");
     } catch (err) {
       if (axios.isAxiosError(err)) {

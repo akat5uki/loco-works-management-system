@@ -1,17 +1,38 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import api from "../services/api";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const token = localStorage.getItem("token");
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const location = useLocation();
 
-  if (!token) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to. This allows us to send them back to that page after they login.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get("/auth/me")
+      .then(() => {
+        if (!cancelled) setAuthStatus("authenticated");
+      })
+      .catch(() => {
+        if (!cancelled) setAuthStatus("unauthenticated");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (authStatus === "loading") {
+    // Avoid a flash redirect while the session check is in flight
+    return null;
+  }
+
+  if (authStatus === "unauthenticated") {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
