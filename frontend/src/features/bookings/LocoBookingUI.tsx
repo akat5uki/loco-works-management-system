@@ -11,7 +11,7 @@ import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./LocoBooking.css";
 
 /* ── types ─────────────────────────────────────────────────────────── */
-interface Loco { loco_number: number; loco_type_id: number; date_time: string; stage: number; shift: number; }
+interface Loco { loco_number: number; loco_type_id: number; date_time: string; stage: number; shift: number; despatched: boolean; }
 interface LocoType { loco_type_id: number; loco_type_name: string; }
 interface Job { job_id: number; job_description: string; stage: number; }
 interface RawBooking {
@@ -176,6 +176,7 @@ const LocoBookingUI = () => {
 
   /* ── select loco → preload existing booking for chosen date+shift ── */
   const handleSelectLoco = (loco: Loco) => {
+    if (loco.despatched) return; // cannot book a despatched loco
     setSelectedLoco(loco);
     setSearchTerm(loco.loco_number.toString());
     setIsAddingLoco(false);
@@ -438,9 +439,25 @@ const LocoBookingUI = () => {
                 {searchTerm && !selectedLoco && !isAddingLoco && (
                   <div className="search-results-dropdown">
                     {filteredLocos.map(l => (
-                      <div key={l.loco_number} className="search-item" onClick={() => handleSelectLoco(l)}>
+                      <div
+                        key={l.loco_number}
+                        className="search-item"
+                        onClick={() => handleSelectLoco(l)}
+                        style={l.despatched ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" } : {}}
+                      >
                         <Train size={16} />
                         <span>Locomotive #{l.loco_number} ({typeName(l.loco_type_id)})</span>
+                        {l.despatched && (
+                          <span style={{
+                            marginLeft: "auto",
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            padding: "0.15rem 0.45rem",
+                            borderRadius: "9999px",
+                            background: "rgba(239,68,68,0.12)",
+                            color: "#ef4444",
+                          }}>Despatched</span>
+                        )}
                       </div>
                     ))}
                     {filteredLocos.length === 0 && (

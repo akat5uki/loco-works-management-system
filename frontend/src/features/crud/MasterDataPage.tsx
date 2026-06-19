@@ -23,6 +23,7 @@ interface Loco {
   date_time: string;
   stage: number;
   shift: number;
+  despatched: boolean;
 }
 
 interface Job {
@@ -338,6 +339,17 @@ const MasterDataPage = () => {
                     })
                   }
                 />
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: "1rem", height: "1rem", accentColor: "var(--accent)" }}
+                    checked={!!formData.despatched}
+                    onChange={(e) =>
+                      setFormData({ ...formData, despatched: e.target.checked })
+                    }
+                  />
+                  Despatched (left production unit)
+                </label>
               </>
             )}
             {activeTab === "jobs" && (
@@ -412,9 +424,19 @@ const MasterDataPage = () => {
                       <td key={j}>
                         {key === "loco_type_id" && activeTab === "locos"
                           ? (locoTypes.find((t) => t.loco_type_id === val)?.loco_type_name || val)
-                          : typeof val === "string" && val.includes("T") && val.length > 10
-                            ? new Date(val).toLocaleString()
-                            : String(val)}
+                          : key === "despatched"
+                            ? <span style={{
+                                display: "inline-block",
+                                padding: "0.2rem 0.6rem",
+                                borderRadius: "9999px",
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                background: val ? "rgba(239,68,68,0.12)" : "rgba(16,185,129,0.12)",
+                                color: val ? "#ef4444" : "#10b981",
+                              }}>{val ? "Despatched" : "Active"}</span>
+                            : typeof val === "string" && val.includes("T") && val.length > 10
+                              ? new Date(val).toLocaleString()
+                              : String(val)}
                       </td>
                     ))}
                     <td>

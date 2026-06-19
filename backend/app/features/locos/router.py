@@ -35,6 +35,7 @@ class LocoBase(BaseModel):
     date_time: datetime
     stage: int
     shift: int
+    despatched: bool = False
 
 
 class LocoRead(LocoBase):

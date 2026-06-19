@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -21,5 +21,6 @@ class Loco(Base):
     date_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     stage: Mapped[int] = mapped_column(Integer, nullable=False)
     shift: Mapped[int] = mapped_column(Integer, nullable=False)
+    despatched: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     loco_type: Mapped["LocoType"] = relationship()

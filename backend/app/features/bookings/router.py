@@ -65,6 +65,13 @@ async def create_booking(
             detail=f"Locomotive #{booking.loco_number} not found."
         )
 
+    # Block bookings for despatched locos
+    if db_loco.despatched:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Locomotive #{booking.loco_number} has been despatched and cannot accept new bookings."
+        )
+
     # Check if a booking already exists for this loco on the same date + shift
     from zoneinfo import ZoneInfo
     local_tz = ZoneInfo("Asia/Kolkata")
