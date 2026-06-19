@@ -180,7 +180,7 @@ const LandingPage = () => {
                       background: "rgba(16,185,129,0.12)", color: "#10b981",
                       whiteSpace: "nowrap",
                     }} title="Active locos">
-                      ● {t.active} active
+                      ● {t.active}
                     </span>
                     {t.despatched > 0 && (
                       <span style={{
@@ -198,7 +198,7 @@ const LandingPage = () => {
                       background: "var(--accent-bg)", color: "var(--accent)",
                       whiteSpace: "nowrap",
                     }} title="Total">
-                      {t.total} total
+                      {t.total}
                     </span>
                   </span>
                 </li>
