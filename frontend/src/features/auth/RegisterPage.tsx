@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Lock, BadgeInfo } from "lucide-react";
+import { User, Lock, BadgeInfo, Home } from "lucide-react";
 import axios from "axios";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -70,6 +70,9 @@ const RegisterPage = () => {
 
   return (
     <div className="auth-container">
+      <Link to="/" className="auth-home-btn" title="Home">
+        <Home size={20} />
+      </Link>
       <div style={{ position: "absolute", top: "1.5rem", right: "1.5rem" }}>
         <ThemeToggle />
       </div>
