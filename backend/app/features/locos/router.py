@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
+from app.core.exceptions import handle_db_error
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.features.jobs.models import Job
 from app.features.locos.models import Loco, LocoType
@@ -88,7 +89,7 @@ async def create_loco_type(
         return db_type
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 # Locos CRUD
@@ -129,6 +130,11 @@ async def get_loco_type_counts(db: AsyncSession = Depends(get_db)):
 async def create_loco(
     loco: LocoBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
 ):
+    if loco.shift not in [1, 2]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
+        )
     db_loco = Loco(**loco.model_dump())
     db.add(db_loco)
     try:
@@ -137,7 +143,7 @@ async def create_loco(
         return db_loco
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 @router.get("/ongoing-jobs")
@@ -168,7 +174,7 @@ async def update_loco_type(
         return db_type
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 @router.delete("/types/{loco_type_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -187,7 +193,7 @@ async def delete_loco_type(
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 @router.put("/{loco_number}", response_model=LocoRead)
@@ -197,6 +203,11 @@ async def update_loco(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
+    if loco.shift not in [1, 2]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
+        )
     result = await db.execute(select(Loco).where(Loco.loco_number == loco_number))
     db_loco = result.scalar_one_or_none()
     if not db_loco:
@@ -211,7 +222,7 @@ async def update_loco(
         return db_loco
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 @router.delete("/{loco_number}", status_code=status.HTTP_204_NO_CONTENT)
@@ -230,5 +241,5 @@ async def delete_loco(
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 

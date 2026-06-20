@@ -38,6 +38,19 @@ const LandingPage = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [typeCounts, setTypeCounts] = useState<LocoTypeCount[]>([]);
   const [empStats, setEmpStats] = useState<EmployeeStats | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await api.get("/auth/me");
+        setIsAuthenticated(true);
+      } catch {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,12 +82,20 @@ const LandingPage = () => {
             </h1>
           </div>
           <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <Link to="/login" className="nav-link">
-              Login
-            </Link>
-            <Link to="/login" className="btn-primary">
-              Get Started
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/dashboard" className="btn-primary">
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="nav-link">
+                  Login
+                </Link>
+                <Link to="/login" className="btn-primary">
+                  Get Started
+                </Link>
+              </>
+            )}
             <ThemeToggle />
           </nav>
         </div>
@@ -117,13 +138,13 @@ const LandingPage = () => {
               >
                 Yearly Overview
               </p>
-              {stats?.year_wise.map((s) => (
+              {stats?.year_wise?.map((s) => (
                 <div key={s.year} className="stat-item">
                   <span style={{ color: "#4b5563" }}>Year {s.year}</span>
                   <span style={{ fontWeight: "700" }}>{s.count} Locos</span>
                 </div>
               ))}
-              {(!stats || stats.year_wise.length === 0) && (
+              {(!stats || !stats.year_wise || stats.year_wise.length === 0) && (
                 <p
                   style={{
                     fontSize: "0.875rem",
@@ -241,7 +262,7 @@ const LandingPage = () => {
               </h3>
             </div>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {empStats?.by_designation.slice(0, 7).map((d) => (
+              {empStats?.by_designation?.slice(0, 7).map((d) => (
                 <li
                   key={d.designation_name}
                   style={{
@@ -270,12 +291,12 @@ const LandingPage = () => {
                   </span>
                 </li>
               ))}
-              {(empStats?.by_designation.length ?? 0) > 7 && (
+              {(empStats?.by_designation?.length ?? 0) > 7 && (
                 <li style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", textAlign: "center", marginTop: "0.5rem" }}>
-                  + {(empStats?.by_designation.length ?? 0) - 7} more designations...
+                  + {(empStats?.by_designation?.length ?? 0) - 7} more designations...
                 </li>
               )}
-              {(!empStats || empStats.total === 0) && (
+              {(!empStats || !empStats.by_designation || empStats.by_designation.length === 0) && (
                 <p style={{ fontSize: "0.875rem", color: "#9ca3af", fontStyle: "italic" }}>
                   No employees registered
                 </p>
@@ -288,7 +309,7 @@ const LandingPage = () => {
         <div className="quick-links">
           <h3 className="quick-links-title">Quick Access</h3>
           <div className="link-grid">
-            <Link to="/login" className="link-tile">
+            <Link to={isAuthenticated ? "/dashboard" : "/login"} className="link-tile">
               <LayoutDashboard
                 size={24}
                 style={{ marginBottom: "0.5rem", color: "#9ca3af" }}

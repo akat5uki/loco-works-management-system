@@ -4,10 +4,106 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>LocoWorks Management System</title>
+    <style>
+      .initial-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #0f172a;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #f1f5f9;
+        margin: 0;
+        z-index: 9999;
+      }
+      .train-container {
+        position: relative;
+        padding-bottom: 20px;
+        width: 160px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .train-engine {
+        font-size: 3rem;
+        display: inline-block;
+        animation: chug 0.35s ease-in-out infinite alternate;
+      }
+      .train-track {
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6 50%, transparent 50%);
+        background-size: 20px 100%;
+        width: 120px;
+        animation: track-move 0.5s linear infinite;
+        border-radius: 2px;
+        margin-top: -2px;
+      }
+      .smoke-puffs {
+        position: absolute;
+        top: -12px;
+        left: 85px;
+        display: flex;
+        gap: 6px;
+      }
+      .puff {
+        width: 8px;
+        height: 8px;
+        background-color: rgba(59, 130, 246, 0.4);
+        border-radius: 50%;
+        display: inline-block;
+        animation: smoke 1s ease-out infinite;
+      }
+      .puff-2 { animation-delay: 0.3s; }
+      .puff-3 { animation-delay: 0.6s; }
+      
+      .loader-text {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.05rem;
+        color: #3b82f6;
+        margin-top: 15px;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes chug {
+        0% { transform: translateY(0) rotate(0deg); }
+        100% { transform: translateY(-5px) rotate(1deg); }
+      }
+      @keyframes track-move {
+        0% { background-position: 0 0; }
+        100% { background-position: -20px 0; }
+      }
+      @keyframes smoke {
+        0% { transform: translateY(0) scale(1); opacity: 0.8; }
+        100% { transform: translateY(-20px) translateX(15px) scale(2.2); opacity: 0; }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin: 0;">
+    <div id="root">
+      <div class="initial-loader">
+        <div class="train-container">
+          <div class="smoke-puffs">
+            <span class="puff puff-1"></span>
+            <span class="puff puff-2"></span>
+            <span class="puff puff-3"></span>
+          </div>
+          <div class="train-engine">🚂</div>
+          <div class="train-track"></div>
+        </div>
+        <p class="loader-text">LocoWorks is chugging along...</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

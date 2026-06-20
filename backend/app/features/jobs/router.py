@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
+from app.core.exceptions import handle_db_error
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.features.jobs.models import Job, Task
 
@@ -51,7 +52,7 @@ async def create_job(
         return db_job
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 # Tasks CRUD
@@ -73,7 +74,7 @@ async def create_task(
         return db_task
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 @router.put("/{job_id}", response_model=JobRead)
@@ -97,7 +98,7 @@ async def update_job(
         return db_job
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -116,4 +117,4 @@ async def delete_job(
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        handle_db_error(e)

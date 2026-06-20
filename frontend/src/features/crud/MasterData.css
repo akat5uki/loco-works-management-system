@@ -220,4 +220,36 @@ td {
   color: white;
 }
 
+/* Inline error styles matching Auth.css */
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  margin-bottom: 1.25rem;
+  box-sizing: border-box;
+}
+
+.form-error-message {
+  width: 100%;
+}
+
+.page-error-message {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
 

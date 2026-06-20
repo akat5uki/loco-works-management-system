@@ -30,6 +30,11 @@ const getLocalDateString = (dateInput: Date | string) => {
 };
 
 const todayISO = () => getLocalDateString(new Date());
+const tomorrowISO = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return getLocalDateString(tomorrow);
+};
 
 
 
@@ -38,7 +43,7 @@ const guessShift = () => {
   const h = new Date().getHours();
   if (h >= 6 && h < 14) return 1;
   if (h >= 14 && h < 22) return 2;
-  return 3;
+  return 1; // Default fallback for off-shift night hours
 };
 
 function groupBookings(list: RawBooking[]) {
@@ -514,7 +519,7 @@ const LocoBookingUI = () => {
                       <div className="form-group">
                         <label>Current Shift</label>
                         <select value={newLcoShift} onChange={e => setNewLcoShift(e.target.value)} required>
-                          <option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option>
+                          <option value="1">Shift 1</option><option value="2">Shift 2</option>
                         </select>
                       </div>
                     </div>
@@ -536,14 +541,15 @@ const LocoBookingUI = () => {
                       <input
                         type="date"
                         value={bookingDate}
-                        max={todayISO()}
+                        min={todayISO()}
+                        max={tomorrowISO()}
                         onChange={e => setBookingDate(e.target.value)}
                       />
                     </div>
                     <div className="form-group shift-field">
                       <label><Clock size={14} /> Shift</label>
                       <div className="shift-btn-group">
-                        {[1, 2, 3].map(s => (
+                        {[1, 2].map(s => (
                           <button key={s} type="button"
                             className={`shift-btn${bookingShift === s ? " active" : ""}`}
                             onClick={() => setBookingShift(s)}>
@@ -650,7 +656,6 @@ const LocoBookingUI = () => {
                     <option value="all">All Shifts</option>
                     <option value="1">Shift 1</option>
                     <option value="2">Shift 2</option>
-                    <option value="3">Shift 3</option>
                   </select>
                 </div>
               </div>
@@ -826,7 +831,6 @@ const LocoBookingUI = () => {
                     <option value="all">All Shifts</option>
                     <option value="1">Shift 1</option>
                     <option value="2">Shift 2</option>
-                    <option value="3">Shift 3</option>
                   </select>
                 </div>
                 <div className="filter-group" style={{ width: '160px' }}>

@@ -1,6 +1,5 @@
 services:
   db-primary:
-    user: root
     image: bitnami/postgresql:latest
     container_name: loco_db_primary
     restart: always
@@ -19,7 +18,6 @@ services:
       - "5432:5432"
 
   db-replica:
-    user: root
     image: bitnami/postgresql:latest
     container_name: loco_db_replica
     restart: always
@@ -55,6 +53,14 @@ services:
     restart: always
     depends_on:
       - redis-master
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/bitnami/scripts/redis-sentinel/setup.sh
+        echo "sentinel resolve-hostnames yes" >> /opt/bitnami/redis-sentinel/etc/sentinel.conf
+        echo "sentinel announce-hostnames yes" >> /opt/bitnami/redis-sentinel/etc/sentinel.conf
+        exec /opt/bitnami/scripts/redis-sentinel/run.sh
     environment:
       REDIS_MASTER_HOST: redis-master
       REDIS_MASTER_SET: mymaster
@@ -67,6 +73,14 @@ services:
     restart: always
     depends_on:
       - redis-master
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/bitnami/scripts/redis-sentinel/setup.sh
+        echo "sentinel resolve-hostnames yes" >> /opt/bitnami/redis-sentinel/etc/sentinel.conf
+        echo "sentinel announce-hostnames yes" >> /opt/bitnami/redis-sentinel/etc/sentinel.conf
+        exec /opt/bitnami/scripts/redis-sentinel/run.sh
     environment:
       REDIS_MASTER_HOST: redis-master
       REDIS_MASTER_SET: mymaster
@@ -79,6 +93,14 @@ services:
     restart: always
     depends_on:
       - redis-master
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/bitnami/scripts/redis-sentinel/setup.sh
+        echo "sentinel resolve-hostnames yes" >> /opt/bitnami/redis-sentinel/etc/sentinel.conf
+        echo "sentinel announce-hostnames yes" >> /opt/bitnami/redis-sentinel/etc/sentinel.conf
+        exec /opt/bitnami/scripts/redis-sentinel/run.sh
     environment:
       REDIS_MASTER_HOST: redis-master
       REDIS_MASTER_SET: mymaster

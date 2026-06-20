@@ -12,15 +12,32 @@ const LoginPage = () => {
   const [captcha, setCaptcha] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
 
   // If a valid session cookie already exists, skip the login page
   useEffect(() => {
+    let cancelled = false;
     api
       .get("/auth/me")
-      .then(() => navigate("/dashboard", { replace: true }))
-      .catch(() => {/* not authenticated — stay on login page */});
+      .then(() => {
+        if (!cancelled) {
+          navigate("/dashboard", { replace: true });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
+
+  if (checkingSession) {
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

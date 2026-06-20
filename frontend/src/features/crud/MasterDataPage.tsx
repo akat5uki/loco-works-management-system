@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
 import { AxiosError } from "axios";
 import ThemeToggle from "../../shared/components/ThemeToggle";
+import TrainLoader from "../../shared/components/TrainLoader";
 import "./MasterData.css";
 
 interface LocoType {
@@ -65,6 +66,9 @@ const MasterDataPage = () => {
   // Form States
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -101,12 +105,15 @@ const MasterDataPage = () => {
     setShowForm(false);
     setIsEditing(false);
     setFormData({});
+    setError("");
+    setCurrentPage(1);
     fetchData();
   }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
       let endpoint = "";
       if (activeTab === "types") {
@@ -131,12 +138,13 @@ const MasterDataPage = () => {
       setShowForm(false);
       setIsEditing(false);
       setFormData({});
+      setError("");
       fetchData();
     } catch (err) {
       const axiosError = err as AxiosError<{ detail?: unknown }>;
       console.error("Save error details:", axiosError.response?.data);
       const detail = axiosError.response?.data?.detail || "Ensure fields are correct and IDs are unique.";
-      alert(`Failed to save data: ${typeof detail === "object" ? JSON.stringify(detail) : detail}`);
+      setError(typeof detail === "object" ? JSON.stringify(detail) : String(detail));
     } finally {
       setLoading(false);
     }
@@ -146,6 +154,7 @@ const MasterDataPage = () => {
     setIsEditing(true);
     setFormData(item);
     setShowForm(true);
+    setError("");
   };
 
   const handleDelete = async (item: MasterDataItem) => {
@@ -169,11 +178,16 @@ const MasterDataPage = () => {
     if (!window.confirm(confirmMsg)) return;
 
     setLoading(true);
+    setError("");
     try {
       await api.delete(deleteUrl);
+      setError("");
       fetchData();
-    } catch {
-      alert("Failed to delete record. It may be referenced by other active tables.");
+    } catch (err) {
+      const axiosError = err as AxiosError<{ detail?: unknown }>;
+      console.error("Delete error details:", axiosError.response?.data);
+      const detail = axiosError.response?.data?.detail || "Failed to delete record. It may be referenced by other active tables.";
+      setError(typeof detail === "object" ? JSON.stringify(detail) : String(detail));
     } finally {
       setLoading(false);
     }
@@ -216,6 +230,11 @@ const MasterDataPage = () => {
       </nav>
 
       <main className="master-main">
+        {error && !showForm && (
+          <div className="error-message page-error-message">
+            {error}
+          </div>
+        )}
         <div className="action-bar">
           <h3>
             {isEditing ? "Edit" : "Existing"}{" "}
@@ -228,8 +247,10 @@ const MasterDataPage = () => {
                 setShowForm(false);
                 setIsEditing(false);
                 setFormData({});
+                setError("");
               } else {
                 setShowForm(true);
+                setError("");
               }
             }}
           >
@@ -240,6 +261,7 @@ const MasterDataPage = () => {
 
         {showForm && (
           <form className="crud-form" onSubmit={handleSubmit}>
+            {error && <div className="error-message form-error-message">{error}</div>}
             {activeTab === "types" && (
               <>
                 <input
@@ -327,9 +349,7 @@ const MasterDataPage = () => {
                     })
                   }
                 />
-                <input
-                  type="number"
-                  placeholder="Shift"
+                <select
                   required
                   value={formData.shift ?? ""}
                   onChange={(e) =>
@@ -338,7 +358,11 @@ const MasterDataPage = () => {
                       shift: parseInt(e.target.value),
                     })
                   }
-                />
+                >
+                  <option value="">-- Select Shift --</option>
+                  <option value="1">Shift 1</option>
+                  <option value="2">Shift 2</option>
+                </select>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}>
                   <input
                     type="checkbox"
@@ -401,7 +425,7 @@ const MasterDataPage = () => {
 
         <div className="table-wrapper">
           {loading && !showForm ? (
-            <p>Loading data...</p>
+            <TrainLoader message={`Fetching ${activeTab === "types" ? "Loco Types" : activeTab === "locos" ? "Locomotives" : "Jobs"}...`} />
           ) : (
             <table>
               <thead>
@@ -418,41 +442,92 @@ const MasterDataPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.map((item, i) => (
-                  <tr key={i}>
-                    {Object.entries(item).map(([key, val], j) => (
-                      <td key={j}>
-                        {key === "loco_type_id" && activeTab === "locos"
-                          ? (locoTypes.find((t) => t.loco_type_id === val)?.loco_type_name || val)
-                          : key === "despatched"
-                            ? <span style={{
-                                display: "inline-block",
-                                padding: "0.2rem 0.6rem",
-                                borderRadius: "9999px",
-                                fontSize: "0.75rem",
-                                fontWeight: 700,
-                                background: val ? "rgba(239,68,68,0.12)" : "rgba(16,185,129,0.12)",
-                                color: val ? "#ef4444" : "#10b981",
-                              }}>{val ? "Despatched" : "Active"}</span>
-                            : typeof val === "string" && val.includes("T") && val.length > 10
-                              ? new Date(val).toLocaleString()
-                              : String(val)}
+                {data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item, i) => {
+                  const itemKeys = data.length > 0 ? Object.keys(data[0]) : [];
+                  const globalIndex = (currentPage - 1) * itemsPerPage + i;
+                  return (
+                    <tr key={globalIndex}>
+                      {itemKeys.map((key, j) => {
+                        const val = (item as any)[key];
+                        return (
+                          <td key={j}>
+                            {key === "loco_type_id" && activeTab === "locos"
+                              ? (locoTypes.find((t) => t.loco_type_id === val)?.loco_type_name || val)
+                              : key === "despatched"
+                                ? <span style={{
+                                    display: "inline-block",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "9999px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 700,
+                                    background: val ? "rgba(239,68,68,0.12)" : "rgba(16,185,129,0.12)",
+                                    color: val ? "#ef4444" : "#10b981",
+                                  }}>{val ? "Despatched" : "Active"}</span>
+                                : typeof val === "string" && val.includes("T") && val.length > 10
+                                  ? new Date(val).toLocaleString()
+                                  : String(val)}
+                          </td>
+                        );
+                      })}
+                      <td>
+                        <div className="actions-cell" style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                          <button className="btn-edit-action" onClick={() => handleEdit(item)}>
+                            Edit
+                          </button>
+                          <button className="btn-delete-action" onClick={() => handleDelete(item)}>
+                            Delete
+                          </button>
+                        </div>
                       </td>
-                    ))}
-                    <td>
-                      <div className="actions-cell" style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                        <button className="btn-edit-action" onClick={() => handleEdit(item)}>
-                          Edit
-                        </button>
-                        <button className="btn-delete-action" onClick={() => handleDelete(item)}>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+          )}
+          {!loading && data.length > itemsPerPage && (
+            <div className="pagination-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", borderTop: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
+              <span style={{ fontSize: "0.875rem", color: "var(--text)" }}>
+                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, data.length)} of {data.length} records
+              </span>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    borderRadius: "0.375rem",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-card)",
+                    color: "var(--text)",
+                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                    opacity: currentPage === 1 ? 0.5 : 1,
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ display: "flex", alignItems: "center", padding: "0 0.5rem", fontSize: "0.875rem", fontWeight: 600, color: "var(--text-h)" }}>
+                  Page {currentPage} of {Math.ceil(data.length / itemsPerPage)}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage === Math.ceil(data.length / itemsPerPage)}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    borderRadius: "0.375rem",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-card)",
+                    color: "var(--text)",
+                    cursor: currentPage === Math.ceil(data.length / itemsPerPage) ? "not-allowed" : "pointer",
+                    opacity: currentPage === Math.ceil(data.length / itemsPerPage) ? 0.5 : 1,
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           )}
           {!loading && data.length === 0 && (
             <p className="empty-state">

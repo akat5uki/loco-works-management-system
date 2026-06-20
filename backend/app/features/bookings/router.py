@@ -54,6 +54,29 @@ async def create_booking(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
+    if booking.shift not in [1, 2]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
+        )
+
+    from zoneinfo import ZoneInfo
+    from datetime import datetime
+    local_tz = ZoneInfo("Asia/Kolkata")
+    today_local = datetime.now(local_tz).date()
+    
+    dt = booking.date_time
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    input_date = dt.astimezone(local_tz).date()
+    
+    days_diff = (input_date - today_local).days
+    if days_diff < 0 or days_diff > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Booking is only allowed for the current day and next day."
+        )
+
     # Verify loco exists
     result = await db.execute(
         select(Loco).where(Loco.loco_number == booking.loco_number)
@@ -164,6 +187,29 @@ async def add_job_booking(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
+    if job_in.shift not in [1, 2]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
+        )
+
+    from zoneinfo import ZoneInfo
+    from datetime import datetime
+    local_tz = ZoneInfo("Asia/Kolkata")
+    today_local = datetime.now(local_tz).date()
+    
+    dt = job_in.date_time
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    input_date = dt.astimezone(local_tz).date()
+    
+    days_diff = (input_date - today_local).days
+    if days_diff < 0 or days_diff > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Booking is only allowed for the current day and next day."
+        )
+
     query = select(LocoBooking).where(
         LocoBooking.loco_number == job_in.loco_number,
         LocoBooking.date_time == job_in.date_time,
