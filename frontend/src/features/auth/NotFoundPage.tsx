@@ -116,16 +116,16 @@ const NotFoundPage = () => {
           padding: 0 2px;
           border: 1px solid #475569;
         }
-        .light {
+        .signal-light {
           width: 8px;
           height: 8px;
           border-radius: 50%;
           background: #475569;
         }
-        .light.red-left {
+        .signal-light.red-left {
           animation: blink-left 1s infinite alternate;
         }
-        .light.red-right {
+        .signal-light.red-right {
           animation: blink-right 1s infinite alternate;
         }
         @keyframes blink-left {
@@ -347,8 +347,8 @@ const NotFoundPage = () => {
           {/* Signal Light */}
           <div className="railway-signal">
             <div className="signal-head">
-              <div className="light red-left"></div>
-              <div className="light red-right"></div>
+              <div className="signal-light red-left"></div>
+              <div className="signal-light red-right"></div>
             </div>
             <div className="signal-pole"></div>
           </div>
