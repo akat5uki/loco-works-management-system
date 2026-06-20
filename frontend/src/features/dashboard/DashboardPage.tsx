@@ -9,9 +9,11 @@ import {
   PlusCircle,
   ClipboardList,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
+import ChatPage from "../chat/ChatPage";
 import "./Dashboard.css";
 
 interface UserProfile {
@@ -26,7 +28,7 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("Employee");
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "profile" | "chat">("dashboard");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -141,6 +143,13 @@ const DashboardPage = () => {
           <div className="nav-item" onClick={() => navigate("/reports")} style={{ cursor: "pointer" }}>
             <FileText size={20} /> <span>Reports</span>
           </div>
+          <div
+            className={`nav-item ${activeTab === "chat" ? "active" : ""}`}
+            onClick={() => setActiveTab("chat")}
+            style={{ cursor: "pointer" }}
+          >
+            <MessageSquare size={20} /> <span>Chat</span>
+          </div>
         </nav>
         <button className="logout-btn" onClick={handleLogout}>
           <LogOut size={20} /> <span>Logout</span>
@@ -191,6 +200,11 @@ const DashboardPage = () => {
               </div>
             ))}
           </section>
+        ) : activeTab === "chat" ? (
+          <ChatPage
+            isSupervisor={isSupervisor}
+            currentTicket={userProfile?.ticket_number ?? 0}
+          />
         ) : (
           <section className="profile-container">
             {userProfile && (

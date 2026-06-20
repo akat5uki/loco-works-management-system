@@ -11,8 +11,9 @@ from app.features.bookings.router import router as bookings_router
 from app.features.employees.router import router as employees_router
 from app.features.jobs.router import router as jobs_router
 from app.features.locos.router import router as locos_router
-from app.features.realtime.router import redis_stream_listener
+from app.features.realtime.router import redis_stream_listener, chat_pubsub_listener
 from app.features.realtime.router import router as realtime_router
+from app.features.chat.router import router as chat_router
 
 
 @asynccontextmanager
@@ -20,10 +21,12 @@ async def lifespan(app: FastAPI):
     # Seeding tasks is no longer needed since the child booking_tasks table is normalized
     pass
 
-    # Start the Redis Stream listener for websockets
-    task = asyncio.create_task(redis_stream_listener())
+    # Start background listeners
+    stream_task = asyncio.create_task(redis_stream_listener())
+    chat_task = asyncio.create_task(chat_pubsub_listener())
     yield
-    task.cancel()
+    stream_task.cancel()
+    chat_task.cancel()
 
 
 app = FastAPI(
@@ -83,6 +86,9 @@ app.include_router(
 )
 app.include_router(
     realtime_router, prefix=f"{settings.API_V1_STR}/realtime", tags=["realtime"]
+)
+app.include_router(
+    chat_router, prefix=f"{settings.API_V1_STR}/chat", tags=["chat"]
 )
 
 
