@@ -2,12 +2,12 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
 } from "react-router-dom";
 import LandingPage from "./features/landing/LandingPage";
 import LoginPage from "./features/auth/LoginPage";
 import RegisterPage from "./features/auth/RegisterPage";
 import SessionExpiredPage from "./features/auth/SessionExpiredPage";
+import NotFoundPage from "./features/auth/NotFoundPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import LocoBookingUI from "./features/bookings/LocoBookingUI";
 import MasterDataPage from "./features/crud/MasterDataPage";
@@ -45,7 +45,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
   );
