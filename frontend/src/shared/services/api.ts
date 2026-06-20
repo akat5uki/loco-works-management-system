@@ -8,16 +8,17 @@ const api = axios.create({
   },
 });
 
-// On 401, redirect to login — but only if not already there or on the landing page
+// On 401, redirect to session expired page — but only if not already there or on landing/login pages
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (
       error.response?.status === 401 &&
       window.location.pathname !== "/login" &&
+      window.location.pathname !== "/session-expired" &&
       window.location.pathname !== "/"
     ) {
-      window.location.href = "/login";
+      window.location.href = "/session-expired";
     }
     return Promise.reject(error);
   },

@@ -33,7 +33,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (authStatus === "unauthenticated") {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/session-expired" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

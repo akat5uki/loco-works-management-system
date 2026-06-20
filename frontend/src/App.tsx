@@ -7,6 +7,7 @@ import {
 import LandingPage from "./features/landing/LandingPage";
 import LoginPage from "./features/auth/LoginPage";
 import RegisterPage from "./features/auth/RegisterPage";
+import SessionExpiredPage from "./features/auth/SessionExpiredPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import LocoBookingUI from "./features/bookings/LocoBookingUI";
 import MasterDataPage from "./features/crud/MasterDataPage";
@@ -19,6 +20,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/session-expired" element={<SessionExpiredPage />} />
         <Route
           path="/dashboard"
           element={
