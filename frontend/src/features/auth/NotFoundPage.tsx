@@ -44,9 +44,10 @@ const NotFoundPage = () => {
           height: 140px;
           margin-bottom: 2rem;
           overflow: hidden;
-          background: var(--accent-bg);
+          background: var(--bg-secondary);
           border-radius: 0.75rem;
-          border: 1px dashed var(--accent-border);
+          border: 1px solid var(--border);
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
         }
 
         .track {
@@ -55,8 +56,7 @@ const NotFoundPage = () => {
           left: 0;
           width: 100%;
           height: 4px;
-          background: var(--text);
-          opacity: 0.3;
+          background: var(--border);
         }
         .track::after {
           content: '';
@@ -65,8 +65,7 @@ const NotFoundPage = () => {
           left: 0;
           width: 100%;
           height: 6px;
-          background-image: repeating-linear-gradient(90deg, var(--text) 0px, var(--text) 4px, transparent 4px, transparent 16px);
-          opacity: 0.2;
+          background-image: repeating-linear-gradient(90deg, var(--border) 0px, var(--border) 4px, transparent 4px, transparent 16px);
         }
 
         .buffer-stop {
@@ -77,6 +76,7 @@ const NotFoundPage = () => {
           height: 30px;
           background: #ef4444;
           border-radius: 2px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.15);
         }
         .buffer-stop::before {
           content: '';
@@ -101,8 +101,7 @@ const NotFoundPage = () => {
         .signal-pole {
           width: 4px;
           height: 60px;
-          background: var(--text);
-          opacity: 0.5;
+          background: var(--border);
         }
         .signal-head {
           width: 24px;
@@ -162,6 +161,7 @@ const NotFoundPage = () => {
           background: var(--accent);
           border-radius: 4px;
           position: relative;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .loco-cabin {
           width: 25px;
@@ -171,7 +171,7 @@ const NotFoundPage = () => {
           top: -20px;
           right: 0;
           border-radius: 4px 4px 0 0;
-          border-left: 2px solid rgba(255,255,255,0.1);
+          border-left: 2px solid rgba(255,255,255,0.15);
         }
         .loco-cabin::after {
           content: '';
@@ -186,7 +186,7 @@ const NotFoundPage = () => {
         .loco-chimney {
           width: 8px;
           height: 18px;
-          background: #475569;
+          background: var(--text-h);
           position: absolute;
           top: -15px;
           left: 8px;
@@ -204,27 +204,22 @@ const NotFoundPage = () => {
         }
 
         /* Wheels */
-        .wheel-back {
+        .wheel-back, .wheel-front {
           width: 14px;
           height: 14px;
-          background: #334155;
+          background: var(--text-h);
           border-radius: 50%;
           position: absolute;
           bottom: -7px;
-          right: 6px;
-          border: 2px dashed #94a3b8;
+          border: 2px dashed var(--bg-card);
           animation: spin 1.2s linear infinite;
+          box-shadow: 0 0 0 1px var(--border);
+        }
+        .wheel-back {
+          right: 6px;
         }
         .wheel-front {
-          width: 14px;
-          height: 14px;
-          background: #334155;
-          border-radius: 50%;
-          position: absolute;
-          bottom: -7px;
           left: 6px;
-          border: 2px dashed #94a3b8;
-          animation: spin 1.2s linear infinite;
         }
         @keyframes spin {
           100% { transform: rotate(360deg); }
@@ -233,7 +228,7 @@ const NotFoundPage = () => {
         /* Smoke clouds emitting 404 */
         .smoke-puff {
           position: absolute;
-          background: rgba(255, 255, 255, 0.85);
+          background: var(--bg-card);
           color: var(--accent);
           font-weight: 800;
           font-size: 10px;
@@ -242,7 +237,8 @@ const NotFoundPage = () => {
           align-items: center;
           justify-content: center;
           pointer-events: none;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          box-shadow: var(--shadow);
+          border: 1px solid var(--border);
         }
         .smoke1 {
           width: 16px;
