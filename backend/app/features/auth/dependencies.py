@@ -1,6 +1,6 @@
 from typing import Annotated, Optional
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy import text
@@ -21,6 +21,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 async def get_current_user(
     request: Request,
+    response: Response,
     token: Annotated[Optional[str], Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
 ) -> Employee:
@@ -70,6 +71,29 @@ async def get_current_user(
 
         # Extend session lifetime on activity (Sliding Expiration)
         await redis_client.expire(session_key, 1800)
+
+        # Extend browser cookies' lifetime (Sliding Expiration)
+        response.set_cookie(
+            key="session_id_strict",
+            value=final_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=1800,
+        )
+        response.set_cookie(
+            key="session_id_embed",
+            value=final_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=1800,
+        )
+        # Add 'Partitioned' attribute for CHIPS support
+        for i, (header_name, header_value) in enumerate(response.raw_headers):
+            if header_name == b"set-cookie" and b"session_id_embed" in header_value:
+                if b"Partitioned" not in header_value:
+                    response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
 
     except (JWTError, ValueError):
         raise HTTPException(
