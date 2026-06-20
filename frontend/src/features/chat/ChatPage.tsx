@@ -340,22 +340,16 @@ const ChatPage = ({ isSupervisor, currentTicket }: ChatPageProps) => {
     <div style={{
       display: "flex",
       flexDirection: "column",
-      height: "100%",
+      flex: 1,
+      minHeight: 0,
       background: "var(--bg-secondary)",
     }}>
       {/* Page header */}
       <div style={{
-        padding: "1.25rem 1.5rem 0",
+        padding: "0.5rem 0.5rem 0",
         background: "var(--bg-secondary)",
         flexShrink: 0,
       }}>
-        <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-h)" }}>
-          💬 Chat Rooms
-        </h2>
-        <p style={{ margin: "0.25rem 0 1rem", fontSize: "0.85rem", color: "var(--text)" }}>
-          Real-time messaging with your team
-        </p>
-
         {/* Room tabs */}
         <div style={{ display: "flex", gap: "0.5rem", marginBottom: 0 }}>
           {(["all", ...(isSupervisor ? ["supervisor"] : [])] as ("all" | "supervisor")[]).map((room) => (
@@ -393,7 +387,7 @@ const ChatPage = ({ isSupervisor, currentTicket }: ChatPageProps) => {
         flex: 1,
         border: "1px solid var(--border)",
         borderRadius: "0 0.5rem 0.5rem 0.5rem",
-        margin: "0 1.5rem 1.5rem",
+        margin: "0 0.5rem 0.5rem",
         background: "var(--bg-card)",
         overflow: "hidden",
         display: "flex",

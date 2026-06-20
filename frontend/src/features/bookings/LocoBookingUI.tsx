@@ -95,6 +95,9 @@ const LocoBookingUI = () => {
   /* tabs */
   const [activeTab, setActiveTab] = useState<"booking" | "list" | "history">("booking");
   const [expandedLocos, setExpandedLocos] = useState<Set<string>>(new Set());
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
+  const [collapsedShifts, setCollapsedShifts] = useState<Set<string>>(new Set());
 
   /* list & history search/filter states */
   const [historyBookings, setHistoryBookings] = useState<RawBooking[]>([]);
@@ -309,6 +312,30 @@ const LocoBookingUI = () => {
 
   const toggleLoco = (key: string) => {
     setExpandedLocos(p => {
+      const n = new Set(p);
+      if (n.has(key)) {
+        n.delete(key);
+      } else {
+        n.add(key);
+      }
+      return n;
+    });
+  };
+
+  const toggleDate = (key: string) => {
+    setCollapsedDates(p => {
+      const n = new Set(p);
+      if (n.has(key)) {
+        n.delete(key);
+      } else {
+        n.add(key);
+      }
+      return n;
+    });
+  };
+
+  const toggleShift = (key: string) => {
+    setCollapsedShifts(p => {
       const n = new Set(p);
       if (n.has(key)) {
         n.delete(key);
@@ -658,143 +685,236 @@ const LocoBookingUI = () => {
                     <option value="2">Shift 2</option>
                   </select>
                 </div>
+                <div className="filter-group" style={{ minWidth: '120px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Actions</label>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--border)',
+                    background: isEditMode ? 'var(--accent-bg)' : 'transparent',
+                    borderColor: isEditMode ? 'var(--accent)' : 'var(--border)',
+                    height: '38px',
+                    transition: 'all 0.2s',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={isEditMode}
+                      onChange={e => setIsEditMode(e.target.checked)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: 'var(--accent)',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: isEditMode ? 'var(--accent)' : 'var(--text-h)',
+                    }}>
+                      Edit Mode
+                    </span>
+                  </label>
+                </div>
               </div>
 
               <div className="timeline-grouped-bookings">
-                {Object.keys(groupedToday).map(dateStr => (
-                  <div key={dateStr} className="date-group-card">
-                    <div className="date-header"><Calendar size={16} /><h3>{dateStr}</h3></div>
-                    {Object.keys(groupedToday[dateStr]).map(shift => (
-                      <div key={shift} className="shift-block">
-                        <div className="shift-header"><Clock size={14} /><h4>Shift {shift}</h4></div>
-                        <div className="locos-list">
-                          {Object.keys(groupedToday[dateStr][parseInt(shift)]).map(locoStr => {
-                            const locoNum = parseInt(locoStr);
-                            const record = groupedToday[dateStr][parseInt(shift)][locoNum];
-                            const ml = locos.find(l => l.loco_number === locoNum);
-                            const tn = ml ? typeName(ml.loco_type_id) : null;
-                            const isExpanded = expandedLocos.has(`${dateStr}-${shift}-${locoNum}`);
+                {Object.keys(groupedToday).map(dateStr => {
+                  const isDateCollapsed = collapsedDates.has(dateStr);
+                  return (
+                    <div key={dateStr} className="date-group-card">
+                      <div
+                        className="date-header"
+                        onClick={() => toggleDate(dateStr)}
+                        style={{
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          userSelect: 'none',
+                          borderBottom: isDateCollapsed ? 'none' : '1px solid var(--border)'
+                        }}
+                      >
+                        <Calendar size={16} />
+                        <h3>{dateStr}</h3>
+                        <div style={{ flexGrow: 1 }} />
+                        {!isDateCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
+
+                      {!isDateCollapsed && (
+                        <div>
+                          {Object.keys(groupedToday[dateStr]).map(shift => {
+                            const shiftKey = `${dateStr}-${shift}`;
+                            const isShiftCollapsed = collapsedShifts.has(shiftKey);
                             return (
-                              <div key={locoNum} className="loco-booking-card collapsible">
-                                <div className="loco-card-title" onClick={() => toggleLoco(`${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
-                                  <Train size={16} />
-                                  <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
-                                  <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
-                                  <div style={{flexGrow:1}}/>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteLocoBooking(locoNum, record.date_time);
-                                    }}
-                                    className="delete-loco-btn"
-                                    title="Delete entire locomotive booking"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                  {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                              <div key={shift} className="shift-block" style={{ borderBottom: isShiftCollapsed ? 'none' : '1px solid var(--border)' }}>
+                                <div
+                                  className="shift-header"
+                                  onClick={() => toggleShift(shiftKey)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    userSelect: 'none',
+                                    marginBottom: isShiftCollapsed ? 0 : '0.85rem'
+                                  }}
+                                >
+                                  <Clock size={14} />
+                                  <h4>Shift {shift}</h4>
+                                  <div style={{ flexGrow: 1 }} />
+                                  {!isShiftCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                 </div>
-                                {isExpanded && (
-                                  <div className="loco-jobs-list">
-                                    {Object.keys(record.jobs).map(jobIdStr => {
-                                      const jobId = parseInt(jobIdStr);
-                                      const job = record.jobs[jobId];
+
+                                {!isShiftCollapsed && (
+                                  <div className="locos-list">
+                                    {Object.keys(groupedToday[dateStr][parseInt(shift)]).map(locoStr => {
+                                      const locoNum = parseInt(locoStr);
+                                      const record = groupedToday[dateStr][parseInt(shift)][locoNum];
+                                      const ml = locos.find(l => l.loco_number === locoNum);
+                                      const tn = ml ? typeName(ml.loco_type_id) : null;
+                                      const isExpanded = expandedLocos.has(`${dateStr}-${shift}-${locoNum}`);
                                       return (
-                                        <div key={jobIdStr} className="loco-job-item">
-                                          <div className="job-meta">
-                                            <ClipboardList size={14} /><h6>{job.job_description}</h6>
-                                            <div className="action-buttons">
-                                              <button onClick={() => handleEditJob(locoNum, record.date_time, jobId)}><Edit2 size={12}/></button>
-                                              <button onClick={() => handleDeleteJob(locoNum, record.date_time, jobId)}><Trash2 size={12}/></button>
-                                            </div>
+                                        <div key={locoNum} className="loco-booking-card collapsible">
+                                          <div className="loco-card-title" onClick={() => toggleLoco(`${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
+                                            <Train size={16} />
+                                            <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
+                                            <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
+                                            <div style={{flexGrow:1}}/>
+                                            {isEditMode && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteLocoBooking(locoNum, record.date_time);
+                                                }}
+                                                className="delete-loco-btn"
+                                                title="Delete entire locomotive booking"
+                                              >
+                                                <Trash2 size={14} />
+                                              </button>
+                                            )}
+                                            {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                                           </div>
-                                          {job.tasks.length > 0 && (
-                                            <ul className="job-tasks-sublist">
-                                              {job.tasks.map((t, i) => (
-                                                <li key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                                  <span><FileText size={12} style={{marginRight:4}}/>{t.desc}</span>
-                                                  <div className="action-buttons">
-                                                    <button onClick={() => handleEditTask(t.id, t.desc)}><Edit2 size={12}/></button>
-                                                    <button onClick={() => handleDeleteTask(t.id)}><Trash2 size={12}/></button>
+                                          {isExpanded && (
+                                            <div className="loco-jobs-list">
+                                              {Object.keys(record.jobs).map(jobIdStr => {
+                                                const jobId = parseInt(jobIdStr);
+                                                const job = record.jobs[jobId];
+                                                return (
+                                                  <div key={jobIdStr} className="loco-job-item">
+                                                    <div className="job-meta">
+                                                      <ClipboardList size={14} /><h6>{job.job_description}</h6>
+                                                      {isEditMode && (
+                                                        <div className="action-buttons">
+                                                          <button onClick={() => handleEditJob(locoNum, record.date_time, jobId)}><Edit2 size={12}/></button>
+                                                          <button onClick={() => handleDeleteJob(locoNum, record.date_time, jobId)}><Trash2 size={12}/></button>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    {job.tasks.length > 0 && (
+                                                      <ul className="job-tasks-sublist">
+                                                        {job.tasks.map((t, i) => (
+                                                          <li key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                                            <span><FileText size={12} style={{marginRight:4}}/>{t.desc}</span>
+                                                            {isEditMode && (
+                                                              <div className="action-buttons">
+                                                                <button onClick={() => handleEditTask(t.id, t.desc)}><Edit2 size={12}/></button>
+                                                                <button onClick={() => handleDeleteTask(t.id)}><Trash2 size={12}/></button>
+                                                              </div>
+                                                            )}
+                                                          </li>
+                                                        ))}
+                                                      </ul>
+                                                    )}
+                                                    {isEditMode && (
+                                                      <div className="job-add-task-row" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.65rem', paddingLeft: '1.5rem' }}>
+                                                        <input
+                                                          type="text"
+                                                          placeholder="Add new task..."
+                                                          className="list-add-task-input"
+                                                          value={newTaskInputs[`${locoNum}-${record.date_time}-${jobId}`] || ""}
+                                                          onChange={e => setNewTaskInputs(p => ({ ...p, [`${locoNum}-${record.date_time}-${jobId}`]: e.target.value }))}
+                                                          onKeyDown={async e => {
+                                                            if (e.key === "Enter") {
+                                                              e.preventDefault();
+                                                              await handleAddSingleTask(locoNum, record.date_time, jobId);
+                                                            }
+                                                          }}
+                                                          style={{
+                                                            flexGrow: 1,
+                                                            fontSize: "0.75rem",
+                                                            padding: "0.25rem 0.5rem",
+                                                            borderRadius: "0.25rem",
+                                                            border: "1px solid var(--border)",
+                                                            background: "var(--bg)",
+                                                            color: "var(--text)"
+                                                          }}
+                                                        />
+                                                        <button
+                                                          onClick={() => handleAddSingleTask(locoNum, record.date_time, jobId)}
+                                                          style={{
+                                                            fontSize: "0.75rem",
+                                                            padding: "0.25rem 0.5rem",
+                                                            background: "#10b981",
+                                                            color: "white",
+                                                            border: "none",
+                                                            borderRadius: "0.25rem",
+                                                            cursor: "pointer",
+                                                            fontWeight: 600
+                                                          }}
+                                                        >
+                                                          Add
+                                                        </button>
+                                                      </div>
+                                                    )}
                                                   </div>
-                                                </li>
-                                              ))}
-                                            </ul>
+                                                );
+                                              })}
+                                              {isEditMode && (
+                                                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-start' }}>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setAddingJobLoco({ locoNum, dateTime: record.date_time, shift: parseInt(shift) })}
+                                                    className="add-job-list-btn"
+                                                    style={{
+                                                      display: "flex",
+                                                      alignItems: "center",
+                                                      gap: "0.35rem",
+                                                      fontSize: "0.8rem",
+                                                      fontWeight: 600,
+                                                      color: "#2563eb",
+                                                      background: "none",
+                                                      border: "none",
+                                                      cursor: "pointer",
+                                                      padding: "0.4rem 0.6rem",
+                                                      borderRadius: "0.375rem",
+                                                      transition: "background 0.15s"
+                                                    }}
+                                                  >
+                                                    <Plus size={14} /> Add Job
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
                                           )}
-                                          <div className="job-add-task-row" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.65rem', paddingLeft: '1.5rem' }}>
-                                            <input
-                                              type="text"
-                                              placeholder="Add new task..."
-                                              className="list-add-task-input"
-                                              value={newTaskInputs[`${locoNum}-${record.date_time}-${jobId}`] || ""}
-                                              onChange={e => setNewTaskInputs(p => ({ ...p, [`${locoNum}-${record.date_time}-${jobId}`]: e.target.value }))}
-                                              onKeyDown={async e => {
-                                                if (e.key === "Enter") {
-                                                  e.preventDefault();
-                                                  await handleAddSingleTask(locoNum, record.date_time, jobId);
-                                                }
-                                              }}
-                                              style={{
-                                                flexGrow: 1,
-                                                fontSize: "0.75rem",
-                                                padding: "0.25rem 0.5rem",
-                                                borderRadius: "0.25rem",
-                                                border: "1px solid var(--border)",
-                                                background: "var(--bg)",
-                                                color: "var(--text)"
-                                              }}
-                                            />
-                                            <button
-                                              onClick={() => handleAddSingleTask(locoNum, record.date_time, jobId)}
-                                              style={{
-                                                fontSize: "0.75rem",
-                                                padding: "0.25rem 0.5rem",
-                                                background: "#10b981",
-                                                color: "white",
-                                                border: "none",
-                                                borderRadius: "0.25rem",
-                                                cursor: "pointer",
-                                                fontWeight: 600
-                                              }}
-                                            >
-                                              Add
-                                            </button>
-                                          </div>
                                         </div>
                                       );
                                     })}
-                                    <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-start' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => setAddingJobLoco({ locoNum, dateTime: record.date_time, shift: parseInt(shift) })}
-                                        className="add-job-list-btn"
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "0.35rem",
-                                          fontSize: "0.8rem",
-                                          fontWeight: 600,
-                                          color: "#2563eb",
-                                          background: "none",
-                                          border: "none",
-                                          cursor: "pointer",
-                                          padding: "0.4rem 0.6rem",
-                                          borderRadius: "0.375rem",
-                                          transition: "background 0.15s"
-                                        }}
-                                      >
-                                        <Plus size={14} /> Add Job
-                                      </button>
-                                    </div>
                                   </div>
                                 )}
                               </div>
                             );
                           })}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
                 {filteredTodayBookings.length === 0 && <p className="no-records-hint">No workshop operations booked for today.</p>}
               </div>
             </div>
@@ -854,46 +974,94 @@ const LocoBookingUI = () => {
               </div>
 
               <div className="timeline-grouped-bookings">
-                {Object.keys(groupedAll).map(dateStr => (
-                  <div key={dateStr} className="date-group-card">
-                    <div className="date-header"><Calendar size={16} /><h3>{dateStr}</h3></div>
-                    {Object.keys(groupedAll[dateStr]).map(shift => (
-                      <div key={shift} className="shift-block">
-                        <div className="shift-header"><Clock size={14} /><h4>Shift {shift}</h4></div>
-                        <div className="locos-list">
-                          {Object.keys(groupedAll[dateStr][parseInt(shift)]).map(locoStr => {
-                            const locoNum = parseInt(locoStr);
-                            const record = groupedAll[dateStr][parseInt(shift)][locoNum];
-                            const ml = locos.find(l => l.loco_number === locoNum);
-                            const tn = ml ? typeName(ml.loco_type_id) : null;
-                            const isExpanded = expandedLocos.has(`hist-${dateStr}-${shift}-${locoNum}`);
+                {Object.keys(groupedAll).map(dateStr => {
+                  const dateKey = `hist-${dateStr}`;
+                  const isDateCollapsed = collapsedDates.has(dateKey);
+                  return (
+                    <div key={dateStr} className="date-group-card">
+                      <div
+                        className="date-header"
+                        onClick={() => toggleDate(dateKey)}
+                        style={{
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          userSelect: 'none',
+                          borderBottom: isDateCollapsed ? 'none' : '1px solid var(--border)'
+                        }}
+                      >
+                        <Calendar size={16} />
+                        <h3>{dateStr}</h3>
+                        <div style={{ flexGrow: 1 }} />
+                        {!isDateCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
+
+                      {!isDateCollapsed && (
+                        <div>
+                          {Object.keys(groupedAll[dateStr]).map(shift => {
+                            const shiftKey = `hist-${dateStr}-${shift}`;
+                            const isShiftCollapsed = collapsedShifts.has(shiftKey);
                             return (
-                              <div key={locoNum} className="loco-booking-card collapsible">
-                                <div className="loco-card-title" onClick={() => toggleLoco(`hist-${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
-                                  <Train size={16} />
-                                  <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
-                                  <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
-                                  <div style={{flexGrow:1}}/>
-                                  {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                              <div key={shift} className="shift-block" style={{ borderBottom: isShiftCollapsed ? 'none' : '1px solid var(--border)' }}>
+                                <div
+                                  className="shift-header"
+                                  onClick={() => toggleShift(shiftKey)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    userSelect: 'none',
+                                    marginBottom: isShiftCollapsed ? 0 : '0.85rem'
+                                  }}
+                                >
+                                  <Clock size={14} />
+                                  <h4>Shift {shift}</h4>
+                                  <div style={{ flexGrow: 1 }} />
+                                  {!isShiftCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                 </div>
-                                {isExpanded && (
-                                  <div className="loco-jobs-list">
-                                    {Object.keys(record.jobs).map(jobIdStr => {
-                                      const jobId = parseInt(jobIdStr);
-                                      const job = record.jobs[jobId];
+
+                                {!isShiftCollapsed && (
+                                  <div className="locos-list">
+                                    {Object.keys(groupedAll[dateStr][parseInt(shift)]).map(locoStr => {
+                                      const locoNum = parseInt(locoStr);
+                                      const record = groupedAll[dateStr][parseInt(shift)][locoNum];
+                                      const ml = locos.find(l => l.loco_number === locoNum);
+                                      const tn = ml ? typeName(ml.loco_type_id) : null;
+                                      const isExpanded = expandedLocos.has(`hist-${dateStr}-${shift}-${locoNum}`);
                                       return (
-                                        <div key={jobIdStr} className="loco-job-item">
-                                          <div className="job-meta">
-                                            <ClipboardList size={14} /><h6>{job.job_description}</h6>
+                                        <div key={locoNum} className="loco-booking-card collapsible">
+                                          <div className="loco-card-title" onClick={() => toggleLoco(`hist-${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
+                                            <Train size={16} />
+                                            <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
+                                            <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
+                                            <div style={{flexGrow:1}}/>
+                                            {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                                           </div>
-                                          {job.tasks.length > 0 && (
-                                            <ul className="job-tasks-sublist">
-                                              {job.tasks.map((t, i) => (
-                                                <li key={i}>
-                                                  <FileText size={12} style={{marginRight:4}}/><span>{t.desc}</span>
-                                                </li>
-                                              ))}
-                                            </ul>
+                                          {isExpanded && (
+                                            <div className="loco-jobs-list">
+                                              {Object.keys(record.jobs).map(jobIdStr => {
+                                                const jobId = parseInt(jobIdStr);
+                                                const job = record.jobs[jobId];
+                                                return (
+                                                  <div key={jobIdStr} className="loco-job-item">
+                                                    <div className="job-meta">
+                                                      <ClipboardList size={14} /><h6>{job.job_description}</h6>
+                                                    </div>
+                                                    {job.tasks.length > 0 && (
+                                                      <ul className="job-tasks-sublist">
+                                                        {job.tasks.map((t, i) => (
+                                                          <li key={i}>
+                                                            <FileText size={12} style={{marginRight:4}}/><span>{t.desc}</span>
+                                                          </li>
+                                                        ))}
+                                                      </ul>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
                                           )}
                                         </div>
                                       );
@@ -904,10 +1072,10 @@ const LocoBookingUI = () => {
                             );
                           })}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
                 {filteredHistoryBookings.length === 0 && <p className="no-records-hint">No workshop operations booked in this range.</p>}
               </div>
             </div>

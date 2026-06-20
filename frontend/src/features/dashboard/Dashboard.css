@@ -1,7 +1,8 @@
 /* Dashboard.css */
 .dashboard-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--bg-secondary);
   color: var(--text);
 }
@@ -79,8 +80,11 @@
 
 .dashboard-main {
   flex: 1;
-  padding: 2.5rem;
-  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .dashboard-header {
@@ -116,6 +120,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 1rem;
 }
 
 .tile-card {
@@ -186,6 +193,9 @@
   justify-content: center;
   align-items: flex-start;
   padding-top: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 2rem;
 }
 
 .profile-card {

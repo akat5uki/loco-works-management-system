@@ -61,33 +61,56 @@ async def redis_stream_listener():
 async def chat_pubsub_listener():
     """
     Subscribe to Redis Pub/Sub channels for chat rooms.
-    Broadcasts incoming messages to all locally-connected WebSocket clients
-    subscribed to that room. This is what makes chat work across multiple
-    FastAPI containers.
+    Uses get_message() polling (more reliable than async-for listen() with
+    Sentinel clients) to broadcast incoming messages to all locally-connected
+    WebSocket clients subscribed to that room.
     """
     pubsub = redis_client.pubsub()
     await pubsub.subscribe("chat:all", "chat:supervisor")
     print("[chat] Pub/Sub listener started, subscribed to chat:all and chat:supervisor")
     try:
-        async for raw in pubsub.listen():
-            if raw["type"] != "message":
-                continue
-            channel: str = raw["channel"]
-            room = channel.split(":")[-1]  # "chat:all" → "all"
+        while True:
             try:
-                message = json.loads(raw["data"])
-            except (json.JSONDecodeError, TypeError):
-                continue
-            for ws in list(chat_connections.get(room, set())):
-                try:
-                    await ws.send_json(message)
-                except Exception:
-                    chat_connections[room].discard(ws)
-    except asyncio.CancelledError:
-        pass
+                raw = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=0.05
+                )
+                if raw and raw.get("type") == "message":
+                    channel: str = raw["channel"]
+                    room = channel.split(":")[-1]  # "chat:all" → "all"
+                    try:
+                        message = json.loads(raw["data"])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                    else:
+                        dead = set()
+                        for ws in list(chat_connections.get(room, set())):
+                            try:
+                                await ws.send_json(message)
+                            except Exception:
+                                dead.add(ws)
+                        for ws in dead:
+                            chat_connections[room].discard(ws)
+                # Yield to the event loop between polls
+                await asyncio.sleep(0.01)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                print(f"[chat] Pub/Sub poll error: {e}")
+                await asyncio.sleep(1)
+    except asyncio.CancelledError as e:
+        print(f"[chat] Pub/Sub listener cancelled: {type(e)}")
+        raise
+    except BaseException as e:
+        print(f"[chat] Pub/Sub listener exited with unexpected BaseException: {type(e)}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
     finally:
-        await pubsub.unsubscribe("chat:all", "chat:supervisor")
-        await pubsub.close()
+        try:
+            await pubsub.unsubscribe("chat:all", "chat:supervisor")
+            await pubsub.close()
+        except Exception:
+            pass
         print("[chat] Pub/Sub listener stopped")
 
 

@@ -541,6 +541,11 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.date-header:hover {
+  background-color: var(--border);
 }
 
 .date-header svg {
@@ -568,6 +573,11 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.85rem;
+  transition: opacity 0.15s ease;
+}
+
+.shift-header:hover {
+  opacity: 0.75;
 }
 
 .shift-header svg {
