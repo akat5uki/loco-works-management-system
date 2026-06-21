@@ -19,7 +19,7 @@ interface LocoType {
 }
 
 interface Loco {
-  loco_number: number;
+  loco_number: string;
   loco_type_id: number;
   date_time: string;
   stage: number;
@@ -291,7 +291,7 @@ const MasterDataPage = () => {
             {activeTab === "locos" && (
               <>
                 <input
-                  type="number"
+                  type="text"
                   placeholder="Loco Number"
                   required
                   disabled={isEditing}
@@ -299,7 +299,7 @@ const MasterDataPage = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      loco_number: parseInt(e.target.value),
+                      loco_number: e.target.value.trim(),
                     })
                   }
                 />

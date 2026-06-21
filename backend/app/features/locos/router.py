@@ -9,6 +9,7 @@ from sqlalchemy.future import select
 
 from app.core.database import get_db
 from app.core.exceptions import handle_db_error
+from app.core.loco_encoder import LocoNumberStr, encode_loco_number
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.features.jobs.models import Job
 from app.features.locos.models import Loco, LocoType
@@ -31,7 +32,7 @@ class LocoTypeRead(LocoTypeBase):
 
 
 class LocoBase(BaseModel):
-    loco_number: int
+    loco_number: LocoNumberStr
     loco_type_id: int
     date_time: datetime
     stage: int
@@ -135,7 +136,9 @@ async def create_loco(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
         )
-    db_loco = Loco(**loco.model_dump())
+    data = loco.model_dump()
+    data["loco_number"] = encode_loco_number(data["loco_number"])
+    db_loco = Loco(**data)
     db.add(db_loco)
     try:
         await db.commit()
@@ -198,7 +201,7 @@ async def delete_loco_type(
 
 @router.put("/{loco_number}", response_model=LocoRead)
 async def update_loco(
-    loco_number: int,
+    loco_number: str,
     loco: LocoBase,
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
@@ -208,12 +211,15 @@ async def update_loco(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
         )
-    result = await db.execute(select(Loco).where(Loco.loco_number == loco_number))
+    loco_number_int = encode_loco_number(loco_number)
+    result = await db.execute(select(Loco).where(Loco.loco_number == loco_number_int))
     db_loco = result.scalar_one_or_none()
     if not db_loco:
         raise HTTPException(status_code=404, detail="Locomotive not found")
     
-    for key, value in loco.model_dump().items():
+    data = loco.model_dump()
+    data["loco_number"] = encode_loco_number(data["loco_number"])
+    for key, value in data.items():
         setattr(db_loco, key, value)
     
     try:
@@ -227,11 +233,12 @@ async def update_loco(
 
 @router.delete("/{loco_number}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_loco(
-    loco_number: int,
+    loco_number: str,
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Loco).where(Loco.loco_number == loco_number))
+    loco_number_int = encode_loco_number(loco_number)
+    result = await db.execute(select(Loco).where(Loco.loco_number == loco_number_int))
     db_loco = result.scalar_one_or_none()
     if not db_loco:
         raise HTTPException(status_code=404, detail="Locomotive not found")

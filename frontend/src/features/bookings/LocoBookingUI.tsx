@@ -11,11 +11,11 @@ import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./LocoBooking.css";
 
 /* ── types ─────────────────────────────────────────────────────────── */
-interface Loco { loco_number: number; loco_type_id: number; date_time: string; stage: number; shift: number; despatched: boolean; }
+interface Loco { loco_number: string; loco_type_id: number; date_time: string; stage: number; shift: number; despatched: boolean; }
 interface LocoType { loco_type_id: number; loco_type_name: string; }
 interface Job { job_id: number; job_description: string; stage: number; }
 interface RawBooking {
-  loco_number: number; date_time: string; job_id: number; job_description: string;
+  loco_number: string; date_time: string; job_id: number; job_description: string;
   task_id: number | null; task_description: string | null;
   ticket_number: number; employee_name: string; shift: number;
 }
@@ -47,7 +47,7 @@ const guessShift = () => {
 };
 
 function groupBookings(list: RawBooking[]) {
-  const groups: Record<string, Record<number, Record<number, { employee_name: string; date_time: string; jobs: Record<number, { job_description: string; tasks: { id: number, desc: string }[] }> }>>> = {};
+  const groups: Record<string, Record<number, Record<string, { employee_name: string; date_time: string; jobs: Record<number, { job_description: string; tasks: { id: number, desc: string }[] }> }>>> = {};
   list.forEach((b) => {
     const dateStr = new Date(b.date_time).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const shift = b.shift;
@@ -119,11 +119,11 @@ const LocoBookingUI = () => {
   const [message, setMessage] = useState("");
 
   /* edit modal states */
-  const [editingJob, setEditingJob] = useState<{ locoNum: number; dateTime: string; oldJobId: number; newJobId: number } | null>(null);
+  const [editingJob, setEditingJob] = useState<{ locoNum: string; dateTime: string; oldJobId: number; newJobId: number } | null>(null);
   const [editingTask, setEditingTask] = useState<{ taskId: number; description: string } | null>(null);
 
   /* add single job/task modal/input states */
-  const [addingJobLoco, setAddingJobLoco] = useState<{ locoNum: number; dateTime: string; shift: number } | null>(null);
+  const [addingJobLoco, setAddingJobLoco] = useState<{ locoNum: string; dateTime: string; shift: number } | null>(null);
   const [selectedAddJobId, setSelectedAddJobId] = useState<number | "">("");
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
 
@@ -246,11 +246,11 @@ const LocoBookingUI = () => {
     setLoading(true);
     try {
       const res = await api.post("/locos/", {
-        loco_number: parseInt(newLcoNum), loco_type_id: parseInt(newLcoType),
+        loco_number: newLcoNum.trim(), loco_type_id: parseInt(newLcoType),
         date_time: new Date().toISOString(), stage: parseInt(newLcoStage), shift: parseInt(newLcoShift),
       });
       const nl: Loco = res.data;
-      setLocos(p => [...p, nl]); setSelectedLoco(nl); setSearchTerm(nl.loco_number.toString());
+      setLocos(p => [...p, nl]); setSelectedLoco(nl); setSearchTerm(nl.loco_number);
       setIsAddingLoco(false); setNewLcoNum(""); setNewLcoType("");
     } catch (err) {
       const axiosError = err as AxiosError<{ detail?: string }>;
@@ -346,7 +346,7 @@ const LocoBookingUI = () => {
     });
   };
 
-  const handleDeleteJob = async (locoNum: number, dateTime: string, jobId: number) => {
+  const handleDeleteJob = async (locoNum: string, dateTime: string, jobId: number) => {
     if (!confirm("Delete this job?")) return;
     try { await api.delete(`/bookings/${locoNum}/${dateTime}/${jobId}`); fetchData(); }
     catch { alert("Failed to delete job"); }
@@ -362,11 +362,11 @@ const LocoBookingUI = () => {
     setEditingTask({ taskId, description: oldDesc });
   };
 
-  const handleEditJob = (locoNum: number, dateTime: string, oldJobId: number) => {
+  const handleEditJob = (locoNum: string, dateTime: string, oldJobId: number) => {
     setEditingJob({ locoNum, dateTime, oldJobId, newJobId: oldJobId });
   };
 
-  const handleDeleteLocoBooking = async (locoNum: number, dateTime: string) => {
+  const handleDeleteLocoBooking = async (locoNum: string, dateTime: string) => {
     if (!confirm(`Delete all bookings for Locomotive #${locoNum} on this shift?`)) return;
     try {
       await api.delete(`/bookings/${locoNum}/${dateTime}`);
@@ -376,7 +376,7 @@ const LocoBookingUI = () => {
     }
   };
 
-  const handleAddSingleTask = async (locoNum: number, dateTime: string, jobId: number) => {
+  const handleAddSingleTask = async (locoNum: string, dateTime: string, jobId: number) => {
     const key = `${locoNum}-${dateTime}-${jobId}`;
     const desc = newTaskInputs[key]?.trim();
     if (!desc) return;
@@ -664,7 +664,7 @@ const LocoBookingUI = () => {
                     <div className="inline-grid">
                       <div className="form-group">
                         <label>Loco Number</label>
-                        <input type="number" value={newLcoNum} onChange={e => setNewLcoNum(e.target.value)} required />
+                        <input type="text" value={newLcoNum} onChange={e => setNewLcoNum(e.target.value)} required />
                       </div>
                       <div className="form-group">
                         <label>Loco Type</label>
@@ -929,7 +929,7 @@ const LocoBookingUI = () => {
                                 {!isShiftCollapsed && (
                                   <div className="locos-list">
                                     {Object.keys(groupedToday[dateStr][parseInt(shift)]).map(locoStr => {
-                                      const locoNum = parseInt(locoStr);
+                                      const locoNum = locoStr;
                                       const record = groupedToday[dateStr][parseInt(shift)][locoNum];
                                       const ml = locos.find(l => l.loco_number === locoNum);
                                       const tn = ml ? typeName(ml.loco_type_id) : null;
@@ -1201,7 +1201,7 @@ const LocoBookingUI = () => {
                                 {!isShiftCollapsed && (
                                   <div className="locos-list">
                                     {Object.keys(groupedAll[dateStr][parseInt(shift)]).map(locoStr => {
-                                      const locoNum = parseInt(locoStr);
+                                      const locoNum = locoStr;
                                       const record = groupedAll[dateStr][parseInt(shift)][locoNum];
                                       const ml = locos.find(l => l.loco_number === locoNum);
                                       const tn = ml ? typeName(ml.loco_type_id) : null;

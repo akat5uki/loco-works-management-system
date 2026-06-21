@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
+from app.core.loco_encoder import LocoNumberStr, encode_loco_number, decode_loco_number
 from app.features.auth.dependencies import CurrentUser
 from app.features.bookings.models import BookingTask, LocoBooking
 from app.features.employees.models import Employee
@@ -28,21 +29,21 @@ class JobBookingInput(BaseModel):
 
 
 class BookingCreateBatch(BaseModel):
-    loco_number: int
+    loco_number: LocoNumberStr
     date_time: datetime
     shift: int          # now supplied by the user, not inferred from loco
     bookings: List[JobBookingInput]
 
 
 class SingleTaskAddInput(BaseModel):
-    loco_number: int
+    loco_number: LocoNumberStr
     date_time: datetime
     job_id: int
     task_description: str
 
 
 class SingleJobAddInput(BaseModel):
-    loco_number: int
+    loco_number: LocoNumberStr
     date_time: datetime
     job_id: int
     shift: int
@@ -59,6 +60,8 @@ async def create_booking(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
         )
+
+    loco_number_int = encode_loco_number(booking.loco_number)
 
     from zoneinfo import ZoneInfo
     from datetime import datetime
@@ -79,7 +82,7 @@ async def create_booking(
 
     # Verify loco exists
     result = await db.execute(
-        select(Loco).where(Loco.loco_number == booking.loco_number)
+        select(Loco).where(Loco.loco_number == loco_number_int)
     )
     db_loco = result.scalar_one_or_none()
     if not db_loco:
@@ -106,7 +109,7 @@ async def create_booking(
     existing_query = (
         select(LocoBooking)
         .where(
-            LocoBooking.loco_number == booking.loco_number,
+            LocoBooking.loco_number == loco_number_int,
             func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == input_date,
             LocoBooking.shift == booking.shift,
         )
@@ -122,7 +125,7 @@ async def create_booking(
     created_bookings = []
     for job_booking in booking.bookings:
         new_booking = LocoBooking(
-            loco_number=booking.loco_number,
+            loco_number=loco_number_int,
             date_time=booking.date_time,
             job_id=job_booking.job_id,
             ticket_number=current_user.ticket_number,
@@ -134,7 +137,7 @@ async def create_booking(
 
         for task_in in job_booking.tasks:
             db_task = BookingTask(
-                loco_number=booking.loco_number,
+                loco_number=loco_number_int,
                 date_time=booking.date_time,
                 job_id=job_booking.job_id,
                 task_description=task_in.task_description,
@@ -160,8 +163,9 @@ async def add_booking_task(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
+    loco_number_int = encode_loco_number(task_in.loco_number)
     query = select(LocoBooking).where(
-        LocoBooking.loco_number == task_in.loco_number,
+        LocoBooking.loco_number == loco_number_int,
         LocoBooking.date_time == task_in.date_time,
         LocoBooking.job_id == task_in.job_id
     )
@@ -171,7 +175,7 @@ async def add_booking_task(
         raise HTTPException(status_code=404, detail="Parent job booking not found")
     
     db_task = BookingTask(
-        loco_number=task_in.loco_number,
+        loco_number=loco_number_int,
         date_time=task_in.date_time,
         job_id=task_in.job_id,
         task_description=task_in.task_description
@@ -193,6 +197,8 @@ async def add_job_booking(
             detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
         )
 
+    loco_number_int = encode_loco_number(job_in.loco_number)
+
     from zoneinfo import ZoneInfo
     from datetime import datetime
     local_tz = ZoneInfo("Asia/Kolkata")
@@ -211,7 +217,7 @@ async def add_job_booking(
         )
 
     query = select(LocoBooking).where(
-        LocoBooking.loco_number == job_in.loco_number,
+        LocoBooking.loco_number == loco_number_int,
         LocoBooking.date_time == job_in.date_time,
         LocoBooking.job_id == job_in.job_id
     )
@@ -220,7 +226,7 @@ async def add_job_booking(
         raise HTTPException(status_code=400, detail="This job is already booked for this locomotive at this time.")
     
     new_booking = LocoBooking(
-        loco_number=job_in.loco_number,
+        loco_number=loco_number_int,
         date_time=job_in.date_time,
         job_id=job_in.job_id,
         ticket_number=current_user.ticket_number,
@@ -234,7 +240,7 @@ async def add_job_booking(
 
 def _booking_row_to_dict(row) -> dict:
     return {
-        "loco_number": row.loco_number,
+        "loco_number": decode_loco_number(row.loco_number),
         "date_time": row.date_time.isoformat() if row.date_time else None,
         "job_id": row.job_id,
         "job_description": row.job_description,
@@ -294,33 +300,37 @@ async def get_bookings(
 
 @router.get("/loco/{loco_number}")
 async def get_loco_history(
-    loco_number: int,
+    loco_number: str,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     """Return the full job history for a single locomotive, newest first."""
+    loco_number_int = encode_loco_number(loco_number)
     query = _base_booking_query().where(
-        LocoBooking.loco_number == loco_number
+        LocoBooking.loco_number == loco_number_int
     )
     result = await db.execute(query)
     rows = result.all()
     if not rows:
         # Verify loco even exists
         loco_check = await db.execute(
-            select(Loco).where(Loco.loco_number == loco_number)
+            select(Loco).where(Loco.loco_number == loco_number_int)
         )
         if not loco_check.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Locomotive not found")
     return [_booking_row_to_dict(row) for row in rows]
+
+
 @router.delete("/{loco_number}/{date_time}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_loco_booking_batch(
-    loco_number: int,
+    loco_number: str,
     date_time: datetime,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
+    loco_number_int = encode_loco_number(loco_number)
     query = select(LocoBooking).where(
-        LocoBooking.loco_number == loco_number,
+        LocoBooking.loco_number == loco_number_int,
         LocoBooking.date_time == date_time
     )
     result = await db.execute(query)
@@ -331,16 +341,18 @@ async def delete_loco_booking_batch(
         await db.delete(booking)
     await db.commit()
 
+
 @router.delete("/{loco_number}/{date_time}/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job_booking(
-    loco_number: int,
+    loco_number: str,
     date_time: datetime,
     job_id: int,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
+    loco_number_int = encode_loco_number(loco_number)
     query = select(LocoBooking).where(
-        LocoBooking.loco_number == loco_number,
+        LocoBooking.loco_number == loco_number_int,
         LocoBooking.date_time == date_time,
         LocoBooking.job_id == job_id
     )
@@ -389,17 +401,18 @@ class JobUpdateInput(BaseModel):
 
 @router.put("/{loco_number}/{date_time}/{job_id}")
 async def update_job_booking(
-    loco_number: int,
+    loco_number: str,
     date_time: datetime,
     job_id: int,
     job_in: JobUpdateInput,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
+    loco_number_int = encode_loco_number(loco_number)
     # This is tricky because job_id is part of the primary key.
     # The safest way is to insert a new LocoBooking and its tasks, then delete the old one.
     query = select(LocoBooking).where(
-        LocoBooking.loco_number == loco_number,
+        LocoBooking.loco_number == loco_number_int,
         LocoBooking.date_time == date_time,
         LocoBooking.job_id == job_id
     )
@@ -410,7 +423,7 @@ async def update_job_booking(
     
     # Check if target job already exists
     check_q = select(LocoBooking).where(
-        LocoBooking.loco_number == loco_number,
+        LocoBooking.loco_number == loco_number_int,
         LocoBooking.date_time == date_time,
         LocoBooking.job_id == job_in.new_job_id
     )
@@ -419,7 +432,7 @@ async def update_job_booking(
         raise HTTPException(status_code=400, detail="This job is already booked for this loco at this time.")
 
     tasks_query = select(BookingTask).where(
-        BookingTask.loco_number == loco_number,
+        BookingTask.loco_number == loco_number_int,
         BookingTask.date_time == date_time,
         BookingTask.job_id == job_id
     )
@@ -427,7 +440,7 @@ async def update_job_booking(
     tasks = tasks_res.scalars().all()
 
     new_booking = LocoBooking(
-        loco_number=booking.loco_number,
+        loco_number=loco_number_int,
         date_time=booking.date_time,
         job_id=job_in.new_job_id,
         ticket_number=booking.ticket_number,
@@ -439,7 +452,7 @@ async def update_job_booking(
 
     for t in tasks:
         new_task = BookingTask(
-            loco_number=new_booking.loco_number,
+            loco_number=loco_number_int,
             date_time=new_booking.date_time,
             job_id=new_booking.job_id,
             task_description=t.task_description
