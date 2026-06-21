@@ -193,7 +193,9 @@ const EmployeesBookingWizard = () => {
         navigate("/dashboard", { replace: true });
       }
       // Set default tab based on designation
-      if (r.data.designation_id === 1 || r.data.designation_id === 2) {
+      if (r.data.designation_id === 1) {
+        setActiveViewTab("loco");
+      } else if (r.data.designation_id === 2) {
         setActiveViewTab("supervisor");
       } else {
         setActiveViewTab("staff");
@@ -558,11 +560,11 @@ const EmployeesBookingWizard = () => {
       // Fill in default empty values for unremarked items
       Object.values(jobMap).forEach((j: JobInfo) => {
         if (!defRemarks[j.job_id]) {
-          defRemarks[j.job_id] = { completed: true, remarks: "" };
+          defRemarks[j.job_id] = { completed: false, remarks: "" };
         }
         j.tasks.forEach(t => {
           if (!defTaskRemarks[t.task_id]) {
-            defTaskRemarks[t.task_id] = { completed: true, remarks: "" };
+            defTaskRemarks[t.task_id] = { completed: false, remarks: "" };
           }
         });
       });
@@ -614,7 +616,7 @@ const EmployeesBookingWizard = () => {
           const job = locoJobs.jobs.find(j => j.job_id === jobId);
           const taskRemarks = (job?.tasks || []).map(t => ({
             task_id: t.task_id,
-            completed: taskRemarksState[t.task_id]?.completed ?? true,
+            completed: taskRemarksState[t.task_id]?.completed ?? false,
             remarks: taskRemarksState[t.task_id]?.remarks ?? ""
           }));
 
@@ -1286,7 +1288,7 @@ const EmployeesBookingWizard = () => {
                       <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
                         <input
                           type="checkbox"
-                          checked={remarksState[job.job_id]?.completed ?? true}
+                          checked={remarksState[job.job_id]?.completed ?? false}
                           onChange={e => {
                             const val = e.target.checked;
                             setRemarksState(prev => ({
@@ -1322,7 +1324,7 @@ const EmployeesBookingWizard = () => {
                               <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem" }}>
                                 <input
                                   type="checkbox"
-                                  checked={taskRemarksState[task.task_id]?.completed ?? true}
+                                  checked={taskRemarksState[task.task_id]?.completed ?? false}
                                   onChange={e => {
                                     const val = e.target.checked;
                                     setTaskRemarksState(prev => ({

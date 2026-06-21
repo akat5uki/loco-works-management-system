@@ -63,4 +63,4 @@ class LocoBookingRemarks(Base):
     )
     task_id: Mapped[int] = mapped_column(BigInteger, nullable=True)  # maps to BookingTask.task_id
     remarks: Mapped[str] = mapped_column(Text, nullable=False)
-    completed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
