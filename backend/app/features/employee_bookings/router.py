@@ -34,8 +34,9 @@ class BookingSavePayload(BaseModel):
     date_str: str  # YYYY-MM-DD
     shift: int
     loco_number: LocoNumberStr
-    supervisor_ticket_number: int  # for SSE to book JE/SSE
-    staff_ticket_numbers: List[int] = []  # for JE/SSE to book staff
+    supervisor_ticket_numbers: Optional[List[int]] = None
+    supervisor_ticket_number: Optional[int] = None
+    staff_ticket_numbers: Optional[List[int]] = None
     forward: bool = False
     phase: Optional[int] = None
 
@@ -255,7 +256,7 @@ async def save_bookings(
                 detail=f"Cannot save changes. The editing window is locked by {owner.get('name')}.",
             )
 
-    # 1. Validate Availability (cannot be absent)
+    # 1. Fetch absent list
     absent_query = select(EmployeeAvailability.ticket_number).where(
         and_(
             func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == local_date,
@@ -264,110 +265,175 @@ async def save_bookings(
     )
     absent_res = await db.execute(absent_query)
     absent_tickets = set(absent_res.scalars().all())
-    
-    if payload.supervisor_ticket_number in absent_tickets:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Selected supervisor is marked absent for this shift."
-        )
-        
-    for staff_ticket in payload.staff_ticket_numbers:
-        if staff_ticket in absent_tickets:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Selected staff member #{staff_ticket} is marked absent for this shift."
-            )
 
-    # 2. Validate Simultaneous Bookings (cannot be booked on another locomotive)
-    # Query all bookings for this date and shift, excluding the current locomotive
-    query = select(EmployeeBooking).where(
-        and_(
-            func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
-            EmployeeBooking.shift == payload.shift,
-            EmployeeBooking.loco_number != loco_number_int
-        )
-    )
-    result = await db.execute(query)
-    existing_bookings = result.scalars().all()
-    
-    # Collect all booked ticket numbers on other locomotives
-    booked_supervisors = {b.supervisor_ticket_number for b in existing_bookings}
-    booked_staff = {b.staff_ticket_number for b in existing_bookings if b.staff_ticket_number is not None}
-    already_booked = booked_supervisors.union(booked_staff)
-    
-    if payload.supervisor_ticket_number in already_booked:
-        other_b = next(b for b in existing_bookings if b.supervisor_ticket_number == payload.supervisor_ticket_number or b.staff_ticket_number == payload.supervisor_ticket_number)
-        other_loco = decode_loco_number(other_b.loco_number)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Supervisor is already booked on Locomotive #{other_loco} for this shift."
-        )
-        
-    for staff_ticket in payload.staff_ticket_numbers:
-        if staff_ticket in already_booked:
-            other_b = next(b for b in existing_bookings if b.supervisor_ticket_number == staff_ticket or b.staff_ticket_number == staff_ticket)
-            other_loco = decode_loco_number(other_b.loco_number)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Staff member #{staff_ticket} is already booked on Locomotive #{other_loco} for this shift."
-            )
-
-    # 3. Save Bookings
-    # Delete existing bookings for this loco, date, shift
-    del_query = delete(EmployeeBooking).where(
-        and_(
-            EmployeeBooking.loco_number == loco_number_int,
-            func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
-            EmployeeBooking.shift == payload.shift,
-        )
-    )
-    await db.execute(del_query)
-    
     notifications_to_send = []
-    
-    # Save supervisor assignment
-    db.add(
-        EmployeeBooking(
-            loco_number=loco_number_int,
-            date_time=parsed_date,
-            shift=payload.shift,
-            supervisor_ticket_number=payload.supervisor_ticket_number,
-            staff_ticket_number=None,
-            is_forwarded=True,
-        )
-    )
-    
-    if payload.supervisor_ticket_number != current_user.ticket_number:
-        notifications_to_send.append(
-            EmployeeNotification(
-                ticket_number=payload.supervisor_ticket_number,
-                message=f"Supervisor #{current_user.ticket_number} assigned you as supervisor for Loco #{payload.loco_number}.",
+
+    # ── CASE A: Booking Supervisors ──
+    if payload.supervisor_ticket_numbers is not None:
+        # Check supervisor availability
+        for sup_ticket in payload.supervisor_ticket_numbers:
+            if sup_ticket in absent_tickets:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Supervisor #{sup_ticket} is marked absent for this shift."
+                )
+
+        # Get existing supervisor rows for this loco/date/shift
+        existing_sup_query = select(EmployeeBooking).where(
+            and_(
+                EmployeeBooking.loco_number == loco_number_int,
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
+                EmployeeBooking.shift == payload.shift,
             )
         )
-        
-    # Save staff assignments
-    for staff_ticket in payload.staff_ticket_numbers:
-        db.add(
-            EmployeeBooking(
-                loco_number=loco_number_int,
-                date_time=parsed_date,
-                shift=payload.shift,
-                supervisor_ticket_number=payload.supervisor_ticket_number,
-                staff_ticket_number=staff_ticket,
-                is_forwarded=True,
+        existing_sup_res = await db.execute(existing_sup_query)
+        existing_bookings = existing_sup_res.scalars().all()
+
+        # Supervisors currently assigned
+        assigned_sups = {b.supervisor_ticket_number for b in existing_bookings}
+        new_sups = set(payload.supervisor_ticket_numbers)
+
+        # Delete any supervisors no longer selected (and their staff)
+        sups_to_delete = assigned_sups - new_sups
+        if sups_to_delete:
+            del_query = delete(EmployeeBooking).where(
+                and_(
+                    EmployeeBooking.loco_number == loco_number_int,
+                    func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
+                    EmployeeBooking.shift == payload.shift,
+                    EmployeeBooking.supervisor_ticket_number.in_(list(sups_to_delete)),
+                )
+            )
+            await db.execute(del_query)
+
+        # Add new supervisor bookings
+        sups_to_add = new_sups - assigned_sups
+        for sup_ticket in sups_to_add:
+            db.add(
+                EmployeeBooking(
+                    loco_number=loco_number_int,
+                    date_time=parsed_date,
+                    shift=payload.shift,
+                    supervisor_ticket_number=sup_ticket,
+                    staff_ticket_number=None,
+                    is_forwarded=True,
+                )
+            )
+            if sup_ticket != current_user.ticket_number:
+                notifications_to_send.append(
+                    EmployeeNotification(
+                        ticket_number=sup_ticket,
+                        message=f"Supervisor #{current_user.ticket_number} assigned you to Loco #{payload.loco_number}.",
+                    )
+                )
+
+        # Trigger notification to ALL supervisors to begin booking staffs
+        all_sups_query = select(Employee.ticket_number).where(Employee.designation_id.in_([1, 2]))
+        all_sups_res = await db.execute(all_sups_query)
+        all_sups = all_sups_res.scalars().all()
+
+        for s_ticket in all_sups:
+            # Avoid duplicate notification if already added above
+            if not any(n.ticket_number == s_ticket for n in notifications_to_send):
+                notifications_to_send.append(
+                    EmployeeNotification(
+                        ticket_number=s_ticket,
+                        message=f"Supervisors assigned for Loco #{payload.loco_number}. Please begin booking staffs.",
+                    )
+                )
+
+    # ── CASE B: Booking Staff under a supervisor ──
+    elif payload.supervisor_ticket_number is not None and payload.staff_ticket_numbers is not None:
+        # Check supervisor assignment first
+        sup_check_query = select(EmployeeBooking).where(
+            and_(
+                EmployeeBooking.loco_number == loco_number_int,
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
+                EmployeeBooking.shift == payload.shift,
+                EmployeeBooking.supervisor_ticket_number == payload.supervisor_ticket_number,
+                EmployeeBooking.staff_ticket_number.is_(None)
             )
         )
-        notifications_to_send.append(
-            EmployeeNotification(
-                ticket_number=staff_ticket,
-                message=f"Supervisor #{current_user.ticket_number} assigned you to Loco #{payload.loco_number} as staff.",
+        sup_check_res = await db.execute(sup_check_query)
+        is_assigned = sup_check_res.scalars().first()
+        if not is_assigned:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Supervisor #{payload.supervisor_ticket_number} is not assigned to Locomotive #{payload.loco_number}."
+            )
+
+        # Check staff availability
+        for staff_ticket in payload.staff_ticket_numbers:
+            if staff_ticket in absent_tickets:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Staff member #{staff_ticket} is marked absent for this shift."
+                )
+
+        # Validate Simultaneous Bookings for staff (cannot be booked on another locomotive)
+        # Query all bookings for this date and shift across other locomotives
+        query = select(EmployeeBooking).where(
+            and_(
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
+                EmployeeBooking.shift == payload.shift,
+                EmployeeBooking.loco_number != loco_number_int,
+                EmployeeBooking.staff_ticket_number.is_not(None)
             )
         )
-        
+        result = await db.execute(query)
+        existing_bookings = result.scalars().all()
+        booked_staff = {b.staff_ticket_number for b in existing_bookings}
+
+        for staff_ticket in payload.staff_ticket_numbers:
+            if staff_ticket in booked_staff:
+                other_b = next(b for b in existing_bookings if b.staff_ticket_number == staff_ticket)
+                other_loco = decode_loco_number(other_b.loco_number)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Staff member #{staff_ticket} is already booked on Locomotive #{other_loco} for this shift."
+                )
+
+        # Delete existing staff assignments under this supervisor for this loco/shift
+        del_query = delete(EmployeeBooking).where(
+            and_(
+                EmployeeBooking.loco_number == loco_number_int,
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
+                EmployeeBooking.shift == payload.shift,
+                EmployeeBooking.supervisor_ticket_number == payload.supervisor_ticket_number,
+                EmployeeBooking.staff_ticket_number.is_not(None),
+            )
+        )
+        await db.execute(del_query)
+
+        # Add staff assignments
+        for staff_ticket in payload.staff_ticket_numbers:
+            db.add(
+                EmployeeBooking(
+                    loco_number=loco_number_int,
+                    date_time=parsed_date,
+                    shift=payload.shift,
+                    supervisor_ticket_number=payload.supervisor_ticket_number,
+                    staff_ticket_number=staff_ticket,
+                    is_forwarded=True,
+                )
+            )
+            notifications_to_send.append(
+                EmployeeNotification(
+                    ticket_number=staff_ticket,
+                    message=f"Supervisor #{current_user.ticket_number} assigned you to Loco #{payload.loco_number} under Supervisor #{payload.supervisor_ticket_number}.",
+                )
+            )
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payload structure: specify either supervisor_ticket_numbers (to book supervisors) or supervisor_ticket_number and staff_ticket_numbers (to book staff)."
+        )
+
     # Save notifications
     for n in notifications_to_send:
         db.add(n)
-        
+
     try:
         await db.commit()
         # Broadcast real-time notifications
