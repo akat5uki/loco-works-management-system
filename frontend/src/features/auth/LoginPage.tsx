@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, User, RefreshCw, Home } from "lucide-react";
+import { Lock, User, RefreshCw, Home, ShieldCheck } from "lucide-react";
 import axios from "axios";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -10,10 +10,24 @@ const LoginPage = () => {
   const [ticketNumber, setTicketNumber] = useState("");
   const [password, setPassword] = useState("");
   const [captcha, setCaptcha] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
+
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
 
   // If a valid session cookie already exists, skip the login page
   useEffect(() => {
@@ -42,6 +56,14 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (captcha.trim().toUpperCase() !== captchaCode) {
+      setError("Incorrect captcha code. Please try again.");
+      setCaptcha("");
+      generateCaptcha();
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -118,18 +140,22 @@ const LoginPage = () => {
           <div className="input-group">
             <label htmlFor="captcha">Captcha</label>
             <div className="captcha-row">
-              <div className="captcha-box">ABCD</div>
-              <button type="button" className="refresh-btn">
+              <div className="captcha-box" style={{ fontFamily: "monospace" }}>{captchaCode}</div>
+              <button type="button" className="refresh-btn" onClick={generateCaptcha} title="Refresh Captcha">
                 <RefreshCw size={16} />
               </button>
-              <input
-                id="captcha"
-                type="text"
-                placeholder="Enter text"
-                value={captcha}
-                onChange={(e) => setCaptcha(e.target.value)}
-                required
-              />
+              <div className="input-wrapper" style={{ flex: 1 }}>
+                <ShieldCheck size={18} className="input-icon" style={{ zIndex: 1 }} />
+                <input
+                  id="captcha"
+                  type="text"
+                  placeholder="Enter Captcha"
+                  value={captcha}
+                  onChange={(e) => setCaptcha(e.target.value)}
+                  style={{ textTransform: "uppercase" }}
+                  required
+                />
+              </div>
             </div>
           </div>
 

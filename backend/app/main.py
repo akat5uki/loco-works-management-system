@@ -14,12 +14,16 @@ from app.features.locos.router import router as locos_router
 from app.features.realtime.router import redis_stream_listener, chat_pubsub_listener
 from app.features.realtime.router import router as realtime_router
 from app.features.chat.router import router as chat_router
+from app.features.employee_bookings.router import router as employee_bookings_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Seeding tasks is no longer needed since the child booking_tasks table is normalized
-    pass
+    # Ensure all tables are created on startup (including any newly defined feature tables)
+    from app.core.base import Base
+    from app.core.database import primary_engine
+    async with primary_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     # Start background listeners
     stream_task = asyncio.create_task(redis_stream_listener())
@@ -83,6 +87,9 @@ app.include_router(
 )
 app.include_router(
     bookings_router, prefix=f"{settings.API_V1_STR}/bookings", tags=["bookings"]
+)
+app.include_router(
+    employee_bookings_router, prefix=f"{settings.API_V1_STR}/bookings/employees", tags=["employee_bookings"]
 )
 app.include_router(
     realtime_router, prefix=f"{settings.API_V1_STR}/realtime", tags=["realtime"]

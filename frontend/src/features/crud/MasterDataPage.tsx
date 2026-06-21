@@ -340,17 +340,21 @@ const MasterDataPage = () => {
                 <select
                   required
                   value={formData.stage ?? ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const nextStage = parseInt(e.target.value);
                     setFormData({
                       ...formData,
-                      stage: parseInt(e.target.value),
-                    })
-                  }
+                      stage: nextStage,
+                      despatched: nextStage === 9,
+                    });
+                  }}
                 >
                   <option value="">-- Select Stage --</option>
                   <option value="0">0</option>
                   <option value="5">5</option>
+                  <option value="6">6</option>
                   <option value="7">7</option>
+                  <option value="9">9</option>
                 </select>
                 <select
                   required
@@ -371,9 +375,14 @@ const MasterDataPage = () => {
                     type="checkbox"
                     style={{ width: "1rem", height: "1rem", accentColor: "var(--accent)" }}
                     checked={!!formData.despatched}
-                    onChange={(e) =>
-                      setFormData({ ...formData, despatched: e.target.checked })
-                    }
+                    onChange={(e) => {
+                      const nextDespatched = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        despatched: nextDespatched,
+                        stage: nextDespatched ? 9 : (formData.stage === 9 ? 0 : (formData.stage ?? 0)),
+                      });
+                    }}
                   />
                   Despatched (left production unit)
                 </label>
@@ -406,9 +415,7 @@ const MasterDataPage = () => {
                     })
                   }
                 />
-                <input
-                  type="number"
-                  placeholder="Stage"
+                <select
                   required
                   value={formData.stage ?? ""}
                   onChange={(e) =>
@@ -417,7 +424,14 @@ const MasterDataPage = () => {
                       stage: parseInt(e.target.value),
                     })
                   }
-                />
+                >
+                  <option value="">-- Select Job Stage --</option>
+                  <option value="0">0</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="9">9</option>
+                </select>
               </>
             )}
             <button type="submit" disabled={loading}>

@@ -136,6 +136,21 @@ async def create_loco(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
         )
+    if loco.stage not in [0, 5, 6, 7, 9]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid stage. Stage must be one of 0, 5, 6, 7, or 9."
+        )
+    if loco.despatched and loco.stage != 9:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A despatched locomotive must have stage set to 9."
+        )
+    if loco.stage == 9 and not loco.despatched:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A locomotive at stage 9 must be marked as despatched."
+        )
     data = loco.model_dump()
     data["loco_number"] = encode_loco_number(data["loco_number"])
     db_loco = Loco(**data)
@@ -210,6 +225,21 @@ async def update_loco(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
+        )
+    if loco.stage not in [0, 5, 6, 7, 9]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid stage. Stage must be one of 0, 5, 6, 7, or 9."
+        )
+    if loco.despatched and loco.stage != 9:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A despatched locomotive must have stage set to 9."
+        )
+    if loco.stage == 9 and not loco.despatched:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A locomotive at stage 9 must be marked as despatched."
         )
     loco_number_int = encode_loco_number(loco_number)
     result = await db.execute(select(Loco).where(Loco.loco_number == loco_number_int))

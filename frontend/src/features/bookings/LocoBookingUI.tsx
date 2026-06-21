@@ -91,6 +91,7 @@ const LocoBookingUI = () => {
   const [newLcoType, setNewLcoType] = useState("");
   const [newLcoStage, setNewLcoStage] = useState("5");
   const [newLcoShift, setNewLcoShift] = useState("1");
+  const [showStage6, setShowStage6] = useState(false);
 
   /* tabs */
   const [activeTab, setActiveTab] = useState<"booking" | "list" | "history">("booking");
@@ -245,9 +246,11 @@ const LocoBookingUI = () => {
     if (!newLcoNum || !newLcoType) return;
     setLoading(true);
     try {
+      const stageInt = parseInt(newLcoStage);
       const res = await api.post("/locos/", {
         loco_number: newLcoNum.trim(), loco_type_id: parseInt(newLcoType),
-        date_time: new Date().toISOString(), stage: parseInt(newLcoStage), shift: parseInt(newLcoShift),
+        date_time: new Date().toISOString(), stage: stageInt, shift: parseInt(newLcoShift),
+        despatched: stageInt === 9
       });
       const nl: Loco = res.data;
       setLocos(p => [...p, nl]); setSelectedLoco(nl); setSearchTerm(nl.loco_number);
@@ -398,14 +401,22 @@ const LocoBookingUI = () => {
   const filteredTodayBookings = todayBookings.filter(b => {
     const matchesSearch = b.loco_number.toString().includes(listSearch.trim());
     const matchesShift = listShift === "all" || b.shift.toString() === listShift;
-    return getLocalDateString(b.date_time) === todayISO() && matchesSearch && matchesShift;
+    const matchesStage = showStage6 || (() => {
+      const loco = locos.find(l => l.loco_number.toString() === b.loco_number.toString());
+      return loco ? loco.stage !== 6 : true;
+    })();
+    return getLocalDateString(b.date_time) === todayISO() && matchesSearch && matchesShift && matchesStage;
   });
   const groupedToday = groupBookings(filteredTodayBookings);
 
   const filteredHistoryBookings = historyBookings.filter(b => {
     const matchesSearch = b.loco_number.toString().includes(historySearch.trim());
     const matchesShift = historyShift === "all" || b.shift.toString() === historyShift;
-    return matchesSearch && matchesShift;
+    const matchesStage = showStage6 || (() => {
+      const loco = locos.find(l => l.loco_number.toString() === b.loco_number.toString());
+      return loco ? loco.stage !== 6 : true;
+    })();
+    return matchesSearch && matchesShift && matchesStage;
   });
   const groupedAll = groupBookings(filteredHistoryBookings);
 
@@ -544,7 +555,11 @@ const LocoBookingUI = () => {
   };
 
   /* ── filtered search ── */
-  const filteredLocos = locos.filter(l => l.loco_number.toString().includes(searchTerm));
+  const filteredLocos = locos.filter(l => {
+    const matchesSearch = l.loco_number.toString().includes(searchTerm);
+    const matchesStage = showStage6 || l.stage !== 6;
+    return matchesSearch && matchesStage;
+  });
 
   /* ─────────────────────── RENDER ──────────────────────────────────── */
   return (
@@ -600,6 +615,19 @@ const LocoBookingUI = () => {
                       }
                     }}
                   />
+                </div>
+
+                <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="showStage6LocoBooking"
+                    checked={showStage6}
+                    onChange={e => setShowStage6(e.target.checked)}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
+                  />
+                  <label htmlFor="showStage6LocoBooking" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                    Show Stage 6 Locomotives
+                  </label>
                 </div>
 
                 {searchTerm && !selectedLoco && !isAddingLoco && (
@@ -675,7 +703,13 @@ const LocoBookingUI = () => {
                       </div>
                       <div className="form-group">
                         <label>Current Stage</label>
-                        <input type="number" value={newLcoStage} onChange={e => setNewLcoStage(e.target.value)} required />
+                        <select value={newLcoStage} onChange={e => setNewLcoStage(e.target.value)} required style={{ width: '100%', height: '38px', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}>
+                          <option value="0">0</option>
+                          <option value="5">5</option>
+                          <option value="6">6</option>
+                          <option value="7">7</option>
+                          <option value="9">9</option>
+                        </select>
                       </div>
                       <div className="form-group">
                         <label>Current Shift</label>
@@ -852,6 +886,42 @@ const LocoBookingUI = () => {
                       color: isEditMode ? 'var(--accent)' : 'var(--text-h)',
                     }}>
                       Edit Mode
+                    </span>
+                  </label>
+                </div>
+                <div className="filter-group" style={{ minWidth: '150px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Stage 6 Filter</label>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--border)',
+                    background: showStage6 ? 'var(--accent-bg)' : 'transparent',
+                    borderColor: showStage6 ? 'var(--accent)' : 'var(--border)',
+                    height: '38px',
+                    transition: 'all 0.2s',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={showStage6}
+                      onChange={e => setShowStage6(e.target.checked)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: 'var(--accent)',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: showStage6 ? 'var(--accent)' : 'var(--text-h)',
+                    }}>
+                      Show Stage 6
                     </span>
                   </label>
                 </div>
@@ -1125,6 +1195,42 @@ const LocoBookingUI = () => {
                     onChange={e => setHistoryEndDate(e.target.value)}
                     style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
                   />
+                </div>
+                <div className="filter-group" style={{ minWidth: '150px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Stage 6 Filter</label>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--border)',
+                    background: showStage6 ? 'var(--accent-bg)' : 'transparent',
+                    borderColor: showStage6 ? 'var(--accent)' : 'var(--border)',
+                    height: '38px',
+                    transition: 'all 0.2s',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={showStage6}
+                      onChange={e => setShowStage6(e.target.checked)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: 'var(--accent)',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: showStage6 ? 'var(--accent)' : 'var(--text-h)',
+                    }}>
+                      Show Stage 6
+                    </span>
+                  </label>
                 </div>
                 <div className="filter-group" style={{ minWidth: '180px' }}>
                   <label className="form-label" style={{ marginBottom: '0.25rem' }}>View Controls</label>

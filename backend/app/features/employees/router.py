@@ -9,6 +9,27 @@ from app.features.employees.models import Designation, Employee, EmployeeCategor
 router = APIRouter()
 
 
+@router.get("/")
+async def get_employees(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Employee, Designation, EmployeeCategory)
+        .join(Designation, Employee.designation_id == Designation.designation_id)
+        .join(EmployeeCategory, Designation.category_id == EmployeeCategory.category_id)
+    )
+    rows = result.all()
+    return [
+        {
+            "ticket_number": r[0].ticket_number,
+            "name": r[0].name,
+            "designation_id": r[0].designation_id,
+            "designation_name": r[1].designation_name,
+            "category_id": r[1].category_id,
+            "category_name": r[2].category_name,
+        }
+        for r in rows
+    ]
+
+
 @router.get("/designations")
 async def get_designations(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Designation))

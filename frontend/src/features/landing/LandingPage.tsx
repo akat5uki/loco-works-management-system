@@ -210,7 +210,7 @@ const LandingPage = () => {
                         background: "rgba(239,68,68,0.10)", color: "#ef4444",
                         whiteSpace: "nowrap",
                       }} title="Despatched locos">
-                        ✈ {t.despatched}
+                        ● {t.despatched}
                       </span>
                     )}
                     <span style={{

@@ -5,3 +5,9 @@ from app.features.employees.models import Employee, Designation, EmployeeCategor
 from app.features.jobs.models import Job, Task, EmployeeJobRating  # noqa
 from app.features.locos.models import Loco, LocoType  # noqa
 from app.features.bookings.models import LocoBooking  # noqa
+from app.features.employee_bookings.models import (  # noqa
+    EmployeeAvailability,
+    EmployeeBooking,
+    EmployeeNotification,
+    LocoBookingRemarks,
+)
