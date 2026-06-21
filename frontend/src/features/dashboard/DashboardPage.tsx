@@ -52,6 +52,16 @@ const DashboardPage = () => {
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "profile" | "chat">("dashboard");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  const [showWizardTile, setShowWizardTile] = useState(() => {
+    return localStorage.getItem("show_wizard_tile") === "true"; // Defaults to false
+  });
+
+  const handleToggleWizardTile = () => {
+    const nextVal = !showWizardTile;
+    setShowWizardTile(nextVal);
+    localStorage.setItem("show_wizard_tile", String(nextVal));
+  };
   
   // Real-time assignment and notifications
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -152,13 +162,17 @@ const DashboardPage = () => {
             description: "Book a locomotive for a job",
             path: "/bookings/loco",
           },
-          {
-            title: "Employees Booking",
-            icon: <Users size={32} />,
-            color: "#10b981",
-            description: "Manage employee availability & bookings",
-            path: "/bookings/employees",
-          },
+          ...(showWizardTile
+            ? [
+                {
+                  title: "Employees Booking",
+                  icon: <Users size={32} />,
+                  color: "#10b981",
+                  description: "Manage employee availability & bookings",
+                  path: "/bookings/employees",
+                },
+              ]
+            : []),
           {
             title: "CRUD Operations",
             icon: <Settings size={32} />,
@@ -261,6 +275,40 @@ const DashboardPage = () => {
             <p>Workplace Overview & Quick Actions</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {isSupervisor && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginRight: "0.5rem" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)" }}>Employees Booking</span>
+                <button
+                  type="button"
+                  onClick={handleToggleWizardTile}
+                  style={{
+                    position: "relative",
+                    width: "40px",
+                    height: "20px",
+                    borderRadius: "10px",
+                    background: showWizardTile ? "var(--accent)" : "#cbd5e1",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    transition: "background-color 0.2s"
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "2px",
+                      left: showWizardTile ? "22px" : "2px",
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "50%",
+                      background: "white",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      transition: "left 0.2s"
+                    }}
+                  />
+                </button>
+              </div>
+            )}
             <ThemeToggle />
             
             {/* Notification Bell */}
