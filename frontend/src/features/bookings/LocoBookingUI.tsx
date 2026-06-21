@@ -861,7 +861,7 @@ const LocoBookingUI = () => {
                     <button
                       type="button"
                       onClick={expandAllToday}
-                      className="btn-collapse-control primary"
+                      className="btn-collapse-control"
                       title="Expand all dates, shifts, and locomotives"
                     >
                       <ChevronDown size={14} /> Expand All
@@ -1132,7 +1132,7 @@ const LocoBookingUI = () => {
                     <button
                       type="button"
                       onClick={expandAllHistory}
-                      className="btn-collapse-control primary"
+                      className="btn-collapse-control"
                       title="Expand all dates, shifts, and locomotives"
                     >
                       <ChevronDown size={14} /> Expand All
