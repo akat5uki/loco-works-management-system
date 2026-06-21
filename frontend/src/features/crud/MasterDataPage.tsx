@@ -337,9 +337,7 @@ const MasterDataPage = () => {
                     });
                   }}
                 />
-                <input
-                  type="number"
-                  placeholder="Stage"
+                <select
                   required
                   value={formData.stage ?? ""}
                   onChange={(e) =>
@@ -348,7 +346,12 @@ const MasterDataPage = () => {
                       stage: parseInt(e.target.value),
                     })
                   }
-                />
+                >
+                  <option value="">-- Select Stage --</option>
+                  <option value="0">0</option>
+                  <option value="5">5</option>
+                  <option value="7">7</option>
+                </select>
                 <select
                   required
                   value={formData.shift ?? ""}

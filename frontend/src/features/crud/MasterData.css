@@ -115,7 +115,8 @@
   align-items: flex-end;
 }
 
-.crud-form input {
+.crud-form input,
+.crud-form select {
   padding: 0.625rem;
   border: 1px solid var(--border);
   border-radius: 0.375rem;
@@ -125,7 +126,8 @@
   transition: border-color 0.2s;
 }
 
-.crud-form input:focus {
+.crud-form input:focus,
+.crud-form select:focus {
   border-color: var(--accent);
 }
 
