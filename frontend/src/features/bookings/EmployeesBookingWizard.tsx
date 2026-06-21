@@ -26,7 +26,7 @@ interface Employee {
 }
 
 interface RawBooking {
-  loco_number: number;
+  loco_number: string;
   date_time: string;
   shift: number;
   supervisor_ticket_number: number;
@@ -36,7 +36,7 @@ interface RawBooking {
 
 interface ViewsData {
   by_loco: Array<{
-    loco_number: number;
+    loco_number: string;
     supervisors: Array<{
       supervisor_ticket_number: number;
       supervisor_name: string;
@@ -48,7 +48,7 @@ interface ViewsData {
     supervisor_ticket_number: number;
     supervisor_name: string;
     locos: Array<{
-      loco_number: number;
+      loco_number: string;
       is_forwarded: boolean;
       staff: Array<{ staff_ticket_number: number; staff_name: string }>;
     }>;
@@ -57,7 +57,7 @@ interface ViewsData {
     staff_ticket_number: number;
     staff_name: string;
     assignments: Array<{
-      loco_number: number;
+      loco_number: string;
       supervisor_ticket_number: number;
       supervisor_name: string;
     }>;
@@ -84,7 +84,7 @@ interface JobInfo {
 }
 
 interface ActiveLocoJobs {
-  loco_number: number;
+  loco_number: string;
   jobs: JobInfo[];
 }
 
@@ -115,7 +115,7 @@ const EmployeesBookingWizard = () => {
   // Data lists
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [availableTickets, setAvailableTickets] = useState<Set<number>>(new Set());
-  const [locos, setLocos] = useState<number[]>([]);
+  const [locos, setLocos] = useState<string[]>([]);
   const [bookings, setBookings] = useState<RawBooking[]>([]);
   const [viewsData, setViewsData] = useState<ViewsData | null>(null);
   
@@ -128,11 +128,11 @@ const EmployeesBookingWizard = () => {
   const lockTimer = useRef<number | null>(null);
 
   // Wizard selections
-  const [selectedLoco, setSelectedLoco] = useState<number | null>(null);
+  const [selectedLoco, setSelectedLoco] = useState<string | null>(null);
   const [selectedSupervisor, setSelectedSupervisor] = useState<number | "">("");
   
   // Staff Selection Map (Loco ID -> array of Staff tickets)
-  const [locoStaffMap, setLocoStaffMap] = useState<Record<number, number[]>>({});
+  const [locoStaffMap, setLocoStaffMap] = useState<Record<string, number[]>>({});
 
   // Carry Forward State
   const [locoJobs, setLocoJobs] = useState<ActiveLocoJobs | null>(null);
@@ -268,7 +268,7 @@ const EmployeesBookingWizard = () => {
       }
 
       // Map existing staff bookings to state
-      const newMap: Record<number, number[]> = {};
+      const newMap: Record<string, number[]> = {};
       bookingsRes.data.forEach((b: RawBooking) => {
         if (b.staff_ticket_number) {
           if (!newMap[b.loco_number]) newMap[b.loco_number] = [];
@@ -425,7 +425,7 @@ const EmployeesBookingWizard = () => {
 
 
   // ── Carry Forward / Completion panel ──
-  const loadLocoJobs = async (locoNum: number) => {
+  const loadLocoJobs = async (locoNum: string) => {
     try {
       // We will look at bookings for this loco/shift, and retrieve the jobs and tasks
       const bookingsRes = await api.get(`/bookings/?start_date=${dateStr}&end_date=${dateStr}`);

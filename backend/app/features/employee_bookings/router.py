@@ -172,7 +172,7 @@ async def get_available_locos(date_str: str, shift: int, db: AsyncSession = Depe
     )
     result = await db.execute(query)
     locos = result.scalars().all()
-    return {"locos": locos}
+    return {"locos": [decode_loco_number(l) for l in locos]}
 
 
 # 3. Lock Endpoints
