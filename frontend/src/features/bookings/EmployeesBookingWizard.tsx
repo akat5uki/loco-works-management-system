@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Users,
@@ -104,6 +104,7 @@ const guessShift = () => {
 
 const EmployeesBookingWizard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // User info
   const [currentUser, setCurrentUser] = useState<{ ticket_number: number; name: string; designation_id: number; is_supervisor: boolean } | null>(null);
@@ -202,6 +203,25 @@ const EmployeesBookingWizard = () => {
       }
     }).catch(() => navigate("/login", { replace: true }));
   }, [navigate]);
+
+  // Handle selectLoco redirection from Dashboard
+  useEffect(() => {
+    if (location.state && (location.state as any).selectLoco) {
+      const targetLoco = (location.state as any).selectLoco.toString();
+      setSelectedLoco(targetLoco);
+      
+      // Clean up the location state so it doesn't trigger on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+
+      // Scroll to the carry forward panel after it renders
+      setTimeout(() => {
+        const el = document.getElementById("remarks-section");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 500);
+    }
+  }, [location, navigate]);
 
 
   // Acquire lock heartbeat
@@ -1255,7 +1275,7 @@ const EmployeesBookingWizard = () => {
 
       {/* ── SECTION 4: Remarks & Carry Forward ── */}
       {currentUser && (currentUser.designation_id === 1 || currentUser.designation_id === 2) && (
-        <section className="view-content-card">
+        <section className="view-content-card" id="remarks-section">
           <h2>Job Completion Status &amp; Carry Forward Panel</h2>
           <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "-0.5rem" }}>
             Submit remarks for non-completed operations or carry forward tasks to the next shift.

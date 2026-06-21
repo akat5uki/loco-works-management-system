@@ -362,7 +362,10 @@ const DashboardPage = () => {
                       assignments.map((asg: any) => (
                         asg.locos.map((l: any) => (
                           <div key={l.loco_number} style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1rem", background: "var(--bg)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", marginBottom: "0.5rem" }}>
+                            <div 
+                              style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", marginBottom: "0.5rem", cursor: "pointer" }}
+                              onClick={() => navigate("/bookings/employees", { state: { selectLoco: l.loco_number } })}
+                            >
                               <Train size={18} /> Loco #{l.loco_number}
                             </div>
                             <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem" }}>Assigned Staff:</div>
