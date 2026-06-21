@@ -1142,3 +1142,41 @@
   color: #ef4444;
 }
 
+/* Collapse controls */
+.collapse-controls-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-collapse-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  height: 38px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.btn-collapse-control:hover {
+  background: var(--border);
+  color: var(--text-h);
+}
+
+.btn-collapse-control.primary {
+  background: var(--accent-bg, rgba(37, 99, 235, 0.1));
+  color: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+}
+
+.btn-collapse-control.primary:hover {
+  background: var(--accent, #2563eb);
+  color: #ffffff;
+}

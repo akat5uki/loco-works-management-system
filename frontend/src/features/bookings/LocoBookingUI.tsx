@@ -409,6 +409,140 @@ const LocoBookingUI = () => {
   });
   const groupedAll = groupBookings(filteredHistoryBookings);
 
+  // View Control Actions for Today's Booking List
+  const expandAllToday = () => {
+    const datesToExpand: string[] = [];
+    const shiftsToExpand: string[] = [];
+    const locosToExpand: string[] = [];
+
+    Object.keys(groupedToday).forEach(dateStr => {
+      datesToExpand.push(dateStr);
+      Object.keys(groupedToday[dateStr]).forEach(shiftStr => {
+        const shift = parseInt(shiftStr);
+        shiftsToExpand.push(`${dateStr}-${shift}`);
+        Object.keys(groupedToday[dateStr][shift]).forEach(locoStr => {
+          locosToExpand.push(`${dateStr}-${shift}-${locoStr}`);
+        });
+      });
+    });
+
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      datesToExpand.forEach(d => next.delete(d));
+      return next;
+    });
+    setCollapsedShifts(prev => {
+      const next = new Set(prev);
+      shiftsToExpand.forEach(s => next.delete(s));
+      return next;
+    });
+    setExpandedLocos(prev => {
+      const next = new Set(prev);
+      locosToExpand.forEach(l => next.add(l));
+      return next;
+    });
+  };
+
+  const collapseAllToday = () => {
+    const datesToCollapse: string[] = [];
+    const shiftsToCollapse: string[] = [];
+    const locosToCollapse: string[] = [];
+
+    Object.keys(groupedToday).forEach(dateStr => {
+      datesToCollapse.push(dateStr);
+      Object.keys(groupedToday[dateStr]).forEach(shiftStr => {
+        const shift = parseInt(shiftStr);
+        shiftsToCollapse.push(`${dateStr}-${shift}`);
+        Object.keys(groupedToday[dateStr][shift]).forEach(locoStr => {
+          locosToCollapse.push(`${dateStr}-${shift}-${locoStr}`);
+        });
+      });
+    });
+
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      datesToCollapse.forEach(d => next.add(d));
+      return next;
+    });
+    setCollapsedShifts(prev => {
+      const next = new Set(prev);
+      shiftsToCollapse.forEach(s => next.add(s));
+      return next;
+    });
+    setExpandedLocos(prev => {
+      const next = new Set(prev);
+      locosToCollapse.forEach(l => next.delete(l));
+      return next;
+    });
+  };
+
+  // View Control Actions for Booking History
+  const expandAllHistory = () => {
+    const datesToExpand: string[] = [];
+    const shiftsToExpand: string[] = [];
+    const locosToExpand: string[] = [];
+
+    Object.keys(groupedAll).forEach(dateStr => {
+      datesToExpand.push(`hist-${dateStr}`);
+      Object.keys(groupedAll[dateStr]).forEach(shiftStr => {
+        const shift = parseInt(shiftStr);
+        shiftsToExpand.push(`hist-${dateStr}-${shift}`);
+        Object.keys(groupedAll[dateStr][shift]).forEach(locoStr => {
+          locosToExpand.push(`hist-${dateStr}-${shift}-${locoStr}`);
+        });
+      });
+    });
+
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      datesToExpand.forEach(d => next.delete(d));
+      return next;
+    });
+    setCollapsedShifts(prev => {
+      const next = new Set(prev);
+      shiftsToExpand.forEach(s => next.delete(s));
+      return next;
+    });
+    setExpandedLocos(prev => {
+      const next = new Set(prev);
+      locosToExpand.forEach(l => next.add(l));
+      return next;
+    });
+  };
+
+  const collapseAllHistory = () => {
+    const datesToCollapse: string[] = [];
+    const shiftsToCollapse: string[] = [];
+    const locosToCollapse: string[] = [];
+
+    Object.keys(groupedAll).forEach(dateStr => {
+      datesToCollapse.push(`hist-${dateStr}`);
+      Object.keys(groupedAll[dateStr]).forEach(shiftStr => {
+        const shift = parseInt(shiftStr);
+        shiftsToCollapse.push(`hist-${dateStr}-${shift}`);
+        Object.keys(groupedAll[dateStr][shift]).forEach(locoStr => {
+          locosToCollapse.push(`hist-${dateStr}-${shift}-${locoStr}`);
+        });
+      });
+    });
+
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      datesToCollapse.forEach(d => next.add(d));
+      return next;
+    });
+    setCollapsedShifts(prev => {
+      const next = new Set(prev);
+      shiftsToCollapse.forEach(s => next.add(s));
+      return next;
+    });
+    setExpandedLocos(prev => {
+      const next = new Set(prev);
+      locosToCollapse.forEach(l => next.delete(l));
+      return next;
+    });
+  };
+
   /* ── filtered search ── */
   const filteredLocos = locos.filter(l => l.loco_number.toString().includes(searchTerm));
 
@@ -721,6 +855,27 @@ const LocoBookingUI = () => {
                     </span>
                   </label>
                 </div>
+                <div className="filter-group" style={{ minWidth: '180px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>View Controls</label>
+                  <div className="collapse-controls-group">
+                    <button
+                      type="button"
+                      onClick={expandAllToday}
+                      className="btn-collapse-control primary"
+                      title="Expand all dates, shifts, and locomotives"
+                    >
+                      <ChevronDown size={14} /> Expand All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAllToday}
+                      className="btn-collapse-control"
+                      title="Collapse all dates, shifts, and locomotives"
+                    >
+                      <ChevronUp size={14} /> Collapse All
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="timeline-grouped-bookings">
@@ -962,7 +1117,7 @@ const LocoBookingUI = () => {
                     style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
                   />
                 </div>
-                <div className="filter-group" style={{ width: '160px' }}>
+                 <div className="filter-group" style={{ width: '160px' }}>
                   <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> End Date</label>
                   <input
                     type="date"
@@ -970,6 +1125,27 @@ const LocoBookingUI = () => {
                     onChange={e => setHistoryEndDate(e.target.value)}
                     style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
                   />
+                </div>
+                <div className="filter-group" style={{ minWidth: '180px' }}>
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>View Controls</label>
+                  <div className="collapse-controls-group">
+                    <button
+                      type="button"
+                      onClick={expandAllHistory}
+                      className="btn-collapse-control primary"
+                      title="Expand all dates, shifts, and locomotives"
+                    >
+                      <ChevronDown size={14} /> Expand All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAllHistory}
+                      className="btn-collapse-control"
+                      title="Collapse all dates, shifts, and locomotives"
+                    >
+                      <ChevronUp size={14} /> Collapse All
+                    </button>
+                  </div>
                 </div>
               </div>
 
