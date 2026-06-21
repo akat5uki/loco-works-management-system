@@ -323,37 +323,26 @@ const EmployeesBookingWizard = () => {
   };
 
 
-  // ── Two Phase Booking submission ──
-  const handleSaveBooking = async (forward = false, isPhase2Override?: boolean) => {
+  // ── Unified Booking submission ──
+  const handleSaveBooking = async () => {
     if (lockOwner || !selectedLoco) return;
-    
-    const isSSE = currentUser?.designation_id === 1;
-    const isJE = currentUser?.designation_id === 2;
-    const isPhase2 = isPhase2Override !== undefined ? isPhase2Override : isJE;
+    if (!selectedSupervisor) {
+      alert("Please select a Supervisor.");
+      return;
+    }
 
     try {
-      const payload: any = {
+      const payload = {
         date_str: dateStr,
         shift,
         loco_number: selectedLoco,
-        forward
+        supervisor_ticket_number: parseInt(selectedSupervisor.toString()),
+        staff_ticket_numbers: locoStaffMap[selectedLoco] || [],
+        forward: true
       };
 
-      if (isPhase2) {
-        payload.supervisor_ticket_number = currentUser?.ticket_number;
-        payload.staff_ticket_numbers = locoStaffMap[selectedLoco] || [];
-        payload.phase = 2;
-      } else if (isSSE) {
-        if (!selectedSupervisor) {
-          alert("Please select a Supervisor.");
-          return;
-        }
-        payload.supervisor_ticket_number = parseInt(selectedSupervisor.toString());
-        payload.phase = 1;
-      }
-
       await api.post("/bookings/employees/bookings", payload);
-      alert(forward ? "Booking forwarded to supervisor!" : "Employee booking saved!");
+      alert("Employee bookings saved successfully!");
       fetchData();
     } catch (err: any) {
       alert("Failed to save booking: " + (err.response?.data?.detail ?? "Error"));
@@ -361,7 +350,7 @@ const EmployeesBookingWizard = () => {
   };
 
 
-  // ── Auto-selection and warnings helper ──
+  // ── Staff Selection Toggler ──
   const handleToggleStaffSelection = (staffTicket: number) => {
     if (lockOwner || !selectedLoco || !currentUser) return;
     
@@ -370,46 +359,22 @@ const EmployeesBookingWizard = () => {
     
     let updatedStaff: number[] = [];
     if (isSelected) {
-      // Remove staff only from this loco
       updatedStaff = currentStaffList.filter(t => t !== staffTicket);
-      setLocoStaffMap(prev => ({ ...prev, [selectedLoco]: updatedStaff }));
     } else {
-      // Add staff to this loco
       updatedStaff = [...currentStaffList, staffTicket];
-      
-      // Auto-select this staff to all other locos that this JE is assigned to
-      const jeAssignedLocos = bookings
-        .filter(b => b.supervisor_ticket_number === currentUser.ticket_number)
-        .map(b => b.loco_number);
-
-      const uniqueAssignedLocos = Array.from(new Set(jeAssignedLocos));
-      
-      const newMap = { ...locoStaffMap };
-      uniqueAssignedLocos.forEach(locoNum => {
-        const list = newMap[locoNum] || [];
-        if (!list.includes(staffTicket)) {
-          newMap[locoNum] = [...list, staffTicket];
-        }
-      });
-      newMap[selectedLoco] = updatedStaff;
-      setLocoStaffMap(newMap);
     }
+    setLocoStaffMap(prev => ({ ...prev, [selectedLoco]: updatedStaff }));
   };
 
 
-  // Helper: check if staff is booked under another supervisor
+  // Helper: check if staff is booked on another locomotive
   const getStaffWarning = (staffTicket: number) => {
-    if (!currentUser) return null;
     const otherBookings = bookings.filter(
-      b => b.staff_ticket_number === staffTicket && b.supervisor_ticket_number !== currentUser.ticket_number
+      b => b.staff_ticket_number === staffTicket && b.loco_number !== selectedLoco
     );
     if (otherBookings.length > 0) {
-      // Find supervisor names
-      const supNames = otherBookings.map(ob => {
-        const supervisor = employees.find(e => e.ticket_number === ob.supervisor_ticket_number);
-        return supervisor ? supervisor.name : `#${ob.supervisor_ticket_number}`;
-      });
-      return `Booked under ${Array.from(new Set(supNames)).join(", ")}`;
+      const locosList = otherBookings.map(ob => ob.loco_number);
+      return `Booked on Loco #${Array.from(new Set(locosList)).join(", ")}`;
     }
     return null;
   };
@@ -569,9 +534,6 @@ const EmployeesBookingWizard = () => {
   };
 
   const supervisorList = getSortedEmployeesList().filter(e => e.designation_id === 1 || e.designation_id === 2);
-  const isSupervisorForSelectedLoco = !!selectedLoco && bookings.some(
-    b => b.loco_number === selectedLoco && b.supervisor_ticket_number === currentUser?.ticket_number && b.staff_ticket_number === null
-  );
   const staffList = getSortedEmployeesList().filter(e => e.designation_id > 2);
   const filteredEmployees = [...employees]
     .filter(emp => {
@@ -764,100 +726,82 @@ const EmployeesBookingWizard = () => {
 
               {selectedLoco && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
-                  {/* SSE Flow: Book Supervisors */}
-                  {currentUser?.designation_id === 1 && (
-                    <div>
-                      <label>Select Supervisor (SSE/JE) for Loco #{selectedLoco}</label>
-                      <select
-                        className="config-select"
-                        style={{ width: "100%", marginTop: "0.5rem" }}
-                        value={selectedSupervisor}
-                        onChange={e => setSelectedSupervisor(e.target.value ? parseInt(e.target.value) : "")}
-                        disabled={!!lockOwner}
-                      >
-                        <option value="">-- Choose Supervisor --</option>
-                        {supervisorList.map(sup => (
-                          <option key={sup.ticket_number} value={sup.ticket_number} disabled={!availableTickets.has(sup.ticket_number)}>
-                            {sup.name} (Ticket #{sup.ticket_number}, {sup.designation_name}) {!availableTickets.has(sup.ticket_number) ? "— ABSENT" : ""}
+                  <div>
+                    <label>Select Supervisor (SSE/JE) for Loco #{selectedLoco}</label>
+                    <select
+                      className="config-select"
+                      style={{ width: "100%", marginTop: "0.5rem" }}
+                      value={selectedSupervisor}
+                      onChange={e => setSelectedSupervisor(e.target.value ? parseInt(e.target.value) : "")}
+                      disabled={!!lockOwner}
+                    >
+                      <option value="">-- Choose Supervisor --</option>
+                      {supervisorList.map(sup => {
+                        const isAvailable = availableTickets.has(sup.ticket_number);
+                        const otherBook = bookings.find(
+                          b => b.supervisor_ticket_number === sup.ticket_number && b.loco_number !== selectedLoco && b.staff_ticket_number === null
+                        );
+                        const isBookedElsewhere = !!otherBook;
+                        return (
+                          <option 
+                            key={sup.ticket_number} 
+                            value={sup.ticket_number} 
+                            disabled={!isAvailable || isBookedElsewhere}
+                          >
+                            {sup.name} (Ticket #{sup.ticket_number}, {sup.designation_name}) 
+                            {!isAvailable ? " — ABSENT" : (isBookedElsewhere ? ` — BOOKED on Loco #${otherBook.loco_number}` : "")}
                           </option>
-                        ))}
-                      </select>
-                      
-                      <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-                        <button
-                          className="btn-primary-action"
-                          style={{ flex: 1, background: "var(--border)", color: "var(--text-h)" }}
-                          onClick={() => handleSaveBooking(false)}
-                          disabled={!!lockOwner || !selectedSupervisor}
-                        >
-                          Save Draft
-                        </button>
-                        <button
-                          className="btn-primary-action"
-                          style={{ flex: 1 }}
-                          onClick={() => handleSaveBooking(true)}
-                          disabled={!!lockOwner || !selectedSupervisor}
-                        >
-                          Save &amp; Forward to JEs
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                        );
+                      })}
+                    </select>
+                  </div>
 
-                  {/* Phase-2 Flow: Book Staff */}
-                  {currentUser && (currentUser.designation_id === 1 || currentUser.designation_id === 2) && (
-                    isSupervisorForSelectedLoco ? (
-                      <div>
-                        <label style={{ marginBottom: "0.5rem", display: "block" }}>Assign Staff to Loco #{selectedLoco}</label>
-                        <div className="staff-hierarchy-list">
-                          {Object.entries(groupedStaffList).map(([desigName, staffMembers]) => (
-                            <div key={desigName} className="hierarchy-section">
-                              <h4>{desigName}</h4>
-                              <div className="hierarchy-items">
-                                {staffMembers.map(staff => {
-                                  const isAvailable = availableTickets.has(staff.ticket_number);
-                                  const isChecked = (locoStaffMap[selectedLoco] || []).includes(staff.ticket_number);
-                                  const warning = getStaffWarning(staff.ticket_number);
+                  {selectedSupervisor && (
+                    <div>
+                      <label style={{ marginBottom: "0.5rem", display: "block" }}>Assign Staff to Loco #{selectedLoco}</label>
+                      <div className="staff-hierarchy-list">
+                        {Object.entries(groupedStaffList).map(([desigName, staffMembers]) => (
+                          <div key={desigName} className="hierarchy-section">
+                            <h4>{desigName}</h4>
+                            <div className="hierarchy-items">
+                              {staffMembers.map(staff => {
+                                const isAvailable = availableTickets.has(staff.ticket_number);
+                                const isChecked = (locoStaffMap[selectedLoco] || []).includes(staff.ticket_number);
+                                const warning = getStaffWarning(staff.ticket_number);
+                                const isBookedElsewhere = !!warning;
 
-                                  return (
-                                    <div
-                                      key={staff.ticket_number}
-                                      className={`staff-selection-row ${isChecked ? 'selected' : ''} ${!isAvailable ? 'unavailable' : ''}`}
-                                      onClick={() => isAvailable && handleToggleStaffSelection(staff.ticket_number)}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        disabled={!isAvailable || !!lockOwner}
-                                        onChange={() => {}} // handled by row onClick
-                                      />
-                                      <span>{staff.name} (Ticket #{staff.ticket_number})</span>
-                                      {!isAvailable && <span className="warning-badge" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Absent</span>}
-                                      {warning && <span className="warning-badge"><AlertTriangle size={12} style={{ marginRight: 3 }} /> {warning}</span>}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                                return (
+                                  <div
+                                    key={staff.ticket_number}
+                                    className={`staff-selection-row ${isChecked ? 'selected' : ''} ${(!isAvailable || isBookedElsewhere) ? 'unavailable' : ''}`}
+                                    onClick={() => isAvailable && !isBookedElsewhere && handleToggleStaffSelection(staff.ticket_number)}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      disabled={!isAvailable || isBookedElsewhere || !!lockOwner}
+                                      onChange={() => {}} // handled by row onClick
+                                    />
+                                    <span>{staff.name} (Ticket #{staff.ticket_number})</span>
+                                    {!isAvailable && <span className="warning-badge" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Absent</span>}
+                                    {warning && <span className="warning-badge" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}><AlertTriangle size={12} style={{ marginRight: 3 }} /> {warning}</span>}
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))}
-                        </div>
-
-                        <button
-                          className="btn-primary-action"
-                          style={{ width: "100%", marginTop: "1.5rem" }}
-                          onClick={() => handleSaveBooking(true, true)}
-                          disabled={!!lockOwner}
-                        >
-                          Save Staff Assignment
-                        </button>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
-                      currentUser.designation_id === 2 ? (
-                        <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", background: "rgba(255,255,255,0.03)", borderRadius: "6px" }}>
-                          <p>You are not assigned as the supervisor for Loco #{selectedLoco} in this shift.</p>
-                        </div>
-                      ) : null
-                    )
+
+                      <button
+                        className="btn-primary-action"
+                        style={{ width: "100%", marginTop: "1.5rem" }}
+                        onClick={handleSaveBooking}
+                        disabled={!!lockOwner || !selectedSupervisor}
+                      >
+                        Save Assignments
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
