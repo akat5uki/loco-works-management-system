@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
@@ -73,25 +73,25 @@ def parse_local_date(date_str: str) -> datetime:
     dt_local = datetime.combine(dt.date(), time.min, tzinfo=local_tz)
     return dt_local.astimezone(ZoneInfo("UTC"))
 
-def get_next_shift_dt_shift(current_date_str: str, current_shift: int) -> tuple[datetime, int]:
+def get_next_shift_dt_shift(current_date_str: str, current_shift: int) -> tuple[datetime, int, date]:
     local_tz = ZoneInfo("Asia/Kolkata")
     dt = datetime.strptime(current_date_str, "%Y-%m-%d")
     if current_shift == 1:
         dt_next = datetime.combine(dt.date(), time.min, tzinfo=local_tz)
-        return dt_next.astimezone(ZoneInfo("UTC")), 2
+        return dt_next.astimezone(ZoneInfo("UTC")), 2, dt.date()
     else:
         next_day = dt + timedelta(days=1)
         dt_next = datetime.combine(next_day.date(), time.min, tzinfo=local_tz)
-        return dt_next.astimezone(ZoneInfo("UTC")), 1
+        return dt_next.astimezone(ZoneInfo("UTC")), 1, next_day.date()
 
 
 # 1. Availability Endpoints
 @router.get("/availabilities")
 async def get_availabilities(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
-    parsed_date = parse_local_date(date_str)
+    local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(EmployeeAvailability.ticket_number).where(
         and_(
-            func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == parsed_date.date(),
+            func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == local_date,
             EmployeeAvailability.shift == shift,
         )
     )
@@ -107,11 +107,12 @@ async def update_availabilities(
     db: AsyncSession = Depends(get_db),
 ):
     parsed_date = parse_local_date(payload.date_str)
+    local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     
     # 1. Delete existing availability for this date and shift
     delete_query = delete(EmployeeAvailability).where(
         and_(
-            func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == parsed_date.date(),
+            func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == local_date,
             EmployeeAvailability.shift == payload.shift,
         )
     )
@@ -138,13 +139,13 @@ async def update_availabilities(
 # 2. Available Locos Endpoint
 @router.get("/locos")
 async def get_available_locos(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
-    parsed_date = parse_local_date(date_str)
+    local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     # Fetch distinct loco numbers booked in loco_bookings for this date and shift
     query = (
         select(LocoBooking.loco_number)
         .where(
             and_(
-                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == parsed_date.date(),
+                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == local_date,
                 LocoBooking.shift == shift,
             )
         )
@@ -211,6 +212,7 @@ async def save_bookings(
     db: AsyncSession = Depends(get_db),
 ):
     parsed_date = parse_local_date(payload.date_str)
+    local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     
     # Authorization checks
     is_sse = current_user.designation_id == 1  # SSE has designation_id = 1
@@ -249,7 +251,7 @@ async def save_bookings(
         del_query = delete(EmployeeBooking).where(
             and_(
                 EmployeeBooking.loco_number == payload.loco_number,
-                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == parsed_date.date(),
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == payload.shift,
             )
         )
@@ -280,7 +282,7 @@ async def save_bookings(
         check_query = select(EmployeeBooking).where(
             and_(
                 EmployeeBooking.loco_number == payload.loco_number,
-                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == parsed_date.date(),
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == payload.shift,
                 EmployeeBooking.supervisor_ticket_number == current_user.ticket_number,
             )
@@ -297,7 +299,7 @@ async def save_bookings(
         del_query = delete(EmployeeBooking).where(
             and_(
                 EmployeeBooking.loco_number == payload.loco_number,
-                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == parsed_date.date(),
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == payload.shift,
                 EmployeeBooking.supervisor_ticket_number == current_user.ticket_number,
                 EmployeeBooking.staff_ticket_number.is_not(None),
@@ -345,10 +347,10 @@ async def save_bookings(
 # 5. Get Bookings
 @router.get("/bookings")
 async def get_bookings(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
-    parsed_date = parse_local_date(date_str)
+    local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(EmployeeBooking).where(
         and_(
-            func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == parsed_date.date(),
+            func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
             EmployeeBooking.shift == shift,
         )
     )
@@ -393,7 +395,7 @@ async def mark_notification_read(
 # 7. Views Endpoints (By Loco, By Supervisor, By Staff)
 @router.get("/views")
 async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
-    parsed_date = parse_local_date(date_str)
+    local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     
     # Query all bookings joined with Employee names
     # Aliases for joining supervisor and staff
@@ -414,7 +416,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
         .outerjoin(Staff, EmployeeBooking.staff_ticket_number == Staff.ticket_number)
         .where(
             and_(
-                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == parsed_date.date(),
+                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == shift,
             )
         )
@@ -532,10 +534,10 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
 # 8. Remarks & Carry Forward Endpoints
 @router.get("/remarks")
 async def get_remarks(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
-    parsed_date = parse_local_date(date_str)
+    local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(LocoBookingRemarks).where(
         and_(
-            func.date(func.timezone("Asia/Kolkata", LocoBookingRemarks.date_time)) == parsed_date.date(),
+            func.date(func.timezone("Asia/Kolkata", LocoBookingRemarks.date_time)) == local_date,
             LocoBookingRemarks.shift == shift,
         )
     )
@@ -551,14 +553,15 @@ async def submit_remarks(
     db: AsyncSession = Depends(get_db),
 ):
     parsed_date = parse_local_date(payload.date_str)
-    next_date, next_shift = get_next_shift_dt_shift(payload.date_str, payload.shift)
+    local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
+    next_date, next_shift, next_local_date = get_next_shift_dt_shift(payload.date_str, payload.shift)
     
     # 1. Save remarks
     # Delete old remarks for this loco/date/shift
     del_query = delete(LocoBookingRemarks).where(
         and_(
             LocoBookingRemarks.loco_number == payload.loco_number,
-            func.date(func.timezone("Asia/Kolkata", LocoBookingRemarks.date_time)) == parsed_date.date(),
+            func.date(func.timezone("Asia/Kolkata", LocoBookingRemarks.date_time)) == local_date,
             LocoBookingRemarks.shift == payload.shift,
         )
     )
@@ -602,7 +605,7 @@ async def submit_remarks(
             query_next = select(LocoBooking).where(
                 and_(
                     LocoBooking.loco_number == payload.loco_number,
-                    func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_date.date(),
+                    func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_local_date,
                     LocoBooking.shift == next_shift,
                     LocoBooking.job_id == jr.job_id,
                 )
@@ -615,7 +618,7 @@ async def submit_remarks(
                 curr_query = select(LocoBooking).where(
                     and_(
                         LocoBooking.loco_number == payload.loco_number,
-                        func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == parsed_date.date(),
+                        func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == local_date,
                         LocoBooking.shift == payload.shift,
                         LocoBooking.job_id == jr.job_id,
                     )
@@ -640,7 +643,7 @@ async def submit_remarks(
             curr_tasks_query = select(BookingTask).where(
                 and_(
                     BookingTask.loco_number == payload.loco_number,
-                    func.date(func.timezone("Asia/Kolkata", BookingTask.date_time)) == parsed_date.date(),
+                    func.date(func.timezone("Asia/Kolkata", BookingTask.date_time)) == local_date,
                     BookingTask.job_id == jr.job_id,
                 )
             )
@@ -667,7 +670,7 @@ async def submit_remarks(
         q_next = select(LocoBooking).where(
             and_(
                 LocoBooking.loco_number == payload.loco_number,
-                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_date.date(),
+                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_local_date,
                 LocoBooking.shift == next_shift,
                 LocoBooking.job_id == nj_id,
             )
@@ -692,7 +695,7 @@ async def submit_remarks(
         q_next = select(LocoBooking).where(
             and_(
                 LocoBooking.loco_number == payload.loco_number,
-                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_date.date(),
+                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_local_date,
                 LocoBooking.shift == next_shift,
                 LocoBooking.job_id == nt.job_id,
             )
