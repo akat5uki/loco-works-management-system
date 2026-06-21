@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.redis import redis_client
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
+from app.core.loco_encoder import LocoNumberStr, encode_loco_number, decode_loco_number
 from app.features.employees.models import Employee, Designation, EmployeeCategory
 from app.features.bookings.models import LocoBooking, BookingTask
 from app.features.employee_bookings.models import (
@@ -32,7 +33,7 @@ class AvailabilityUpdatePayload(BaseModel):
 class BookingSavePayload(BaseModel):
     date_str: str  # YYYY-MM-DD
     shift: int
-    loco_number: int
+    loco_number: LocoNumberStr
     supervisor_ticket_number: int  # for SSE to book JE/SSE
     staff_ticket_numbers: List[int] = []  # for JE/SSE to book staff
     forward: bool = False
@@ -58,7 +59,7 @@ class NewTaskPayload(BaseModel):
     task_description: str
 
 class RemarksSubmitPayload(BaseModel):
-    loco_number: int
+    loco_number: LocoNumberStr
     date_str: str  # YYYY-MM-DD
     shift: int
     job_remarks: List[JobRemarkPayload]
@@ -231,6 +232,7 @@ async def save_bookings(
 ):
     parsed_date = parse_local_date(payload.date_str)
     local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
+    loco_number_int = encode_loco_number(payload.loco_number)
     
     # Authorization checks
     is_sse = current_user.designation_id == 1  # SSE has designation_id = 1
@@ -268,7 +270,7 @@ async def save_bookings(
         # Delete existing bookings for this loco, date, shift
         del_query = delete(EmployeeBooking).where(
             and_(
-                EmployeeBooking.loco_number == payload.loco_number,
+                EmployeeBooking.loco_number == loco_number_int,
                 func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == payload.shift,
             )
@@ -277,7 +279,7 @@ async def save_bookings(
         
         # Add supervisor booking
         new_booking = EmployeeBooking(
-            loco_number=payload.loco_number,
+            loco_number=loco_number_int,
             date_time=parsed_date,
             shift=payload.shift,
             supervisor_ticket_number=payload.supervisor_ticket_number,
@@ -299,7 +301,7 @@ async def save_bookings(
         # Supervisor can only book if they were assigned as supervisor for this loco
         check_query = select(EmployeeBooking).where(
             and_(
-                EmployeeBooking.loco_number == payload.loco_number,
+                EmployeeBooking.loco_number == loco_number_int,
                 func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == payload.shift,
                 EmployeeBooking.supervisor_ticket_number == current_user.ticket_number,
@@ -316,7 +318,7 @@ async def save_bookings(
         # Delete existing staff assignments under this supervisor for this loco/shift
         del_query = delete(EmployeeBooking).where(
             and_(
-                EmployeeBooking.loco_number == payload.loco_number,
+                EmployeeBooking.loco_number == loco_number_int,
                 func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
                 EmployeeBooking.shift == payload.shift,
                 EmployeeBooking.supervisor_ticket_number == current_user.ticket_number,
@@ -329,7 +331,7 @@ async def save_bookings(
         for staff_ticket in payload.staff_ticket_numbers:
             db.add(
                 EmployeeBooking(
-                    loco_number=payload.loco_number,
+                    loco_number=loco_number_int,
                     date_time=parsed_date,
                     shift=payload.shift,
                     supervisor_ticket_number=current_user.ticket_number,
@@ -374,7 +376,18 @@ async def get_bookings(date_str: str, shift: int, db: AsyncSession = Depends(get
     )
     result = await db.execute(query)
     bookings = result.scalars().all()
-    return bookings
+    return [
+        {
+            "booking_id": b.booking_id,
+            "loco_number": decode_loco_number(b.loco_number),
+            "date_time": b.date_time.isoformat() if b.date_time else None,
+            "shift": b.shift,
+            "supervisor_ticket_number": b.supervisor_ticket_number,
+            "staff_ticket_number": b.staff_ticket_number,
+            "is_forwarded": b.is_forwarded,
+        }
+        for b in bookings
+    ]
 
 
 # 6. Notifications Endpoints
@@ -446,7 +459,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
     # ── Compiled View 1: BY LOCO ──
     by_loco_dict = {}
     for r in rows:
-        loco = r.loco_number
+        loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
         sup_name = r.supervisor_name
         staff_ticket = r.staff_ticket_number
@@ -481,7 +494,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
     # ── Compiled View 2: BY SUPERVISOR ──
     by_sup_dict = {}
     for r in rows:
-        loco = r.loco_number
+        loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
         sup_name = r.supervisor_name
         staff_ticket = r.staff_ticket_number
@@ -520,7 +533,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
     # ── Compiled View 3: BY STAFF ──
     by_staff_dict = {}
     for r in rows:
-        loco = r.loco_number
+        loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
         sup_name = r.supervisor_name
         staff_ticket = r.staff_ticket_number
@@ -561,7 +574,20 @@ async def get_remarks(date_str: str, shift: int, db: AsyncSession = Depends(get_
     )
     result = await db.execute(query)
     remarks = result.scalars().all()
-    return remarks
+    return [
+        {
+            "remarks_id": r.remarks_id,
+            "loco_number": decode_loco_number(r.loco_number),
+            "date_time": r.date_time.isoformat() if r.date_time else None,
+            "shift": r.shift,
+            "supervisor_ticket_number": r.supervisor_ticket_number,
+            "job_id": r.job_id,
+            "task_id": r.task_id,
+            "remarks": r.remarks,
+            "completed": r.completed,
+        }
+        for r in remarks
+    ]
 
 
 @router.post("/remarks")
@@ -573,12 +599,13 @@ async def submit_remarks(
     parsed_date = parse_local_date(payload.date_str)
     local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     next_date, next_shift, next_local_date = get_next_shift_dt_shift(payload.date_str, payload.shift)
+    loco_number_int = encode_loco_number(payload.loco_number)
     
     # 1. Save remarks
     # Delete old remarks for this loco/date/shift
     del_query = delete(LocoBookingRemarks).where(
         and_(
-            LocoBookingRemarks.loco_number == payload.loco_number,
+            LocoBookingRemarks.loco_number == loco_number_int,
             func.date(func.timezone("Asia/Kolkata", LocoBookingRemarks.date_time)) == local_date,
             LocoBookingRemarks.shift == payload.shift,
         )
@@ -589,7 +616,7 @@ async def submit_remarks(
         # Job general remark
         db.add(
             LocoBookingRemarks(
-                loco_number=payload.loco_number,
+                loco_number=loco_number_int,
                 date_time=parsed_date,
                 shift=payload.shift,
                 supervisor_ticket_number=current_user.ticket_number,
@@ -604,7 +631,7 @@ async def submit_remarks(
         for tr in jr.task_remarks:
             db.add(
                 LocoBookingRemarks(
-                    loco_number=payload.loco_number,
+                    loco_number=loco_number_int,
                     date_time=parsed_date,
                     shift=payload.shift,
                     supervisor_ticket_number=current_user.ticket_number,
@@ -622,7 +649,7 @@ async def submit_remarks(
             # Check if this job has a booking in next shift
             query_next = select(LocoBooking).where(
                 and_(
-                    LocoBooking.loco_number == payload.loco_number,
+                    LocoBooking.loco_number == loco_number_int,
                     func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_local_date,
                     LocoBooking.shift == next_shift,
                     LocoBooking.job_id == jr.job_id,
@@ -635,7 +662,7 @@ async def submit_remarks(
                 # Get details from current booking
                 curr_query = select(LocoBooking).where(
                     and_(
-                        LocoBooking.loco_number == payload.loco_number,
+                        LocoBooking.loco_number == loco_number_int,
                         func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == local_date,
                         LocoBooking.shift == payload.shift,
                         LocoBooking.job_id == jr.job_id,
@@ -647,7 +674,7 @@ async def submit_remarks(
                 # Copy or inherit
                 db.add(
                     LocoBooking(
-                        loco_number=payload.loco_number,
+                        loco_number=loco_number_int,
                         date_time=next_date,
                         job_id=jr.job_id,
                         ticket_number=curr_booking.ticket_number if curr_booking else current_user.ticket_number,
@@ -660,7 +687,7 @@ async def submit_remarks(
             # Find all tasks of this job in current shift
             curr_tasks_query = select(BookingTask).where(
                 and_(
-                    BookingTask.loco_number == payload.loco_number,
+                    BookingTask.loco_number == loco_number_int,
                     func.date(func.timezone("Asia/Kolkata", BookingTask.date_time)) == local_date,
                     BookingTask.job_id == jr.job_id,
                 )
@@ -675,7 +702,7 @@ async def submit_remarks(
                     # Carry forward to next shift
                     db.add(
                         BookingTask(
-                            loco_number=payload.loco_number,
+                            loco_number=loco_number_int,
                             date_time=next_date,
                             job_id=jr.job_id,
                             task_description=task.task_description + " (Carried Forward)",
@@ -687,7 +714,7 @@ async def submit_remarks(
         # Check if booking exists
         q_next = select(LocoBooking).where(
             and_(
-                LocoBooking.loco_number == payload.loco_number,
+                LocoBooking.loco_number == loco_number_int,
                 func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_local_date,
                 LocoBooking.shift == next_shift,
                 LocoBooking.job_id == nj_id,
@@ -698,7 +725,7 @@ async def submit_remarks(
         if not exists:
             db.add(
                 LocoBooking(
-                    loco_number=payload.loco_number,
+                    loco_number=loco_number_int,
                     date_time=next_date,
                     job_id=nj_id,
                     ticket_number=current_user.ticket_number,
@@ -712,7 +739,7 @@ async def submit_remarks(
         # Ensure job booking exists
         q_next = select(LocoBooking).where(
             and_(
-                LocoBooking.loco_number == payload.loco_number,
+                LocoBooking.loco_number == loco_number_int,
                 func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == next_local_date,
                 LocoBooking.shift == next_shift,
                 LocoBooking.job_id == nt.job_id,
@@ -723,7 +750,7 @@ async def submit_remarks(
         if not exists:
             db.add(
                 LocoBooking(
-                    loco_number=payload.loco_number,
+                    loco_number=loco_number_int,
                     date_time=next_date,
                     job_id=nt.job_id,
                     ticket_number=current_user.ticket_number,
@@ -733,7 +760,7 @@ async def submit_remarks(
             )
         db.add(
             BookingTask(
-                loco_number=payload.loco_number,
+                loco_number=loco_number_int,
                 date_time=next_date,
                 job_id=nt.job_id,
                 task_description=nt.task_description,
