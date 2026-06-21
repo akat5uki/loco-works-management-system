@@ -370,28 +370,8 @@ async def save_bookings(
                     detail=f"Staff member #{staff_ticket} is marked absent for this shift."
                 )
 
-        # Validate Simultaneous Bookings for staff (cannot be booked on another locomotive)
-        # Query all bookings for this date and shift across other locomotives
-        query = select(EmployeeBooking).where(
-            and_(
-                func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
-                EmployeeBooking.shift == payload.shift,
-                EmployeeBooking.loco_number != loco_number_int,
-                EmployeeBooking.staff_ticket_number.is_not(None)
-            )
-        )
-        result = await db.execute(query)
-        existing_bookings = result.scalars().all()
-        booked_staff = {b.staff_ticket_number for b in existing_bookings}
-
-        for staff_ticket in payload.staff_ticket_numbers:
-            if staff_ticket in booked_staff:
-                other_b = next(b for b in existing_bookings if b.staff_ticket_number == staff_ticket)
-                other_loco = decode_loco_number(other_b.loco_number)
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Staff member #{staff_ticket} is already booked on Locomotive #{other_loco} for this shift."
-                )
+        # Simultaneous bookings are allowed with front-end warning notifications.
+        # No validation blocking needed here.
 
         # Delete existing staff assignments under this supervisor for this loco/shift
         del_query = delete(EmployeeBooking).where(
