@@ -89,6 +89,7 @@ def get_next_shift_dt_shift(current_date_str: str, current_shift: int) -> tuple[
 @router.get("/availabilities")
 async def get_availabilities(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    # Query absences (employees stored in EmployeeAvailability are absent)
     query = select(EmployeeAvailability.ticket_number).where(
         and_(
             func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == local_date,
@@ -96,7 +97,15 @@ async def get_availabilities(date_str: str, shift: int, db: AsyncSession = Depen
         )
     )
     result = await db.execute(query)
-    available_tickets = result.scalars().all()
+    absent_tickets = set(result.scalars().all())
+    
+    # Query all active employees
+    all_emp_query = select(Employee.ticket_number)
+    all_emp_res = await db.execute(all_emp_query)
+    all_tickets = all_emp_res.scalars().all()
+    
+    # Available = All - Absent
+    available_tickets = [t for t in all_tickets if t not in absent_tickets]
     return {"available_tickets": available_tickets}
 
 
@@ -109,7 +118,16 @@ async def update_availabilities(
     parsed_date = parse_local_date(payload.date_str)
     local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     
-    # 1. Delete existing availability for this date and shift
+    # Fetch all employees to find who is absent
+    all_emp_query = select(Employee.ticket_number)
+    all_emp_res = await db.execute(all_emp_query)
+    all_tickets = all_emp_res.scalars().all()
+    
+    # Absent = All - Available (payload.ticket_numbers)
+    available_set = set(payload.ticket_numbers)
+    absent_tickets = [t for t in all_tickets if t not in available_set]
+    
+    # 1. Delete existing absences for this date and shift
     delete_query = delete(EmployeeAvailability).where(
         and_(
             func.date(func.timezone("Asia/Kolkata", EmployeeAvailability.date_time)) == local_date,
@@ -118,8 +136,8 @@ async def update_availabilities(
     )
     await db.execute(delete_query)
     
-    # 2. Insert new available employees
-    for ticket in payload.ticket_numbers:
+    # 2. Insert new absences
+    for ticket in absent_tickets:
         db.add(
             EmployeeAvailability(
                 date_time=parsed_date,

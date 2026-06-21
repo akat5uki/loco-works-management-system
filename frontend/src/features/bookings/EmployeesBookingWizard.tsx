@@ -145,6 +145,7 @@ const EmployeesBookingWizard = () => {
 
   // Active View Tab
   const [activeViewTab, setActiveViewTab] = useState<"loco" | "supervisor" | "staff">("loco");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Telemetry WS connection
   useEffect(() => {
@@ -572,6 +573,22 @@ const EmployeesBookingWizard = () => {
     b => b.loco_number === selectedLoco && b.supervisor_ticket_number === currentUser?.ticket_number && b.staff_ticket_number === null
   );
   const staffList = getSortedEmployeesList().filter(e => e.designation_id > 2);
+  const filteredEmployees = [...employees]
+    .filter(emp => {
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return true;
+      return (
+        emp.name.toLowerCase().includes(term) ||
+        emp.designation_name.toLowerCase().includes(term) ||
+        emp.ticket_number.toString().includes(term)
+      );
+    })
+    .sort((a, b) => {
+      if (a.designation_id !== b.designation_id) {
+        return a.designation_id - b.designation_id;
+      }
+      return a.ticket_number - b.ticket_number;
+    });
 
   // Grouped Staff segments
   const groupedStaffList = staffList.reduce((acc, emp) => {
@@ -677,11 +694,23 @@ const EmployeesBookingWizard = () => {
         <section className="panel-card">
           <h2>1. Set Employee Availability (Current Shift)</h2>
           <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "-0.5rem" }}>
-            Toggled employees will be available to book for current day/shift operations.
+            By default, all employees are marked Available. Toggle to Absent to exclude them.
           </p>
+
+          <div style={{ margin: "1rem 0" }}>
+            <input
+              type="text"
+              placeholder="Search by name, designation, or ticket..."
+              className="config-input"
+              style={{ width: "100%" }}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+
           <div className="availability-list">
-            {employees.length === 0 && <p>No employees found.</p>}
-            {employees.map(emp => {
+            {filteredEmployees.length === 0 && <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No employees match search criteria.</p>}
+            {filteredEmployees.map(emp => {
               const isAvailable = availableTickets.has(emp.ticket_number);
               return (
                 <div key={emp.ticket_number} className={`employee-toggle-item ${isAvailable ? 'available' : ''}`}>
