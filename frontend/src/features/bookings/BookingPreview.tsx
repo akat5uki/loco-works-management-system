@@ -682,22 +682,12 @@ const BookingPreview = () => {
                                         </div>
                                       </div>
 
-                                      <div 
-                                        className="tree-node-content tree-node-children print-visible-block"
-                                        style={{ display: isJobExpanded ? "flex" : "none" }}
-                                      >
-                                        {j.tasks.length === 0 ? (
-                                          <div className="tree-node leaf">
-                                            <div className="tree-node-row leaf">
-                                              <span className="tree-node-toggle leaf-spacer"></span>
-                                              <span className="tree-node-icon leaf-icon">•</span>
-                                              <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                                                No tasks for this job
-                                              </span>
-                                            </div>
-                                          </div>
-                                        ) : (
-                                          j.tasks.map(t => {
+                                      {j.tasks.length > 0 && (
+                                        <div 
+                                          className="tree-node-content tree-node-children print-visible-block"
+                                          style={{ display: isJobExpanded ? "flex" : "none" }}
+                                        >
+                                          {j.tasks.map(t => {
                                             const taskRem = remarksState[locoNum]?.tasks[t.task_id] || { completed: false, remarks: "" };
                                             return (
                                               <div key={t.task_id} className="tree-node leaf">
@@ -729,9 +719,9 @@ const BookingPreview = () => {
                                                 </div>
                                               </div>
                                             );
-                                          })
-                                        )}
-                                      </div>
+                                          })}
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })
