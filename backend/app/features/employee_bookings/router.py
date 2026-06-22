@@ -344,7 +344,7 @@ async def save_bookings(
 
     # ── CASE B: Booking Staff under a supervisor ──
     elif payload.supervisor_ticket_number is not None and payload.staff_ticket_numbers is not None:
-        # Check supervisor assignment first
+        # Check supervisor assignment first. If not assigned, automatically assign them.
         sup_check_query = select(EmployeeBooking).where(
             and_(
                 EmployeeBooking.loco_number == loco_number_int,
@@ -357,9 +357,15 @@ async def save_bookings(
         sup_check_res = await db.execute(sup_check_query)
         is_assigned = sup_check_res.scalars().first()
         if not is_assigned:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Supervisor #{payload.supervisor_ticket_number} is not assigned to Locomotive #{payload.loco_number}."
+            db.add(
+                EmployeeBooking(
+                    loco_number=loco_number_int,
+                    date_time=parsed_date,
+                    shift=payload.shift,
+                    supervisor_ticket_number=payload.supervisor_ticket_number,
+                    staff_ticket_number=None,
+                    is_forwarded=True,
+                )
             )
 
         # Check staff availability

@@ -497,6 +497,12 @@ const EmployeesBookingWizard = () => {
               updated[k] = [...list, staffTicket];
             }
           });
+          // Also explicitly add to the currently selected loco if it is not in assignedLocos
+          const currKey = `${selectedLoco}_${selectedSupervisor}`;
+          if (!updated[currKey]) updated[currKey] = [];
+          if (!updated[currKey].includes(staffTicket)) {
+            updated[currKey] = [...updated[currKey], staffTicket];
+          }
           return updated;
         });
       } else {
@@ -510,17 +516,34 @@ const EmployeesBookingWizard = () => {
 
   // Helper: check if staff is booked on other locomotives or under other supervisors
   const getStaffWarning = (staffTicket: number) => {
-    // Find all bookings for this staff member (excluding current assignment: same loco + same supervisor)
+    // 1. Check saved bookings from the database (excluding current assignment)
     const otherBookings = bookings.filter(
       b => b.staff_ticket_number === staffTicket && 
            !(b.loco_number === selectedLoco && b.supervisor_ticket_number === selectedSupervisor)
     );
-    if (otherBookings.length > 0) {
-      const details = otherBookings.map(ob => {
-        const supervisor = employees.find(e => e.ticket_number === ob.supervisor_ticket_number);
-        const name = supervisor ? supervisor.name : `Supervisor #${ob.supervisor_ticket_number}`;
-        return `Loco #${ob.loco_number} under ${name}`;
-      });
+    const details: string[] = [];
+
+    otherBookings.forEach(ob => {
+      const supervisor = employees.find(e => e.ticket_number === ob.supervisor_ticket_number);
+      const name = supervisor ? supervisor.name : `Supervisor #${ob.supervisor_ticket_number}`;
+      details.push(`Loco #${ob.loco_number} under ${name}`);
+    });
+
+    // 2. Check current unsaved selections in locoStaffMap (excluding current assignment)
+    Object.entries(locoStaffMap).forEach(([key, staffList]) => {
+      const [locoNum, supTicketStr] = key.split("_");
+      const supTicket = parseInt(supTicketStr);
+      if (
+        !(locoNum === selectedLoco && supTicket === selectedSupervisor) &&
+        staffList.includes(staffTicket)
+      ) {
+        const supervisor = employees.find(e => e.ticket_number === supTicket);
+        const name = supervisor ? supervisor.name : `Supervisor #${supTicket}`;
+        details.push(`Loco #${locoNum} under ${name} (Unsaved)`);
+      }
+    });
+
+    if (details.length > 0) {
       return `Booked: ${Array.from(new Set(details)).join("; ")}`;
     }
     return null;
@@ -968,7 +991,7 @@ const EmployeesBookingWizard = () => {
                           <label style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Select Supervisor</label>
                           <select
                             className="config-select"
-                            style={{ width: "100%", marginTop: "0.5rem" }}
+                             style={{ width: "100%", marginTop: "0.5rem" }}
                             value={selectedSupervisor}
                             onChange={e => {
                               setSelectedSupervisor(e.target.value ? parseInt(e.target.value) : "");
@@ -983,7 +1006,7 @@ const EmployeesBookingWizard = () => {
                           >
                             <option value="">-- Choose Supervisor --</option>
                             {supervisorList
-                              .filter(sup => availableTickets.has(sup.ticket_number) && (tempSupervisorLocos[sup.ticket_number] || []).length > 0)
+                              .filter(sup => availableTickets.has(sup.ticket_number))
                               .map(sup => (
                                 <option key={sup.ticket_number} value={sup.ticket_number}>
                                   {sup.name} ({sup.designation_name})
@@ -999,15 +1022,14 @@ const EmployeesBookingWizard = () => {
                             style={{ width: "100%", marginTop: "0.5rem" }}
                             value={selectedLoco || ""}
                             onChange={e => setSelectedLoco(e.target.value || null)}
-                            disabled={!!lockOwner || !selectedSupervisor}
+                            disabled={!!lockOwner}
                           >
                             <option value="">-- Choose Locomotive --</option>
-                            {selectedSupervisor &&
-                              (tempSupervisorLocos[selectedSupervisor] || []).map(locoNum => (
-                                <option key={locoNum} value={locoNum}>
-                                  Loco #{locoNum}
-                                </option>
-                              ))}
+                            {locos.map(locoNum => (
+                              <option key={locoNum} value={locoNum}>
+                                Loco #{locoNum}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       </div>
