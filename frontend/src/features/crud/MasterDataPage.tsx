@@ -21,9 +21,7 @@ interface LocoType {
 interface Loco {
   loco_number: string;
   loco_type_id: number;
-  date_time: string;
   stage: number;
-  shift: number;
   despatched: boolean;
 }
 
@@ -320,23 +318,7 @@ const MasterDataPage = () => {
                     </option>
                   ))}
                 </select>
-                <input
-                  type="datetime-local"
-                  required
-                  value={
-                    formData.date_time
-                      ? new Date(formData.date_time).toISOString().substring(0, 16)
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const localVal = e.target.value;
-                    const isoVal = localVal ? new Date(localVal).toISOString() : "";
-                    setFormData({
-                      ...formData,
-                      date_time: isoVal,
-                    });
-                  }}
-                />
+
                 <select
                   required
                   value={formData.stage ?? ""}
@@ -356,20 +338,7 @@ const MasterDataPage = () => {
                   <option value="7">7</option>
                   <option value="9">9</option>
                 </select>
-                <select
-                  required
-                  value={formData.shift ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      shift: parseInt(e.target.value),
-                    })
-                  }
-                >
-                  <option value="">-- Select Shift --</option>
-                  <option value="1">Shift 1</option>
-                  <option value="2">Shift 2</option>
-                </select>
+
                 <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}>
                   <input
                     type="checkbox"

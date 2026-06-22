@@ -29,17 +29,7 @@ const RegisterPage = () => {
         const response = await api.get("/employees/designations");
         setDesignations(response.data);
       } catch (err) {
-        console.error("Failed to fetch designations", err);
-        // Fallback mock
-        // setDesignations([
-        //   { designation_id: 1, designation_name: "SSE" },
-        //   { designation_id: 2, designation_name: "JE" },
-        //   { designation_id: 3, designation_name: "Sr. Tech/MCM" },
-        //   { designation_id: 4, designation_name: "Tech-I" },
-        //   { designation_id: 5, designation_name: "Tech-II" },
-        //   { designation_id: 6, designation_name: "Tech-III" },
-        //   { designation_id: 7, designation_name: "Helper" },
-        // ]);
+        // Failed to load designations from the API
       }
     };
     fetchDesignations();

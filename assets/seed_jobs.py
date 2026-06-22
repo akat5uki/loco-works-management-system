@@ -1,4 +1,36 @@
 import asyncio
+import os
+import sys
+
+# Find workspace root dynamically
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(CURRENT_DIR) in ("assets", "backend"):
+    WORKSPACE_ROOT = os.path.dirname(CURRENT_DIR)
+else:
+    WORKSPACE_ROOT = CURRENT_DIR
+
+# Ensure backend directory is in python module path
+sys.path.append(os.path.join(WORKSPACE_ROOT, "backend"))
+
+# Load and translate .env variables for host machine execution
+env_path = os.path.join(WORKSPACE_ROOT, ".env")
+if os.path.exists(env_path):
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip()
+                val = val.replace("db-primary", "localhost")
+                val = val.replace("db-replica", "localhost")
+                val = val.replace("redis-sentinel-1", "localhost")
+                val = val.replace("redis-sentinel-2", "localhost")
+                val = val.replace("redis-sentinel-3", "localhost")
+                val = val.replace("redis:", "localhost:")
+                os.environ[key] = val
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker

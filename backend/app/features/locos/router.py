@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
@@ -13,6 +13,7 @@ from app.core.loco_encoder import LocoNumberStr, encode_loco_number
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.features.jobs.models import Job
 from app.features.locos.models import Loco, LocoType
+from app.features.bookings.models import LocoBooking
 
 router = APIRouter()
 
@@ -34,13 +35,18 @@ class LocoTypeRead(LocoTypeBase):
 class LocoBase(BaseModel):
     loco_number: LocoNumberStr
     loco_type_id: int
-    date_time: datetime
+    date_time: Optional[datetime] = None
     stage: int
-    shift: int
+    shift: Optional[int] = None
     despatched: bool = False
 
 
-class LocoRead(LocoBase):
+class LocoRead(BaseModel):
+    loco_number: LocoNumberStr
+    loco_type_id: int
+    stage: int
+    despatched: bool = False
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -48,8 +54,8 @@ class LocoRead(LocoBase):
 @router.get("/stats/production")
 async def get_production_stats(db: AsyncSession = Depends(get_db)):
     year_query = select(
-        extract("year", Loco.date_time).label("year"),
-        func.count(Loco.loco_number).label("count"),
+        extract("year", LocoBooking.date_time).label("year"),
+        func.count(func.distinct(LocoBooking.loco_number)).label("count"),
     ).group_by("year")
     year_result = await db.execute(year_query)
     year_stats = [{"year": int(r.year), "count": r.count} for r in year_result]
@@ -57,10 +63,10 @@ async def get_production_stats(db: AsyncSession = Depends(get_db)):
     current_year = func.extract("year", func.now())
     month_query = (
         select(
-            extract("month", Loco.date_time).label("month"),
-            func.count(Loco.loco_number).label("count"),
+            extract("month", LocoBooking.date_time).label("month"),
+            func.count(func.distinct(LocoBooking.loco_number)).label("count"),
         )
-        .where(extract("year", Loco.date_time) == current_year)
+        .where(extract("year", LocoBooking.date_time) == current_year)
         .group_by("month")
     )
     month_result = await db.execute(month_query)
@@ -131,11 +137,6 @@ async def get_loco_type_counts(db: AsyncSession = Depends(get_db)):
 async def create_loco(
     loco: LocoBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
 ):
-    if loco.shift not in [1, 2]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
-        )
     if loco.stage not in [0, 5, 6, 7, 9]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -153,6 +154,8 @@ async def create_loco(
         )
     data = loco.model_dump()
     data["loco_number"] = encode_loco_number(data["loco_number"])
+    data.pop("date_time", None)
+    data.pop("shift", None)
     db_loco = Loco(**data)
     db.add(db_loco)
     try:
@@ -221,11 +224,6 @@ async def update_loco(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
-    if loco.shift not in [1, 2]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid shift. Only Shift 1 and Shift 2 are allowed."
-        )
     if loco.stage not in [0, 5, 6, 7, 9]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -249,6 +247,8 @@ async def update_loco(
     
     data = loco.model_dump()
     data["loco_number"] = encode_loco_number(data["loco_number"])
+    data.pop("date_time", None)
+    data.pop("shift", None)
     for key, value in data.items():
         setattr(db_loco, key, value)
     

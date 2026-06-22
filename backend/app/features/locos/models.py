@@ -18,9 +18,7 @@ class Loco(Base):
     loco_type_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("loco_type.loco_type_id"), nullable=False
     )
-    date_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     stage: Mapped[int] = mapped_column(Integer, nullable=False)
-    shift: Mapped[int] = mapped_column(Integer, nullable=False)
     despatched: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     loco_type: Mapped["LocoType"] = relationship()

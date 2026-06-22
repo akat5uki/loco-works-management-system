@@ -129,6 +129,7 @@ const EmployeeAvailability = () => {
 
   // Primary Fetch Function
   const fetchData = useCallback(async () => {
+    if (!dateStr) return;
     try {
       // 1. Fetch all employees
       const empRes = await api.get("/employees/");
@@ -150,6 +151,10 @@ const EmployeeAvailability = () => {
 
   // ── Availability Toggler ──
   const handleToggleAvailability = async (ticket: number) => {
+    if (!dateStr) {
+      alert("Please select a valid date.");
+      return;
+    }
     if (lockOwner) return;
     const newAvails = new Set(availableTickets);
     if (newAvails.has(ticket)) {
@@ -277,6 +282,7 @@ const EmployeeAvailability = () => {
           <input
             type="date"
             className="config-input"
+            required={true}
             value={dateStr}
             onChange={e => setDateStr(e.target.value)}
           />

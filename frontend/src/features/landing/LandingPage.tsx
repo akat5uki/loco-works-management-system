@@ -78,7 +78,7 @@ const LandingPage = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <div className="logo-box">L</div>
             <h1 style={{ fontSize: "1.25rem", fontWeight: "700", margin: 0 }}>
-              LocoWorks
+              LWMS
             </h1>
           </div>
           <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -104,8 +104,8 @@ const LandingPage = () => {
       {/* Hero Section */}
       <section className="hero">
         <div style={{ maxWidth: "80rem", margin: "0 auto", padding: "0 1rem" }}>
-          <h2 className="hero-sub">Loco Management System</h2>
-          <p className="hero-title">
+          <h1 className="hero-title">Loco Works Management System</h1>
+          <p className="hero-subtitle">
             Precision Engineering, Managed Efficiently.
           </p>
           <p className="hero-desc">

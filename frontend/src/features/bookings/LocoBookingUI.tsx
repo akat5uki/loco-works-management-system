@@ -163,6 +163,7 @@ const LocoBookingUI = () => {
 
   /* ── fetch initial data ── */
   const fetchData = useCallback(async () => {
+    if (!bookingDate) return;
     const today = todayISO();
     const promises = [
       api.get("/locos/"),
@@ -186,6 +187,7 @@ const LocoBookingUI = () => {
   }, [bookingDate]);
 
   const fetchHistoryData = useCallback(async () => {
+    if (!historyStartDate || !historyEndDate) return;
     try {
       const res = await api.get(`/bookings/?start_date=${historyStartDate}&end_date=${historyEndDate}`);
       setHistoryBookings(res.data);
@@ -311,6 +313,10 @@ const LocoBookingUI = () => {
   /* ── save booking ── */
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!bookingDate) {
+      alert("Please select a booking date.");
+      return;
+    }
     if (!selectedLoco || selectedJobs.length === 0) return;
     setLoading(true); setMessage("");
     try {
@@ -761,6 +767,7 @@ const LocoBookingUI = () => {
                       <label><Calendar size={14} /> Date</label>
                       <input
                         type="date"
+                        required={true}
                         value={bookingDate}
                         min={todayISO()}
                         max={tomorrowISO()}
@@ -1226,6 +1233,7 @@ const LocoBookingUI = () => {
                   <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> Start Date</label>
                   <input
                     type="date"
+                    required={true}
                     value={historyStartDate}
                     onChange={e => setHistoryStartDate(e.target.value)}
                     style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
@@ -1235,6 +1243,7 @@ const LocoBookingUI = () => {
                   <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> End Date</label>
                   <input
                     type="date"
+                    required={true}
                     value={historyEndDate}
                     onChange={e => setHistoryEndDate(e.target.value)}
                     style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}

@@ -100,7 +100,7 @@ const LoginPage = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="logo-box">L</div>
-          <h2>Sign in to LocoWorks</h2>
+          <h2>Sign in to Loco Works</h2>
           <p>Enter your employee details to continue</p>
         </div>
 

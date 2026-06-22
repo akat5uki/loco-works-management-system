@@ -164,6 +164,7 @@ const BookingPreview = () => {
   }, [navigate]);
 
   const fetchData = useCallback(async () => {
+    if (!dateStr) return;
     try {
       // 1. Fetch all employees
       const empRes = await api.get("/employees/");
@@ -324,6 +325,7 @@ const BookingPreview = () => {
           <input
             type="date"
             className="config-input"
+            required={true}
             value={dateStr}
             onChange={e => setDateStr(e.target.value)}
           />
@@ -357,7 +359,7 @@ const BookingPreview = () => {
         
         {/* Print Header */}
         <div className="print-only" style={{ display: "none", marginBottom: "2rem", borderBottom: "2px solid #333", paddingBottom: "1rem" }}>
-          <h1 style={{ fontSize: "2rem", margin: 0 }}>LocoWorks Management System</h1>
+          <h1 style={{ fontSize: "2rem", margin: 0 }}>Loco Works Management System</h1>
           <p style={{ margin: "0.25rem 0 0 0", color: "#666" }}>Shift Summary Report</p>
           <div style={{ display: "flex", gap: "2rem", marginTop: "1rem", fontWeight: "bold" }}>
             <span>Date: {dateStr}</span>

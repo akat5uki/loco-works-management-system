@@ -38,7 +38,7 @@ async def redis_stream_listener():
         try:
             # Read new messages from the stream
             messages = await redis_client.xreadgroup(
-                GROUP_NAME, consumer_name, {STREAM_KEY: ">"}, count=10, block=2000
+                GROUP_NAME, consumer_name, {STREAM_KEY: ">"}, count=10, block=1000
             )
             for stream, msgs in messages:
                 for msg_id, msg_data in msgs:
