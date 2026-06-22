@@ -184,7 +184,7 @@ const BookingPreview = () => {
     let csv = "Employee Availability Summary\n";
     csv += "Ticket Number,Name,Designation,Category,Availability Status\n";
     employees.forEach(emp => {
-      const avail = availableTickets.has(emp.ticket_number) ? "Available" : "Absent";
+      const avail = availableTickets.has(emp.ticket_number) ? "Available" : "Unavailable";
       csv += `"${emp.ticket_number}","${emp.name}","${emp.designation_name}","${emp.category_name}","${avail}"\n`;
     });
 
@@ -231,7 +231,7 @@ const BookingPreview = () => {
 
   // Group availabilities
   const availableEmployees = employees.filter(e => availableTickets.has(e.ticket_number));
-  const absentEmployees = employees.filter(e => !availableTickets.has(e.ticket_number));
+  const unavailableEmployees = employees.filter(e => !availableTickets.has(e.ticket_number));
 
   return (
     <div className="employees-booking-workspace print-container">
@@ -338,13 +338,13 @@ const BookingPreview = () => {
 
           <div>
             <h3 style={{ color: "#ef4444", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem" }}>
-              <XCircle size={18} /> Absent Employees ({absentEmployees.length})
+              <XCircle size={18} /> Unavailable Employees ({unavailableEmployees.length})
             </h3>
-            {absentEmployees.length === 0 ? (
-              <p style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No employees absent.</p>
+            {unavailableEmployees.length === 0 ? (
+              <p style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No employees unavailable.</p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem", background: "var(--bg)" }}>
-                {absentEmployees.map(e => (
+                {unavailableEmployees.map(e => (
                   <div key={e.ticket_number} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
                     <span>{e.name} (Ticket #{e.ticket_number})</span>
                     <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{e.designation_name}</span>

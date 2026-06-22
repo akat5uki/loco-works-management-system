@@ -1038,7 +1038,7 @@ const EmployeesBookingWizard = () => {
                                             onChange={() => {}}
                                           />
                                           <span style={{ fontSize: "0.85rem" }}>{staff.name} (Ticket #{staff.ticket_number})</span>
-                                          {!isAvailable && <span className="warning-badge" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", fontSize: "0.75rem" }}>Absent</span>}
+                                          {!isAvailable && <span className="warning-badge" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", fontSize: "0.75rem" }}>Unavailable</span>}
                                           {warning && <span className="warning-badge" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: "0.75rem" }}><AlertTriangle size={10} style={{ marginRight: 3 }} /> {warning}</span>}
                                         </div>
                                       );

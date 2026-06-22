@@ -288,7 +288,7 @@ const EmployeeAvailability = () => {
                     onClick={() => handleToggleAvailability(emp.ticket_number)}
                     disabled={!!lockOwner}
                   >
-                    {isAvailable ? "Available" : "Absent"}
+                    {isAvailable ? "Available" : "Unavailable"}
                   </button>
                 </div>
               );
