@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronRight,
   User,
+  Users,
   ClipboardList,
   CheckSquare
 } from "lucide-react";
@@ -128,9 +129,8 @@ const BookingPreview = () => {
     viewsData.by_loco.forEach(l => {
       const locoNum = l.loco_number;
       next[locoNum] = true;
-      l.supervisors.forEach(s => {
-        next[`${locoNum}-supervisor-${s.supervisor_ticket_number}`] = true;
-      });
+      next[`${locoNum}-supervisors-group`] = true;
+      next[`${locoNum}-staffs-group`] = true;
       next[`${locoNum}-operations`] = true;
       const jobs = allLocoJobs[locoNum] || [];
       jobs.forEach(j => {
@@ -146,9 +146,8 @@ const BookingPreview = () => {
     viewsData.by_loco.forEach(l => {
       const locoNum = l.loco_number;
       next[locoNum] = false;
-      l.supervisors.forEach(s => {
-        next[`${locoNum}-supervisor-${s.supervisor_ticket_number}`] = false;
-      });
+      next[`${locoNum}-supervisors-group`] = false;
+      next[`${locoNum}-staffs-group`] = false;
       next[`${locoNum}-operations`] = false;
       const jobs = allLocoJobs[locoNum] || [];
       jobs.forEach(j => {
@@ -482,79 +481,131 @@ const BookingPreview = () => {
                   >
                     <div className="tree-container">
                       
-                      {/* Supervisors & Staff directly under the Locomotive */}
-                      {l.supervisors.length === 0 ? (
-                        <div className="tree-node leaf">
-                          <div className="tree-node-row leaf">
-                            <span className="tree-node-toggle leaf-spacer"></span>
-                            <span className="tree-node-icon leaf-icon">•</span>
-                            <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
-                              No personnel assigned
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        l.supervisors.map(s => {
-                          const supervisorKey = `${locoNum}-supervisor-${s.supervisor_ticket_number}`;
-                          const isSupervisorExpanded = isNodeExpanded(supervisorKey, true);
-                          return (
-                            <div key={s.supervisor_ticket_number} className="tree-node">
-                              <div className="tree-node-row" onClick={() => toggleNode(supervisorKey, true)}>
-                                <span className="tree-node-toggle">
-                                  {s.staff.length > 0 ? (
-                                    isSupervisorExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-                                  ) : (
-                                    <span className="leaf-spacer"></span>
-                                  )}
+                      {/* Node: Supervisors */}
+                      {(() => {
+                        const supsKey = `${locoNum}-supervisors-group`;
+                        const isSupsExpanded = isNodeExpanded(supsKey, true);
+                        return (
+                          <div className="tree-node">
+                            <div className="tree-node-row" onClick={() => toggleNode(supsKey, true)}>
+                              <span className="tree-node-toggle">
+                                {isSupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                              </span>
+                              <span className="tree-node-icon">
+                                <Users size={16} />
+                              </span>
+                              <div className="tree-node-label">
+                                <span>Supervisors</span>
+                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                  ({l.supervisors.length} booked)
                                 </span>
-                                <span className="tree-node-icon">
-                                  <User size={14} style={{ color: "var(--accent)" }} />
-                                </span>
-                                <div className="tree-node-label">
-                                  <strong>Supervisor:</strong> {s.supervisor_name}
-                                  <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                                    (Ticket #{s.supervisor_ticket_number})
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div 
-                                className="tree-node-content tree-node-children print-visible-block"
-                                style={{ display: isSupervisorExpanded ? "flex" : "none" }}
-                              >
-                                {s.staff.length === 0 ? (
-                                  <div className="tree-node leaf">
-                                    <div className="tree-node-row leaf">
-                                      <span className="tree-node-toggle leaf-spacer"></span>
-                                      <span className="tree-node-icon leaf-icon">•</span>
-                                      <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                                        No staff booked under this supervisor
-                                      </span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  s.staff.map(st => (
-                                    <div key={st.staff_ticket_number} className="tree-node leaf">
-                                      <div className="tree-node-row leaf">
-                                        <span className="tree-node-toggle leaf-spacer"></span>
-                                        <span className="tree-node-icon leaf-icon">
-                                          <User size={12} style={{ color: "var(--text-muted)" }} />
-                                        </span>
-                                        <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
-                                          {st.staff_name}
-                                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                            (Ticket #{st.staff_ticket_number})
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))
-                                )}
                               </div>
                             </div>
-                          );
-                        })
-                      )}
+
+                            <div 
+                              className="tree-node-content tree-node-children print-visible-block"
+                              style={{ display: isSupsExpanded ? "flex" : "none" }}
+                            >
+                              {l.supervisors.length === 0 ? (
+                                <div className="tree-node leaf">
+                                  <div className="tree-node-row leaf">
+                                    <span className="tree-node-toggle leaf-spacer"></span>
+                                    <span className="tree-node-icon leaf-icon">•</span>
+                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
+                                      No supervisors booked
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                l.supervisors.map(s => (
+                                  <div key={s.supervisor_ticket_number} className="tree-node leaf">
+                                    <div className="tree-node-row leaf">
+                                      <span className="tree-node-toggle leaf-spacer"></span>
+                                      <span className="tree-node-icon leaf-icon">
+                                        <User size={12} style={{ color: "var(--text-muted)" }} />
+                                      </span>
+                                      <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
+                                        {s.supervisor_name}
+                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                          (Ticket #{s.supervisor_ticket_number})
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Node: Staffs */}
+                      {(() => {
+                        const staffsKey = `${locoNum}-staffs-group`;
+                        const isStaffsExpanded = isNodeExpanded(staffsKey, true);
+                        
+                        // Extract unique staff members
+                        const uniqueStaffMap = new Map<number, { staff_ticket_number: number; staff_name: string }>();
+                        l.supervisors.forEach(s => {
+                          s.staff.forEach(st => {
+                            uniqueStaffMap.set(st.staff_ticket_number, st);
+                          });
+                        });
+                        const staffList = Array.from(uniqueStaffMap.values());
+
+                        return (
+                          <div className="tree-node" style={{ marginTop: "0.5rem" }}>
+                            <div className="tree-node-row" onClick={() => toggleNode(staffsKey, true)}>
+                              <span className="tree-node-toggle">
+                                {isStaffsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                              </span>
+                              <span className="tree-node-icon">
+                                <Users size={16} />
+                              </span>
+                              <div className="tree-node-label">
+                                <span>Staffs</span>
+                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                  ({staffList.length} booked)
+                                </span>
+                              </div>
+                            </div>
+
+                            <div 
+                              className="tree-node-content tree-node-children print-visible-block"
+                              style={{ display: isStaffsExpanded ? "flex" : "none" }}
+                            >
+                              {staffList.length === 0 ? (
+                                <div className="tree-node leaf">
+                                  <div className="tree-node-row leaf">
+                                    <span className="tree-node-toggle leaf-spacer"></span>
+                                    <span className="tree-node-icon leaf-icon">•</span>
+                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
+                                      No staffs booked
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                staffList.map(st => (
+                                  <div key={st.staff_ticket_number} className="tree-node leaf">
+                                    <div className="tree-node-row leaf">
+                                      <span className="tree-node-toggle leaf-spacer"></span>
+                                      <span className="tree-node-icon leaf-icon">
+                                        <User size={12} style={{ color: "var(--text-muted)" }} />
+                                      </span>
+                                      <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
+                                        {st.staff_name}
+                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                          (Ticket #{st.staff_ticket_number})
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Node: Operations & Carry Forward Details */}
                       {(() => {
