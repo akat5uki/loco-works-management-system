@@ -853,10 +853,10 @@ const EmployeesBookingWizard = () => {
                   {activeStep === 1 && (
                     <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "1.5rem", background: "rgba(255,255,255,0.01)" }}>
                       <h3 style={{ marginTop: 0, fontSize: "1.2rem", color: "var(--text-h)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        Assign Locomotives to Available Supervisors
+                        Assign Available Supervisors to Locomotives
                       </h3>
                       <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.25rem", marginBottom: "1.5rem" }}>
-                        Select the locomotive numbers assigned under each available supervisor. Booking of all available supervisors must be fully completed and saved to proceed to staff booking.
+                        Select the supervisors assigned to each locomotive. You can also click a locomotive card to preview its operations. Supervisor bookings must be fully saved to proceed to staff booking.
                       </p>
 
                       {supervisorList.filter(sup => availableTickets.has(sup.ticket_number)).length === 0 ? (
@@ -865,53 +865,64 @@ const EmployeesBookingWizard = () => {
                         </p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxHeight: "400px", overflowY: "auto", paddingRight: "0.5rem", marginBottom: "1.5rem" }}>
-                          {supervisorList
-                            .filter(sup => availableTickets.has(sup.ticket_number))
-                            .map(sup => {
-                              const assignedLocos = tempSupervisorLocos[sup.ticket_number] || [];
-                              return (
-                                <div
-                                  key={sup.ticket_number}
-                                  style={{
-                                    border: "1px solid var(--border)",
-                                    borderRadius: "8px",
-                                    padding: "1rem",
-                                    background: "var(--bg)",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "0.5rem"
-                                  }}
-                                >
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <strong style={{ fontSize: "0.95rem" }}>{sup.name}</strong>
-                                    <span style={{ fontSize: "0.75rem", background: "var(--accent-bg)", color: "var(--accent)", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
-                                      {sup.designation_name} (Ticket #{sup.ticket_number})
-                                    </span>
-                                  </div>
+                          {locos.map(locoNum => {
+                            const isSelectedForPreview = selectedLoco === locoNum;
+                            // Find all supervisors assigned to this locomotive
+                            const assignedSupervisors = supervisorList
+                              .filter(sup => availableTickets.has(sup.ticket_number))
+                              .filter(sup => (tempSupervisorLocos[sup.ticket_number] || []).includes(locoNum));
 
-                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" }}>
-                                    {locos.map(locoNum => {
-                                      const isAssigned = assignedLocos.includes(locoNum);
-                                      const isSelectedForPreview = selectedLoco === locoNum;
+                            return (
+                              <div
+                                key={locoNum}
+                                onClick={() => setSelectedLoco(locoNum)}
+                                style={{
+                                  border: `1px solid ${isSelectedForPreview ? "var(--accent)" : "var(--border)"}`,
+                                  borderRadius: "8px",
+                                  padding: "1rem",
+                                  background: "var(--bg)",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.5rem",
+                                  cursor: "pointer",
+                                  boxShadow: isSelectedForPreview ? "0 0 0 1px var(--accent)" : "none",
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <strong style={{ fontSize: "0.95rem" }}>Locomotive #{locoNum}</strong>
+                                  {assignedSupervisors.length > 0 && (
+                                    <span style={{ fontSize: "0.75rem", background: "var(--accent-bg)", color: "var(--accent)", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                                      {assignedSupervisors.length} Supervisor(s) Assigned
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" }}>
+                                  {supervisorList
+                                    .filter(sup => availableTickets.has(sup.ticket_number))
+                                    .map(sup => {
+                                      const isAssigned = (tempSupervisorLocos[sup.ticket_number] || []).includes(locoNum);
                                       return (
                                         <div
-                                          key={locoNum}
+                                          key={sup.ticket_number}
                                           style={{
                                             display: "flex",
                                             alignItems: "center",
                                             gap: "0.4rem",
                                             padding: "0.4rem 0.8rem",
                                             borderRadius: "20px",
-                                            border: `1px solid ${isSelectedForPreview ? "var(--accent)" : "var(--border)"}`,
+                                            border: `1px solid ${isAssigned ? "var(--accent)" : "var(--border)"}`,
                                             background: isAssigned ? "var(--accent-bg)" : "var(--bg-secondary)",
                                             cursor: "pointer",
                                             userSelect: "none",
                                             fontSize: "0.85rem",
                                             fontWeight: "bold",
-                                            color: isAssigned ? "var(--accent)" : "var(--text-muted)",
-                                            boxShadow: isSelectedForPreview ? "0 0 0 1px var(--accent)" : "none",
+                                            color: isAssigned ? "var(--accent)" : "var(--text-muted)"
                                           }}
-                                          onClick={() => setSelectedLoco(locoNum)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleSupervisorLoco(sup.ticket_number, locoNum);
+                                          }}
                                         >
                                           <input
                                             type="checkbox"
@@ -923,14 +934,14 @@ const EmployeesBookingWizard = () => {
                                             }}
                                             style={{ cursor: "pointer" }}
                                           />
-                                          <span>#{locoNum}</span>
+                                          <span>{sup.name} (SSE/JE)</span>
                                         </div>
                                       );
                                     })}
-                                  </div>
                                 </div>
-                              );
-                            })}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
 
