@@ -52,16 +52,6 @@ const DashboardPage = () => {
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "profile" | "chat">("dashboard");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
-  const [showWizardTile, setShowWizardTile] = useState(() => {
-    return localStorage.getItem("show_wizard_tile") === "true"; // Defaults to false
-  });
-
-  const handleToggleWizardTile = () => {
-    const nextVal = !showWizardTile;
-    setShowWizardTile(nextVal);
-    localStorage.setItem("show_wizard_tile", String(nextVal));
-  };
   
   // Real-time assignment and notifications
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -162,17 +152,27 @@ const DashboardPage = () => {
             description: "Book a locomotive for a job",
             path: "/bookings/loco",
           },
-          ...(showWizardTile
-            ? [
-                {
-                  title: "Employees Booking",
-                  icon: <Users size={32} />,
-                  color: "#10b981",
-                  description: "Manage employee availability & bookings",
-                  path: "/bookings/employees",
-                },
-              ]
-            : []),
+          {
+            title: "Employee Availability",
+            icon: <ClipboardList size={32} />,
+            color: "#ec4899",
+            description: "Mark daily availability for staff",
+            path: "/bookings/availability",
+          },
+          {
+            title: "Employees Booking",
+            icon: <Users size={32} />,
+            color: "#10b981",
+            description: "Assign supervisors & staff to active locos",
+            path: "/bookings/employees",
+          },
+          {
+            title: "Booking Preview & Export",
+            icon: <FileText size={32} />,
+            color: "#06b6d4",
+            description: "Preview shift details and export to PDF/Excel",
+            path: "/bookings/preview",
+          },
           {
             title: "CRUD Operations",
             icon: <Settings size={32} />,
@@ -275,40 +275,6 @@ const DashboardPage = () => {
             <p>Workplace Overview & Quick Actions</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            {isSupervisor && (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginRight: "0.5rem" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)" }}>Employees Booking</span>
-                <button
-                  type="button"
-                  onClick={handleToggleWizardTile}
-                  style={{
-                    position: "relative",
-                    width: "40px",
-                    height: "20px",
-                    borderRadius: "10px",
-                    background: showWizardTile ? "var(--accent)" : "#cbd5e1",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    transition: "background-color 0.2s"
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "2px",
-                      left: showWizardTile ? "22px" : "2px",
-                      width: "16px",
-                      height: "16px",
-                      borderRadius: "50%",
-                      background: "white",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                      transition: "left 0.2s"
-                    }}
-                  />
-                </button>
-              </div>
-            )}
             <ThemeToggle />
             
             {/* Notification Bell */}
@@ -410,11 +376,26 @@ const DashboardPage = () => {
                       assignments.map((asg: any) => (
                         asg.locos.map((l: any) => (
                           <div key={l.loco_number} style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1rem", background: "var(--bg)" }}>
-                            <div 
-                              style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", marginBottom: "0.5rem", cursor: "pointer" }}
-                              onClick={() => navigate("/bookings/employees", { state: { selectLoco: l.loco_number } })}
-                            >
-                              <Train size={18} /> Loco #{l.loco_number}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
+                              <div 
+                                style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", cursor: "pointer" }}
+                                onClick={() => navigate("/bookings/employees", { state: { selectLoco: l.loco_number } })}
+                              >
+                                <Train size={18} /> Loco #{l.loco_number}
+                              </div>
+                              {l.status && (
+                                <span style={{
+                                  fontSize: "0.7rem",
+                                  fontWeight: "bold",
+                                  padding: "0.15rem 0.4rem",
+                                  borderRadius: "4px",
+                                  background: l.status === "completed" ? "rgba(16, 185, 129, 0.15)" : l.status === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                  color: l.status === "completed" ? "#10b981" : l.status === "partially completed" ? "#f59e0b" : "#ef4444",
+                                  border: `1px solid ${l.status === "completed" ? "rgba(16, 185, 129, 0.3)" : l.status === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
+                                }}>
+                                  {l.status.toUpperCase()}
+                                </span>
+                              )}
                             </div>
                             <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem" }}>Assigned Staff:</div>
                             {l.staff.length === 0 ? (
@@ -434,8 +415,23 @@ const DashboardPage = () => {
                       assignments.map((asg: any) => (
                         asg.assignments.map((asgn: any, idx: number) => (
                           <div key={idx} style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1rem", background: "var(--bg)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", marginBottom: "0.5rem" }}>
-                              <Train size={18} /> Loco #{asgn.loco_number}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)" }}>
+                                <Train size={18} /> Loco #{asgn.loco_number}
+                              </div>
+                              {asgn.status && (
+                                <span style={{
+                                  fontSize: "0.7rem",
+                                  fontWeight: "bold",
+                                  padding: "0.15rem 0.4rem",
+                                  borderRadius: "4px",
+                                  background: asgn.status === "completed" ? "rgba(16, 185, 129, 0.15)" : asgn.status === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                  color: asgn.status === "completed" ? "#10b981" : asgn.status === "partially completed" ? "#f59e0b" : "#ef4444",
+                                  border: `1px solid ${asgn.status === "completed" ? "rgba(16, 185, 129, 0.3)" : asgn.status === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
+                                }}>
+                                  {asgn.status.toUpperCase()}
+                                </span>
+                              )}
                             </div>
                             <div style={{ fontSize: "0.85rem" }}>
                               <strong>Supervisor:</strong> {asgn.supervisor_name} (Ticket #{asgn.supervisor_ticket_number})

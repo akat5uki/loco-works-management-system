@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Train, Search, Plus, Trash2, Calendar, ClipboardList,
-  Clock, User, FileText, ArrowLeft, History, X, ChevronDown, ChevronUp
+  Clock, User, FileText, ArrowLeft, History, X, ChevronDown, ChevronUp, AlertTriangle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Edit2 } from "lucide-react";
@@ -38,12 +38,38 @@ const tomorrowISO = () => {
 
 
 
-/** Guess current shift from hour-of-day (rough approximation). */
 const guessShift = () => {
   const h = new Date().getHours();
   if (h >= 6 && h < 14) return 1;
   if (h >= 14 && h < 22) return 2;
   return 1; // Default fallback for off-shift night hours
+};
+
+
+
+const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => {
+  const curDateStr = todayISO();
+  const curShift = guessShift();
+  
+  let nextDateStr = curDateStr;
+  let nextShift = 1;
+  
+  if (curShift === 1) {
+    nextShift = 2;
+  } else {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const day = String(tomorrow.getDate()).padStart(2, "0");
+    nextDateStr = `${year}-${month}-${day}`;
+    nextShift = 1;
+  }
+  
+  const isCurrent = (selDateStr === curDateStr && selShift === curShift);
+  const isNext = (selDateStr === nextDateStr && selShift === nextShift);
+  
+  return isCurrent || isNext;
 };
 
 function groupBookings(list: RawBooking[]) {
@@ -754,6 +780,24 @@ const LocoBookingUI = () => {
                       </div>
                     </div>
                   </div>
+                  {!isCurrentOrNextShift(bookingDate, bookingShift) && (
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      background: "rgba(245, 158, 11, 0.1)",
+                      border: "1px solid #f59e0b",
+                      color: "#f59e0b",
+                      padding: "0.75rem",
+                      borderRadius: "0.375rem",
+                      marginTop: "1rem",
+                      fontSize: "0.85rem",
+                      fontWeight: 600
+                    }}>
+                      <AlertTriangle size={16} />
+                      <span>Warning: You are booking for a shift other than the current or next shift.</span>
+                    </div>
+                  )}
                   {message.includes("Editing") && (
                     <p className="editing-hint">⚠️ An existing booking for this date &amp; shift will be replaced.</p>
                   )}

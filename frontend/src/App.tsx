@@ -11,6 +11,8 @@ import NotFoundPage from "./features/auth/NotFoundPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import LocoBookingUI from "./features/bookings/LocoBookingUI";
 import EmployeesBookingWizard from "./features/bookings/EmployeesBookingWizard";
+import EmployeeAvailability from "./features/bookings/EmployeeAvailability";
+import BookingPreview from "./features/bookings/BookingPreview";
 import MasterDataPage from "./features/crud/MasterDataPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 
@@ -43,6 +45,22 @@ function App() {
           element={
             <ProtectedRoute>
               <EmployeesBookingWizard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings/availability"
+          element={
+            <ProtectedRoute>
+              <EmployeeAvailability />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings/preview"
+          element={
+            <ProtectedRoute>
+              <BookingPreview />
             </ProtectedRoute>
           }
         />

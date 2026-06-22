@@ -520,6 +520,68 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
     result = await db.execute(query)
     rows = result.all()
     
+    # Calculate completion status for each locomotive in this date and shift
+    from sqlalchemy.orm import selectinload
+    loco_bookings_query = (
+        select(LocoBooking)
+        .options(selectinload(LocoBooking.tasks))
+        .where(
+            and_(
+                func.date(func.timezone("Asia/Kolkata", LocoBooking.date_time)) == local_date,
+                LocoBooking.shift == shift,
+            )
+        )
+    )
+    loco_bookings_res = await db.execute(loco_bookings_query)
+    all_loco_bookings = loco_bookings_res.scalars().all()
+
+    loco_assigned_items = {}
+    for b in all_loco_bookings:
+        loco_str = decode_loco_number(b.loco_number)
+        if loco_str not in loco_assigned_items:
+            loco_assigned_items[loco_str] = set()
+        # Add the job itself
+        loco_assigned_items[loco_str].add((b.job_id, None))
+        # Add all tasks for this job
+        for t in b.tasks:
+            loco_assigned_items[loco_str].add((b.job_id, t.task_id))
+
+    remarks_query = select(LocoBookingRemarks).where(
+        and_(
+            func.date(func.timezone("Asia/Kolkata", LocoBookingRemarks.date_time)) == local_date,
+            LocoBookingRemarks.shift == shift,
+        )
+    )
+    remarks_res = await db.execute(remarks_query)
+    all_remarks = remarks_res.scalars().all()
+
+    loco_completed_items = {}
+    for r in all_remarks:
+        loco_str = decode_loco_number(r.loco_number)
+        if r.completed:
+            if loco_str not in loco_completed_items:
+                loco_completed_items[loco_str] = set()
+            loco_completed_items[loco_str].add((r.job_id, r.task_id))
+
+    loco_status_dict = {}
+    for loco_str, assigned in loco_assigned_items.items():
+        completed = loco_completed_items.get(loco_str, set())
+        completed_assigned = assigned.intersection(completed)
+        
+        total_count = len(assigned)
+        completed_count = len(completed_assigned)
+        
+        if total_count == 0:
+            status_val = "incomplete"
+        elif completed_count == total_count:
+            status_val = "completed"
+        elif completed_count == 0:
+            status_val = "incomplete"
+        else:
+            status_val = "partially completed"
+        
+        loco_status_dict[loco_str] = status_val
+
     # ── Compiled View 1: BY LOCO ──
     by_loco_dict = {}
     for r in rows:
@@ -531,7 +593,11 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
         is_f = r.is_forwarded
         
         if loco not in by_loco_dict:
-            by_loco_dict[loco] = {"loco_number": loco, "supervisors": {}}
+            by_loco_dict[loco] = {
+                "loco_number": loco,
+                "status": loco_status_dict.get(loco, "incomplete"),
+                "supervisors": {},
+            }
             
         if sup_ticket not in by_loco_dict[loco]["supervisors"]:
             by_loco_dict[loco]["supervisors"][sup_ticket] = {
@@ -551,6 +617,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
         by_loco.append(
             {
                 "loco_number": l_data["loco_number"],
+                "status": l_data["status"],
                 "supervisors": list(l_data["supervisors"].values()),
             }
         )
@@ -575,6 +642,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
         if loco not in by_sup_dict[sup_ticket]["locos"]:
             by_sup_dict[sup_ticket]["locos"][loco] = {
                 "loco_number": loco,
+                "status": loco_status_dict.get(loco, "incomplete"),
                 "is_forwarded": is_f,
                 "staff": [],
             }
@@ -616,6 +684,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
         by_staff_dict[staff_ticket]["assignments"].append(
             {
                 "loco_number": loco,
+                "status": loco_status_dict.get(loco, "incomplete"),
                 "supervisor_ticket_number": sup_ticket,
                 "supervisor_name": sup_name,
             }

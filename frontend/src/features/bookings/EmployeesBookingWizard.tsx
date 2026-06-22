@@ -102,6 +102,31 @@ const guessShift = () => {
   return hour >= 8 && hour < 20 ? 1 : 2;
 };
 
+const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => {
+  const curDateStr = todayISO();
+  const curShift = guessShift();
+  
+  let nextDateStr = curDateStr;
+  let nextShift = 1;
+  
+  if (curShift === 1) {
+    nextShift = 2;
+  } else {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const day = String(tomorrow.getDate()).padStart(2, "0");
+    nextDateStr = `${year}-${month}-${day}`;
+    nextShift = 1;
+  }
+  
+  const isCurrent = (selDateStr === curDateStr && selShift === curShift);
+  const isNext = (selDateStr === nextDateStr && selShift === nextShift);
+  
+  return isCurrent || isNext;
+};
+
 const EmployeesBookingWizard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -149,7 +174,6 @@ const EmployeesBookingWizard = () => {
 
   // Active View Tab
   const [activeViewTab, setActiveViewTab] = useState<"loco" | "supervisor" | "staff">("loco");
-  const [searchTerm, setSearchTerm] = useState("");
 
   // Telemetry WS connection
   useEffect(() => {
@@ -357,28 +381,7 @@ const EmployeesBookingWizard = () => {
   }, [dateStr, shift]);
 
 
-  // ── Availability Toggler ──
-  const handleToggleAvailability = async (ticket: number) => {
-    if (lockOwner) return;
-    const newAvails = new Set(availableTickets);
-    if (newAvails.has(ticket)) {
-      newAvails.delete(ticket);
-    } else {
-      newAvails.add(ticket);
-    }
-    setAvailableTickets(newAvails);
 
-    try {
-      await api.post("/bookings/employees/availabilities", {
-        date_str: dateStr,
-        shift,
-        ticket_numbers: Array.from(newAvails)
-      });
-      fetchData();
-    } catch (err) {
-      alert("Failed to update availability.");
-    }
-  };
 
 
   // ── Save Supervisors Booking submission ──
@@ -680,22 +683,7 @@ const EmployeesBookingWizard = () => {
   const supervisorList = getSortedEmployeesList().filter(e => e.designation_id === 1 || e.designation_id === 2);
   const hasSavedSupervisors = bookings.some(b => b.supervisor_ticket_number && !b.staff_ticket_number);
   const staffList = getSortedEmployeesList().filter(e => e.designation_id > 2);
-  const filteredEmployees = [...employees]
-    .filter(emp => {
-      const term = searchTerm.trim().toLowerCase();
-      if (!term) return true;
-      return (
-        emp.name.toLowerCase().includes(term) ||
-        emp.designation_name.toLowerCase().includes(term) ||
-        emp.ticket_number.toString().includes(term)
-      );
-    })
-    .sort((a, b) => {
-      if (a.designation_id !== b.designation_id) {
-        return a.designation_id - b.designation_id;
-      }
-      return a.ticket_number - b.ticket_number;
-    });
+
 
   // Grouped Staff segments
   const groupedStaffList = staffList.reduce((acc, emp) => {
@@ -769,6 +757,16 @@ const EmployeesBookingWizard = () => {
         </div>
       )}
 
+      {/* Shift Edit Restriction Warning Overlay */}
+      {!isCurrentOrNextShift(dateStr, shift) && (
+        <div className="lock-banner" style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", color: "#f59e0b" }}>
+          <AlertTriangle size={18} />
+          <span>
+            Warning: You are viewing/editing bookings for a shift other than the current or next shift. Please verify date and shift selection before saving.
+          </span>
+        </div>
+      )}
+
       {/* ── Global Selection Bar ── */}
       <div className="global-config-bar">
         <div className="config-group">
@@ -796,51 +794,10 @@ const EmployeesBookingWizard = () => {
         </button>
       </div>
 
-      <div className="wizard-grid">
-        {/* ── PANEL 1: Employee Availability ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "2rem", marginBottom: "3rem" }}>
+        {/* ── PANEL: Actual Booking Wizard ── */}
         <section className="panel-card">
-          <h2>1. Set Employee Availability (Current Shift)</h2>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "-0.5rem" }}>
-            By default, all employees are marked Available. Toggle to Absent to exclude them.
-          </p>
-
-          <div style={{ margin: "1rem 0" }}>
-            <input
-              type="text"
-              placeholder="Search by name, designation, or ticket..."
-              className="config-input"
-              style={{ width: "100%" }}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="availability-list">
-            {filteredEmployees.length === 0 && <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No employees match search criteria.</p>}
-            {filteredEmployees.map(emp => {
-              const isAvailable = availableTickets.has(emp.ticket_number);
-              return (
-                <div key={emp.ticket_number} className={`employee-toggle-item ${isAvailable ? 'available' : ''}`}>
-                  <div className="emp-meta">
-                    <span className="emp-name">{emp.name} (Ticket #{emp.ticket_number})</span>
-                    <span className="emp-badge">{emp.designation_name} — {emp.category_name}</span>
-                  </div>
-                  <button
-                    className={`avail-toggle-btn ${isAvailable ? 'active' : ''}`}
-                    onClick={() => handleToggleAvailability(emp.ticket_number)}
-                    disabled={!!lockOwner}
-                  >
-                    {isAvailable ? "Available" : "Absent"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── PANEL 2: Actual Booking Wizard ── */}
-        <section className="panel-card" style={{ gridColumn: "span 2" }}>
-          <h2>2. Book Employees to Locomotives</h2>
+          <h2>Book Employees to Locomotives</h2>
           
           {locos.length === 0 ? (
             <div style={{ textAlign: "center", padding: "2rem" }}>
