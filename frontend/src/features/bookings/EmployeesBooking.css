@@ -567,3 +567,118 @@
     font-size: 0.7rem;
     color: var(--text-muted);
 }
+
+/* Collapsible Tree Structure in Preview Page */
+.tree-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.tree-node {
+    display: flex;
+    flex-direction: column;
+    border-radius: 6px;
+}
+
+.tree-node-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.tree-node-row:hover {
+    background: var(--bg-secondary);
+}
+
+.tree-node-row.leaf {
+    cursor: default;
+}
+
+.tree-node-row.leaf:hover {
+    background: transparent;
+}
+
+.tree-node-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.tree-node-toggle .leaf-spacer {
+    display: block;
+    width: 14px;
+    height: 14px;
+}
+
+.leaf-spacer {
+    display: block;
+    width: 14px;
+    height: 14px;
+}
+
+.tree-node-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.tree-node-icon.leaf-icon {
+    color: var(--text-muted);
+    font-weight: bold;
+    width: 20px;
+    text-align: center;
+}
+
+.tree-node-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-h);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.tree-node-children {
+    margin-left: 18px;
+    padding-left: 14px;
+    border-left: 1.5px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.15rem;
+    margin-bottom: 0.35rem;
+}
+
+/* Print override for tree node visibility */
+@media print {
+    .tree-node-content {
+        display: flex !important;
+    }
+    .tree-node-children {
+        display: flex !important;
+        border-left: 1.5px solid #ccc !important;
+    }
+    .tree-node-toggle {
+        display: none !important;
+    }
+    .tree-node-toggle .leaf-spacer {
+        display: none !important;
+    }
+    .leaf-spacer {
+        display: none !important;
+    }
+}

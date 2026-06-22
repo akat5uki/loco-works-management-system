@@ -10,7 +10,13 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  User,
+  ClipboardList,
+  CheckSquare
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -104,6 +110,56 @@ const BookingPreview = () => {
   const [viewsData, setViewsData] = useState<ViewsData | null>(null);
   const [allLocoJobs, setAllLocoJobs] = useState<Record<string, JobInfo[]>>({});
   const [remarksState, setRemarksState] = useState<Record<string, any>>({}); // loco_number -> job_id/task_id remarks
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+
+  const isNodeExpanded = (nodeId: string, defaultVal = true) => {
+    return expandedNodes[nodeId] ?? defaultVal;
+  };
+
+  const toggleNode = (nodeId: string, defaultVal = true) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodeId]: !(prev[nodeId] ?? defaultVal)
+    }));
+  };
+
+  const expandAll = () => {
+    if (!viewsData?.by_loco) return;
+    const next: Record<string, boolean> = {};
+    viewsData.by_loco.forEach(l => {
+      const locoNum = l.loco_number;
+      next[locoNum] = true;
+      next[`${locoNum}-personnel`] = true;
+      l.supervisors.forEach(s => {
+        next[`${locoNum}-supervisor-${s.supervisor_ticket_number}`] = true;
+      });
+      next[`${locoNum}-operations`] = true;
+      const jobs = allLocoJobs[locoNum] || [];
+      jobs.forEach(j => {
+        next[`${locoNum}-job-${j.job_id}`] = true;
+      });
+    });
+    setExpandedNodes(next);
+  };
+
+  const collapseAll = () => {
+    if (!viewsData?.by_loco) return;
+    const next: Record<string, boolean> = {};
+    viewsData.by_loco.forEach(l => {
+      const locoNum = l.loco_number;
+      next[locoNum] = false;
+      next[`${locoNum}-personnel`] = false;
+      l.supervisors.forEach(s => {
+        next[`${locoNum}-supervisor-${s.supervisor_ticket_number}`] = false;
+      });
+      next[`${locoNum}-operations`] = false;
+      const jobs = allLocoJobs[locoNum] || [];
+      jobs.forEach(j => {
+        next[`${locoNum}-job-${j.job_id}`] = false;
+      });
+    });
+    setExpandedNodes(next);
+  };
 
   useEffect(() => {
     api.get("/auth/me")
@@ -356,9 +412,15 @@ const BookingPreview = () => {
 
         </div>
 
-        <h2 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "1rem" }}>
-          2. Final Locomotive Assignment Details
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "1rem" }}>
+          <h2 style={{ margin: 0 }}>
+            2. Final Locomotive Assignment Details
+          </h2>
+          <div className="no-print" style={{ display: "flex", gap: "0.5rem" }}>
+            <button className="back-btn" onClick={expandAll} style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", height: "auto" }}>Expand All</button>
+            <button className="back-btn" onClick={collapseAll} style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", height: "auto" }}>Collapse All</button>
+          </div>
+        </div>
         {(!viewsData || viewsData.by_loco.length === 0) ? (
           <p style={{ fontStyle: "italic", color: "var(--text-muted)", padding: "1rem 0" }}>No locomotive bookings available for this shift.</p>
         ) : (
@@ -367,90 +429,301 @@ const BookingPreview = () => {
               const locoNum = l.loco_number;
               const locoStatus = l.status || "incomplete";
               const jobs = allLocoJobs[locoNum] || [];
+              const isLocoExpanded = isNodeExpanded(locoNum, false);
 
               return (
-                <div key={locoNum} style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "1.5rem", background: "var(--bg)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "bold", fontSize: "1.2rem", color: "var(--accent)" }}>
+                <div key={locoNum} style={{ border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg)", marginBottom: "1rem", overflow: "hidden" }}>
+                  
+                  {/* Collapsible Header */}
+                  <div 
+                    style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      alignItems: "center", 
+                      padding: "1rem 1.5rem", 
+                      background: "var(--bg-secondary)", 
+                      cursor: "pointer", 
+                      userSelect: "none" 
+                    }}
+                    onClick={() => toggleNode(locoNum, false)}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontWeight: "bold", fontSize: "1.2rem", color: "var(--accent)" }}>
+                      <span className="no-print" style={{ display: "flex", alignItems: "center" }}>
+                        {isLocoExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                      </span>
                       <Train size={20} /> Loco #{locoNum}
                     </div>
-                    <span style={{
-                      fontSize: "0.75rem",
-                      fontWeight: "bold",
-                      padding: "0.2rem 0.5rem",
-                      borderRadius: "4px",
-                      background: locoStatus === "completed" ? "rgba(16, 185, 129, 0.15)" : locoStatus === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                      color: locoStatus === "completed" ? "#10b981" : locoStatus === "partially completed" ? "#f59e0b" : "#ef4444",
-                      border: `1px solid ${locoStatus === "completed" ? "rgba(16, 185, 129, 0.3)" : locoStatus === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
-                    }}>
-                      {locoStatus.toUpperCase()}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1rem" }}>
-                    <div>
-                      <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--text-h)" }}>Assigned Supervisors</h4>
-                      {l.supervisors.length === 0 ? <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>No supervisors booked.</p> : (
-                        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
-                          {l.supervisors.map(s => (
-                            <li key={s.supervisor_ticket_number}>{s.supervisor_name} (Ticket #{s.supervisor_ticket_number})</li>
-                          ))}
-                        </ul>
+                    
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                      {!isLocoExpanded && l.supervisors.length > 0 && (
+                        <span className="no-print" style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                          ({l.supervisors.map(s => s.supervisor_name).join(", ")})
+                        </span>
                       )}
-                    </div>
-                    <div>
-                      <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--text-h)" }}>Assigned Staff</h4>
-                      {l.supervisors.flatMap(s => s.staff).length === 0 ? <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>No staff booked.</p> : (
-                        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
-                          {l.supervisors.flatMap(s => s.staff).map(st => (
-                            <li key={st.staff_ticket_number}>{st.staff_name} (Ticket #{st.staff_ticket_number})</li>
-                          ))}
-                        </ul>
-                      )}
+                      <span style={{
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        padding: "0.2rem 0.5rem",
+                        borderRadius: "4px",
+                        background: locoStatus === "completed" ? "rgba(16, 185, 129, 0.15)" : locoStatus === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                        color: locoStatus === "completed" ? "#10b981" : locoStatus === "partially completed" ? "#f59e0b" : "#ef4444",
+                        border: `1px solid ${locoStatus === "completed" ? "rgba(16, 185, 129, 0.3)" : locoStatus === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
+                      }}>
+                        {locoStatus.toUpperCase()}
+                      </span>
                     </div>
                   </div>
 
-                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "1rem" }}>
-                    <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--text-h)" }}>Booked Operations Status</h4>
-                    {jobs.length === 0 ? (
-                      <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic", margin: 0 }}>No jobs/tasks assigned to this loco.</p>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {jobs.map(j => {
-                          const jobRem = remarksState[locoNum]?.jobs[j.job_id] || { completed: false, remarks: "" };
-                          return (
-                            <div key={j.job_id} style={{ border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem", background: "var(--bg-secondary)", fontSize: "0.85rem" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", marginBottom: "0.25rem" }}>
-                                <span>Job {j.job_id}: {j.job_description}</span>
-                                <span style={{ color: jobRem.completed ? "#10b981" : "#f59e0b" }}>{jobRem.completed ? "Completed" : "In Progress"}</span>
+                  {/* Collapsible Content */}
+                  <div 
+                    style={{ 
+                      padding: "1.5rem", 
+                      borderTop: "1px solid var(--border)", 
+                      display: isLocoExpanded ? "block" : "none" 
+                    }} 
+                    className="print-visible-block"
+                  >
+                    <div className="tree-container">
+                      
+                      {/* Node: Personnel Assignments */}
+                      {(() => {
+                        const personnelKey = `${locoNum}-personnel`;
+                        const isPersonnelExpanded = isNodeExpanded(personnelKey, true);
+                        return (
+                          <div className="tree-node">
+                            <div className="tree-node-row" onClick={() => toggleNode(personnelKey, true)}>
+                              <span className="tree-node-toggle">
+                                {isPersonnelExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                              </span>
+                              <span className="tree-node-icon">
+                                <Users size={16} />
+                              </span>
+                              <div className="tree-node-label">
+                                <span>Personnel Assignments (Supervisors &amp; Staff)</span>
+                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                  ({l.supervisors.length} assigned)
+                                </span>
                               </div>
-                              {jobRem.remarks && <p style={{ margin: "0.25rem 0 0 0", fontStyle: "italic", color: "var(--text-muted)" }}>Remarks: "{jobRem.remarks}"</p>}
-                              
-                              {j.tasks.length > 0 && (
-                                <div style={{ marginTop: "0.5rem", borderTop: "1px dashed var(--border)", paddingTop: "0.5rem" }}>
-                                  <span style={{ fontWeight: "bold", fontSize: "0.8rem", color: "var(--text-muted)" }}>Tasks:</span>
-                                  <ul style={{ margin: "0.25rem 0 0 1.2rem", padding: 0, listStyle: "disc" }}>
-                                    {j.tasks.map(t => {
-                                      const taskRem = remarksState[locoNum]?.tasks[t.task_id] || { completed: false, remarks: "" };
-                                      return (
-                                        <li key={t.task_id} style={{ marginBottom: "0.25rem" }}>
-                                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                            <span>{t.task_description}</span>
-                                            <span style={{ color: taskRem.completed ? "#10b981" : "#f59e0b", fontSize: "0.8rem" }}>{taskRem.completed ? "Completed" : "In Progress"}</span>
-                                          </div>
-                                          {taskRem.remarks && <span style={{ display: "block", fontStyle: "italic", fontSize: "0.78rem", color: "var(--text-muted)" }}>Remarks: "{taskRem.remarks}"</span>}
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
+                            </div>
+                            
+                            <div 
+                              className="tree-node-content tree-node-children print-visible-block"
+                              style={{ display: isPersonnelExpanded ? "flex" : "none" }}
+                            >
+                              {l.supervisors.length === 0 ? (
+                                <div className="tree-node leaf">
+                                  <div className="tree-node-row leaf">
+                                    <span className="tree-node-toggle leaf-spacer"></span>
+                                    <span className="tree-node-icon leaf-icon">•</span>
+                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
+                                      No personnel assigned
+                                    </span>
+                                  </div>
                                 </div>
+                              ) : (
+                                l.supervisors.map(s => {
+                                  const supervisorKey = `${locoNum}-supervisor-${s.supervisor_ticket_number}`;
+                                  const isSupervisorExpanded = isNodeExpanded(supervisorKey, true);
+                                  return (
+                                    <div key={s.supervisor_ticket_number} className="tree-node">
+                                      <div className="tree-node-row" onClick={() => toggleNode(supervisorKey, true)}>
+                                        <span className="tree-node-toggle">
+                                          {s.staff.length > 0 ? (
+                                            isSupervisorExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+                                          ) : (
+                                            <span className="leaf-spacer"></span>
+                                          )}
+                                        </span>
+                                        <span className="tree-node-icon">
+                                          <User size={14} style={{ color: "var(--accent)" }} />
+                                        </span>
+                                        <div className="tree-node-label">
+                                          <strong>Supervisor:</strong> {s.supervisor_name}
+                                          <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                                            (Ticket #{s.supervisor_ticket_number})
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div 
+                                        className="tree-node-content tree-node-children print-visible-block"
+                                        style={{ display: isSupervisorExpanded ? "flex" : "none" }}
+                                      >
+                                        {s.staff.length === 0 ? (
+                                          <div className="tree-node leaf">
+                                            <div className="tree-node-row leaf">
+                                              <span className="tree-node-toggle leaf-spacer"></span>
+                                              <span className="tree-node-icon leaf-icon">•</span>
+                                              <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                                                No staff booked under this supervisor
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          s.staff.map(st => (
+                                            <div key={st.staff_ticket_number} className="tree-node leaf">
+                                              <div className="tree-node-row leaf">
+                                                <span className="tree-node-toggle leaf-spacer"></span>
+                                                <span className="tree-node-icon leaf-icon">
+                                                  <User size={12} style={{ color: "var(--text-muted)" }} />
+                                                </span>
+                                                <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
+                                                  {st.staff_name}
+                                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                                    (Ticket #{st.staff_ticket_number})
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })
                               )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Node: Operations & Carry Forward Details */}
+                      {(() => {
+                        const opsKey = `${locoNum}-operations`;
+                        const isOpsExpanded = isNodeExpanded(opsKey, true);
+                        return (
+                          <div className="tree-node" style={{ marginTop: "0.5rem" }}>
+                            <div className="tree-node-row" onClick={() => toggleNode(opsKey, true)}>
+                              <span className="tree-node-toggle">
+                                {isOpsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                              </span>
+                              <span className="tree-node-icon">
+                                <ClipboardList size={16} />
+                              </span>
+                              <div className="tree-node-label">
+                                <span>Operations &amp; Carry Forward Details</span>
+                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                  ({jobs.length} jobs booked)
+                                </span>
+                              </div>
+                            </div>
+
+                            <div 
+                              className="tree-node-content tree-node-children print-visible-block"
+                              style={{ display: isOpsExpanded ? "flex" : "none" }}
+                            >
+                              {jobs.length === 0 ? (
+                                <div className="tree-node leaf">
+                                  <div className="tree-node-row leaf">
+                                    <span className="tree-node-toggle leaf-spacer"></span>
+                                    <span className="tree-node-icon leaf-icon">•</span>
+                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
+                                      No operations booked for this loco
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                jobs.map(j => {
+                                  const jobKey = `${locoNum}-job-${j.job_id}`;
+                                  const isJobExpanded = isNodeExpanded(jobKey, true);
+                                  const jobRem = remarksState[locoNum]?.jobs[j.job_id] || { completed: false, remarks: "" };
+                                  return (
+                                    <div key={j.job_id} className="tree-node">
+                                      <div className="tree-node-row" onClick={() => toggleNode(jobKey, true)}>
+                                        <span className="tree-node-toggle">
+                                          {j.tasks.length > 0 ? (
+                                            isJobExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+                                          ) : (
+                                            <span className="leaf-spacer"></span>
+                                          )}
+                                        </span>
+                                        <span className="tree-node-icon">
+                                          <ClipboardList size={14} style={{ color: "var(--accent)" }} />
+                                        </span>
+                                        <div className="tree-node-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem" }}>
+                                          <div>
+                                            <strong>Job {j.job_id}:</strong> {j.job_description}
+                                            {jobRem.remarks && (
+                                              <span style={{ marginLeft: "0.5rem", fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                                                (Remarks: "{jobRem.remarks}")
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span style={{
+                                            fontSize: "0.75rem",
+                                            padding: "0.1rem 0.4rem",
+                                            borderRadius: "4px",
+                                            background: jobRem.completed ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                                            color: jobRem.completed ? "#10b981" : "#f59e0b",
+                                            border: `1px solid ${jobRem.completed ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`
+                                          }}>
+                                            {jobRem.completed ? "Completed" : "In Progress"}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div 
+                                        className="tree-node-content tree-node-children print-visible-block"
+                                        style={{ display: isJobExpanded ? "flex" : "none" }}
+                                      >
+                                        {j.tasks.length === 0 ? (
+                                          <div className="tree-node leaf">
+                                            <div className="tree-node-row leaf">
+                                              <span className="tree-node-toggle leaf-spacer"></span>
+                                              <span className="tree-node-icon leaf-icon">•</span>
+                                              <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                                                No tasks for this job
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          j.tasks.map(t => {
+                                            const taskRem = remarksState[locoNum]?.tasks[t.task_id] || { completed: false, remarks: "" };
+                                            return (
+                                              <div key={t.task_id} className="tree-node leaf">
+                                                <div className="tree-node-row leaf">
+                                                  <span className="tree-node-toggle leaf-spacer"></span>
+                                                  <span className="tree-node-icon leaf-icon">
+                                                    <CheckSquare size={12} style={{ color: taskRem.completed ? "#10b981" : "var(--text-muted)" }} />
+                                                  </span>
+                                                  <div className="tree-node-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
+                                                    <div>
+                                                      {t.task_description}
+                                                      {taskRem.remarks && (
+                                                        <span style={{ marginLeft: "0.5rem", fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.78rem" }}>
+                                                          (Remarks: "{taskRem.remarks}")
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <span style={{
+                                                      fontSize: "0.7rem",
+                                                      padding: "0.05rem 0.3rem",
+                                                      borderRadius: "3px",
+                                                      background: taskRem.completed ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
+                                                      color: taskRem.completed ? "#10b981" : "#f59e0b",
+                                                      border: `1px solid ${taskRem.completed ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)"}`
+                                                    }}>
+                                                      {taskRem.completed ? "Completed" : "In Progress"}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                    </div>
                   </div>
+
                 </div>
               );
             })}
@@ -464,6 +737,9 @@ const BookingPreview = () => {
             display: none !important;
           }
           .print-only {
+            display: block !important;
+          }
+          .print-visible-block {
             display: block !important;
           }
           body {
