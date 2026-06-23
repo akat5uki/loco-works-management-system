@@ -199,6 +199,18 @@ services:
       - ./infrastructure/nginx/certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: loco_ngrok
+    restart: always
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "nginx:80"
+    depends_on:
+      - nginx
+
 volumes:
   postgres_primary_data:
   postgres_replica_data:
