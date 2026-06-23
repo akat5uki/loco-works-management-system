@@ -102,7 +102,7 @@ const RegisterPage = () => {
       </div>
       <div className="auth-card">
         <div className="auth-header">
-          <div className="logo-box">L</div>
+          <img src="/favicon.svg" alt="LWMS Logo" className="logo-box" />
           <h2>Create Account</h2>
           <p>Register as a new employee</p>
         </div>

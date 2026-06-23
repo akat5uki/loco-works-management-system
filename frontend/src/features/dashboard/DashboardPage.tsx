@@ -210,7 +210,7 @@ const DashboardPage = () => {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="logo-box">L</div>
+          <img src="/favicon.svg" alt="LWMS Logo" className="logo-box" />
           <span>LWMS</span>
         </div>
         <nav className="sidebar-nav">

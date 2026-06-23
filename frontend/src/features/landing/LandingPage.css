@@ -25,13 +25,9 @@
 .logo-box {
     width: 2rem;
     height: 2rem;
-    background-color: var(--accent);
+    object-fit: contain;
     border-radius: 0.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    font-weight: bold;
+    display: block;
 }
 
 .nav-links {

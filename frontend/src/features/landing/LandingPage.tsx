@@ -76,7 +76,7 @@ const LandingPage = () => {
       <header className="header">
         <div className="header-content">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div className="logo-box">L</div>
+            <img src="/favicon.svg" alt="LWMS Logo" className="logo-box" />
             <h1 style={{ fontSize: "1.25rem", fontWeight: "700", margin: 0 }}>
               LWMS
             </h1>

@@ -104,7 +104,7 @@ const LoginPage = () => {
       </div>
       <div className="auth-card">
         <div className="auth-header">
-          <div className="logo-box">L</div>
+          <img src="/favicon.svg" alt="LWMS Logo" className="logo-box" />
           <h2>Sign in to Loco Works</h2>
           <p>Enter your employee details to continue</p>
         </div>
