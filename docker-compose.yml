@@ -207,6 +207,7 @@ services:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     command:
       - "http"
+      - "--url=crafter-strenuous-bundle.ngrok-free.dev"
       - "nginx:80"
     depends_on:
       - nginx
