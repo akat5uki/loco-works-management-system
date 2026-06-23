@@ -205,6 +205,7 @@ services:
     restart: always
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+      NGROK_API_KEY: ${NGROK_APIKEY}
     command:
       - "http"
       - "--url=crafter-strenuous-bundle.ngrok-free.dev"
