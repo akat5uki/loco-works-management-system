@@ -23,6 +23,7 @@ interface UserProfile {
   designation_name: string | null;
   category_name: string | null;
   is_supervisor: boolean;
+  email: string | null;
 }
 
 interface EmployeeNotification {
@@ -165,13 +166,17 @@ const DashboardPage = () => {
             description: "Assign supervisors & staff to active locos",
             path: "/bookings/employees",
           },
-          {
-            title: "Booking Preview & Export",
-            icon: <FileText size={32} />,
-            color: "#06b6d4",
-            description: "Preview shift details and export to PDF/Excel",
-            path: "/bookings/preview",
-          },
+        ]
+      : []),
+    {
+      title: "Booking Preview & Export",
+      icon: <FileText size={32} />,
+      color: "#06b6d4",
+      description: "Preview shift details and export to PDF/Excel",
+      path: "/bookings/preview",
+    },
+    ...(isSupervisor
+      ? [
           {
             title: "Master Data Management",
             icon: <Settings size={32} />,
@@ -449,6 +454,10 @@ const DashboardPage = () => {
                     <div className="profile-info-item">
                       <span className="profile-info-label">Ticket / Employee ID</span>
                       <span className="profile-info-value">#{userProfile.ticket_number}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">Email ID</span>
+                      <span className="profile-info-value">{userProfile.email || "Not Specified"}</span>
                     </div>
                     <div className="profile-info-item">
                       <span className="profile-info-label">Designation</span>

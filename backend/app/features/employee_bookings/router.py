@@ -89,7 +89,7 @@ def get_next_shift_dt_shift(current_date_str: str, current_shift: int) -> tuple[
 
 # 1. Availability Endpoints
 @router.get("/availabilities")
-async def get_availabilities(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
+async def get_availabilities(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     # Query absences (employees stored in EmployeeAvailability are absent)
     query = select(EmployeeAvailability.ticket_number).where(
@@ -158,7 +158,7 @@ async def update_availabilities(
 
 # 2. Available Locos Endpoint
 @router.get("/locos")
-async def get_available_locos(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
+async def get_available_locos(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     # Fetch distinct loco numbers booked in loco_bookings for this date and shift
     query = (
@@ -436,7 +436,7 @@ async def save_bookings(
 
 # 5. Get Bookings
 @router.get("/bookings")
-async def get_bookings(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
+async def get_bookings(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(EmployeeBooking).where(
         and_(
@@ -495,7 +495,7 @@ async def mark_notification_read(
 
 # 7. Views Endpoints (By Loco, By Supervisor, By Staff)
 @router.get("/views")
-async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
+async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     
     # Query all bookings joined with Employee names
@@ -703,7 +703,7 @@ async def get_booking_views(date_str: str, shift: int, db: AsyncSession = Depend
 
 # 8. Remarks & Carry Forward Endpoints
 @router.get("/remarks")
-async def get_remarks(date_str: str, shift: int, db: AsyncSession = Depends(get_db)):
+async def get_remarks(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(LocoBookingRemarks).where(
         and_(

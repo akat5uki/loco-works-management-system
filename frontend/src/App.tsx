@@ -35,7 +35,7 @@ function App() {
         <Route
           path="/bookings/loco"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSupervisor={true}>
               <LocoBookingUI />
             </ProtectedRoute>
           }
@@ -43,7 +43,7 @@ function App() {
         <Route
           path="/bookings/employees"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSupervisor={true}>
               <EmployeesBookingWizard />
             </ProtectedRoute>
           }
@@ -51,7 +51,7 @@ function App() {
         <Route
           path="/bookings/availability"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSupervisor={true}>
               <EmployeeAvailability />
             </ProtectedRoute>
           }
@@ -67,7 +67,7 @@ function App() {
         <Route
           path="/crud"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSupervisor={true}>
               <MasterDataPage />
             </ProtectedRoute>
           }

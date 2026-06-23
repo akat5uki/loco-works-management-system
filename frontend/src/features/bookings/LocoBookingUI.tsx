@@ -614,7 +614,7 @@ const LocoBookingUI = () => {
         <div className="tabs-navigation">
           <button className={`tab-btn ${activeTab === 'booking' ? 'active' : ''}`} onClick={() => setActiveTab('booking')}>Loco Booking</button>
           <button className={`tab-btn ${activeTab === 'list' ? 'active' : ''}`} onClick={() => setActiveTab('list')}>Booking List</button>
-          <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Booking History</button>
+          <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Booking Logs</button>
         </div>
       </header>
 
@@ -708,7 +708,7 @@ const LocoBookingUI = () => {
                     <div className="loco-tag-actions">
                       <button type="button" className="btn-history"
                         onClick={() => setActiveTab('history')}>
-                        <History size={14} /> View History
+                        <History size={14} /> View Logs
                       </button>
                       <button type="button" className="clear-loco-btn"
                         onClick={() => { setSelectedLoco(null); setSearchTerm(""); setSelectedJobs([]); setJobTasks({}); setMessage(""); }}>
@@ -1200,7 +1200,7 @@ const LocoBookingUI = () => {
         {activeTab === 'history' && (
           <section className="bookings-list-panel" style={{ width: '100%' }}>
             <div className="panel-card scrollable">
-              <h2>Booked Workshop Operations History</h2>
+              <h2>Booked Workshop Operations Logs</h2>
 
               <div className="history-filters-bar" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div className="filter-group" style={{ flexGrow: 1, minWidth: '200px' }}>

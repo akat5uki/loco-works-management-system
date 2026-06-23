@@ -15,9 +15,12 @@ router = APIRouter()
 
 # Schemas
 class JobBase(BaseModel):
-    job_id: str
     job_description: str
     stage: int
+
+
+class JobCreate(JobBase):
+    job_id: str
 
     @field_validator('job_id')
     @classmethod
@@ -28,6 +31,7 @@ class JobBase(BaseModel):
 
 
 class JobRead(JobBase):
+    job_id: int
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -49,7 +53,7 @@ async def get_jobs(current_user: CurrentUser, db: AsyncSession = Depends(get_db)
 
 @router.post("/", response_model=JobRead, status_code=status.HTTP_201_CREATED)
 async def create_job(
-    job: JobBase, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+    job: JobCreate, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
 ):
     db_job = Job(**job.model_dump())
     db.add(db_job)
@@ -71,7 +75,7 @@ async def get_tasks(current_user: CurrentUser, db: AsyncSession = Depends(get_db
 
 @router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 async def create_task(
-    task: TaskBase, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+    task: TaskBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
 ):
     db_task = Task(**task.model_dump())
     db.add(db_task)

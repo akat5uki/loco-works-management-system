@@ -22,6 +22,7 @@ from sqlalchemy.orm import joinedload
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.redis import redis_client
+from app.features.auth.dependencies import CurrentUser
 from app.features.employees.models import Employee, Designation
 
 router = APIRouter()
@@ -113,10 +114,18 @@ async def _store_and_publish(room: str, message: dict):
 # ---------------------------------------------------------------------------
 
 @router.get("/history/{room}")
-async def get_chat_history(room: str):
+async def get_chat_history(
+    room: str,
+    current_user: CurrentUser,
+):
     """REST fallback to load chat history (used on initial page mount)."""
     if room not in VALID_ROOMS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+    if room == ROOM_SUPERVISOR and not _is_supervisor(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions. Supervisor access required.",
+        )
     messages = await _get_history(room)
     return {"room": room, "messages": messages}
 

@@ -9,7 +9,7 @@ from sqlalchemy.future import select
 
 from app.core.database import get_db
 from app.core.loco_encoder import LocoNumberStr, encode_loco_number, decode_loco_number
-from app.features.auth.dependencies import CurrentUser
+from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.features.bookings.models import BookingTask, LocoBooking
 from app.features.employees.models import Employee
 from app.features.jobs.models import Job
@@ -52,7 +52,7 @@ class SingleJobAddInput(BaseModel):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking: BookingCreateBatch,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
     if booking.shift not in [1, 2]:
@@ -160,7 +160,7 @@ async def create_booking(
 @router.post("/tasks", status_code=status.HTTP_201_CREATED)
 async def add_booking_task(
     task_in: SingleTaskAddInput,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     loco_number_int = encode_loco_number(task_in.loco_number)
@@ -188,7 +188,7 @@ async def add_booking_task(
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
 async def add_job_booking(
     job_in: SingleJobAddInput,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     if job_in.shift not in [1, 2]:
@@ -325,7 +325,7 @@ async def get_loco_history(
 async def delete_loco_booking_batch(
     loco_number: str,
     date_time: datetime,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     loco_number_int = encode_loco_number(loco_number)
@@ -347,7 +347,7 @@ async def delete_job_booking(
     loco_number: str,
     date_time: datetime,
     job_id: int,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     loco_number_int = encode_loco_number(loco_number)
@@ -366,7 +366,7 @@ async def delete_job_booking(
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_booking_task(
     task_id: int,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     query = select(BookingTask).where(BookingTask.task_id == task_id)
@@ -384,7 +384,7 @@ class TaskUpdateInput(BaseModel):
 async def update_booking_task(
     task_id: int,
     task_in: TaskUpdateInput,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     query = select(BookingTask).where(BookingTask.task_id == task_id)
@@ -405,7 +405,7 @@ async def update_job_booking(
     date_time: datetime,
     job_id: int,
     job_in: JobUpdateInput,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
     loco_number_int = encode_loco_number(loco_number)

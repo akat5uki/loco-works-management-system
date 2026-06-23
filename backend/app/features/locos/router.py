@@ -84,7 +84,7 @@ async def get_production_stats(db: AsyncSession = Depends(get_db)):
 
 # Loco Types CRUD
 @router.get("/types", response_model=List[LocoTypeRead])
-async def get_loco_types(db: AsyncSession = Depends(get_db)):
+async def get_loco_types(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(LocoType))
     return result.scalars().all()
 
@@ -92,7 +92,7 @@ async def get_loco_types(db: AsyncSession = Depends(get_db)):
 @router.post("/types", response_model=LocoTypeRead, status_code=status.HTTP_201_CREATED)
 async def create_loco_type(
     loco_type: LocoTypeCreate,
-    current_user: CurrentUser,
+    current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
     db_type = LocoType(**loco_type.model_dump())
@@ -175,7 +175,7 @@ async def create_loco(
 
 
 @router.get("/ongoing-jobs")
-async def get_ongoing_jobs(db: AsyncSession = Depends(get_db)):
+async def get_ongoing_jobs(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Job).where(Job.stage > 0))
     jobs = result.scalars().all()
     return jobs

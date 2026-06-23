@@ -26,6 +26,7 @@ async def get_me(current_user: CurrentUser):
         "category_name": current_user.designation.category.category_name if current_user.designation and current_user.designation.category else None,
         "is_supervisor": current_user.designation
         and current_user.designation.category_id == 1,
+        "email": current_user.email,
     }
 
 

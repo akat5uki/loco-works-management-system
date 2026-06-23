@@ -4,13 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
+from app.features.auth.dependencies import CurrentUser
 from app.features.employees.models import Designation, Employee, EmployeeCategory
 
 router = APIRouter()
 
 
 @router.get("/")
-async def get_employees(db: AsyncSession = Depends(get_db)):
+async def get_employees(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Employee, Designation, EmployeeCategory)
         .join(Designation, Employee.designation_id == Designation.designation_id)
