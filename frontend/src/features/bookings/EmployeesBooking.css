@@ -682,3 +682,110 @@
         display: none !important;
     }
 }
+
+/* Responsive adjustments for smartphones */
+@media (max-width: 768px) {
+    .employees-booking-workspace {
+        padding: 1rem;
+    }
+
+    .workspace-header {
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .title-area {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .title-area h1 {
+        font-size: 1.4rem;
+    }
+
+    .title-area p {
+        font-size: 0.85rem;
+    }
+
+    .global-config-bar {
+        padding: 1rem;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .config-group {
+        width: 100%;
+    }
+
+    .config-select, .config-input {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .global-config-bar button {
+        width: 100%;
+    }
+
+    .panel-card, .view-content-card, .remarks-loco-card {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .panel-card h2, .view-content-card h2 {
+        font-size: 1.1rem;
+    }
+
+    .remarks-row-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .new-task-entry {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .new-task-entry button {
+        width: 100%;
+    }
+
+    .views-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+    }
+
+    .view-tab-btn {
+        flex-shrink: 0;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .view-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .loco-select-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .loco-card {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+    }
+
+    .staff-selection-row {
+        padding: 0.5rem;
+    }
+}
+
