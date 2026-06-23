@@ -13,6 +13,7 @@ import LocoBookingUI from "./features/bookings/LocoBookingUI";
 import EmployeesBookingWizard from "./features/bookings/EmployeesBookingWizard";
 import EmployeeAvailability from "./features/bookings/EmployeeAvailability";
 import BookingPreview from "./features/bookings/BookingPreview";
+import JobCarryForwardPage from "./features/bookings/JobCarryForwardPage";
 import MasterDataPage from "./features/crud/MasterDataPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 
@@ -45,6 +46,14 @@ function App() {
           element={
             <ProtectedRoute requireSupervisor={true}>
               <EmployeesBookingWizard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings/carry-forward"
+          element={
+            <ProtectedRoute requireSupervisor={true}>
+              <JobCarryForwardPage />
             </ProtectedRoute>
           }
         />

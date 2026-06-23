@@ -166,6 +166,13 @@ const DashboardPage = () => {
             description: "Assign supervisors & staff to active locos",
             path: "/bookings/employees",
           },
+          {
+            title: "Job Completion & Carry Forward",
+            icon: <ClipboardList size={32} />,
+            color: "#f59e0b",
+            description: "Submit remarks and carry forward jobs/tasks to the next shift",
+            path: "/bookings/carry-forward",
+          },
         ]
       : []),
     {
@@ -363,7 +370,7 @@ const DashboardPage = () => {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
                             <div 
                               style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", cursor: "pointer" }}
-                              onClick={() => navigate("/bookings/employees", { state: { selectLoco: l.loco_number } })}
+                              onClick={() => navigate("/bookings/carry-forward", { state: { selectLoco: l.loco_number } })}
                             >
                               <Train size={18} /> Loco #{l.loco_number}
                             </div>
