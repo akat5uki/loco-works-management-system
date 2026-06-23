@@ -468,7 +468,7 @@ const MasterDataPage = () => {
                                     background: val ? "rgba(239,68,68,0.12)" : "rgba(16,185,129,0.12)",
                                     color: val ? "#ef4444" : "#10b981",
                                   }}>{val ? "Despatched" : "Active"}</span>
-                                : typeof val === "string" && val.includes("T") && val.length > 10
+                                : typeof val === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)
                                   ? new Date(val).toLocaleString()
                                   : String(val)}
                           </td>
