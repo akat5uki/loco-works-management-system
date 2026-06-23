@@ -16,3 +16,13 @@ __pycache__/
 .DS_Store
 Thumbs.db
 assets/sample data
+
+# Ignore Certbot production certificates (except localhost dummy files)
+infrastructure/nginx/certbot/conf/live/*
+!infrastructure/nginx/certbot/conf/live/localhost/
+infrastructure/nginx/certbot/conf/archive/
+infrastructure/nginx/certbot/conf/keys/
+infrastructure/nginx/certbot/conf/accounts/
+infrastructure/nginx/certbot/conf/renewal/
+infrastructure/nginx/certbot/www/
+
