@@ -237,3 +237,29 @@
     color: var(--text);
 }
 
+@media (max-width: 768px) {
+    .hero {
+        padding: 2rem 1rem;
+    }
+    .hero-title {
+        font-size: 1.85rem;
+        line-height: 1.25;
+    }
+    .hero-subtitle {
+        font-size: 1.2rem;
+        margin-top: 0.5rem;
+    }
+    .hero-desc {
+        font-size: 0.95rem;
+        margin-top: 1rem;
+        line-height: 1.5;
+    }
+    .main-content {
+        padding: 2rem 1rem;
+    }
+    .link-tile {
+        padding: 1rem;
+    }
+}
+
+

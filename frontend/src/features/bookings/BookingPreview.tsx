@@ -355,11 +355,11 @@ const BookingPreview = () => {
       </div>
 
       {/* Printable Preview Page */}
-      <div className="print-page-layout" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "8px", padding: "2rem" }}>
+      <div className="print-page-layout">
         
         {/* Print Header */}
         <div className="print-only" style={{ display: "none", marginBottom: "2rem", borderBottom: "2px solid #333", paddingBottom: "1rem" }}>
-          <h1 style={{ fontSize: "2rem", margin: 0 }}>Loco Works Management System</h1>
+          <h1 className="print-header-title" style={{ margin: 0 }}>Loco Works Management System</h1>
           <p style={{ margin: "0.25rem 0 0 0", color: "#666" }}>Shift Summary Report</p>
           <div style={{ display: "flex", gap: "2rem", marginTop: "1rem", fontWeight: "bold" }}>
             <span>Date: {dateStr}</span>
