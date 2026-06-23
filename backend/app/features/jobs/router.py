@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -15,9 +15,16 @@ router = APIRouter()
 
 # Schemas
 class JobBase(BaseModel):
-    job_id: int
+    job_id: str
     job_description: str
     stage: int
+
+    @field_validator('job_id')
+    @classmethod
+    def validate_id(cls, v: str) -> int:
+        if not v.isdigit():
+            raise ValueError("Job ID must contain only digits")
+        return int(v)
 
 
 class JobRead(JobBase):

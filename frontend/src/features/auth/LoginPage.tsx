@@ -57,6 +57,11 @@ const LoginPage = () => {
     e.preventDefault();
     setError("");
 
+    if (!/^\d+$/.test(ticketNumber)) {
+      setError("Ticket number must contain only digits.");
+      return;
+    }
+
     if (captcha.trim().toUpperCase() !== captchaCode) {
       setError("Incorrect captcha code. Please try again.");
       setCaptcha("");
@@ -68,7 +73,7 @@ const LoginPage = () => {
 
     try {
       const response = await api.post("/auth/login", {
-        ticket_number: parseInt(ticketNumber),
+        ticket_number: ticketNumber, // pass string, backend validator will coerce it
         password,
         captcha,
       });
@@ -113,7 +118,7 @@ const LoginPage = () => {
               <User size={18} className="input-icon" />
               <input
                 id="ticket"
-                type="number"
+                type="text"
                 placeholder="123456"
                 value={ticketNumber}
                 onChange={(e) => setTicketNumber(e.target.value)}

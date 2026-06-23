@@ -122,10 +122,21 @@ async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)):
             detail="User already registered",
         )
 
+    # Check if email is already registered
+    email_result = await db.execute(
+        select(Employee).where(Employee.email == user_data.email)
+    )
+    if email_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
     new_user = Employee(
         ticket_number=user_data.ticket_number,
         name=user_data.name,
         designation_id=user_data.designation_id,
+        email=user_data.email,
         password=get_password_hash(user_data.password),
         nonce=secrets.token_hex(16),
     )

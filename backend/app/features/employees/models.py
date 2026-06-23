@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,6 +33,7 @@ class Employee(Base):
     designation_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("designation.designation_id"), nullable=False
     )
+    email: Mapped[Optional[str]] = mapped_column(String, nullable=True, unique=True)
     password: Mapped[str] = mapped_column(String, nullable=False)
     nonce: Mapped[str] = mapped_column(String, nullable=False)
 

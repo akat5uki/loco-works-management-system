@@ -56,6 +56,10 @@ async def populate():
     engine = create_async_engine(settings.DATABASE_PRIMARY_URL)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+    print("Ensuring database columns exist...")
+    async with engine.begin() as conn:
+        await conn.execute(text("ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS email varchar UNIQUE;"))
+
     print("Truncating tables...")
     async with engine.begin() as conn:
         await conn.execute(text("""
@@ -129,6 +133,7 @@ async def populate():
                     ticket_number=int(row["ticket_number"]),
                     name=row["Name"],
                     designation_id=int(row["designation_id"]),
+                    email=f"ticket{row['ticket_number']}@lwms.com",
                     password=hashed_password,
                     nonce=secrets.token_hex(16)
                 )

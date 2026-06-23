@@ -115,6 +115,11 @@ const MasterDataPage = () => {
     try {
       let endpoint = "";
       if (activeTab === "types") {
+        if (!/^\d+$/.test(String(formData.loco_type_id ?? ""))) {
+          setError("Loco Type ID must contain only digits.");
+          setLoading(false);
+          return;
+        }
         endpoint = isEditing
           ? `/locos/types/${formData.loco_type_id}`
           : "/locos/types";
@@ -123,15 +128,29 @@ const MasterDataPage = () => {
           ? `/locos/${formData.loco_number}`
           : "/locos/";
       } else if (activeTab === "jobs") {
+        if (!/^\d+$/.test(String(formData.job_id ?? ""))) {
+          setError("Job ID must contain only digits.");
+          setLoading(false);
+          return;
+        }
         endpoint = isEditing
           ? `/jobs/${formData.job_id}`
           : "/jobs/";
       }
 
+      // Convert digit fields to strings for the text field submission requirement
+      const submissionData = { ...formData };
+      if (activeTab === "types" && submissionData.loco_type_id !== undefined) {
+        submissionData.loco_type_id = String(submissionData.loco_type_id);
+      }
+      if (activeTab === "jobs" && submissionData.job_id !== undefined) {
+        submissionData.job_id = String(submissionData.job_id);
+      }
+
       if (isEditing) {
-        await api.put(endpoint, formData);
+        await api.put(endpoint, submissionData);
       } else {
-        await api.post(endpoint, formData);
+        await api.post(endpoint, submissionData);
       }
       setShowForm(false);
       setIsEditing(false);
@@ -263,7 +282,7 @@ const MasterDataPage = () => {
             {activeTab === "types" && (
               <>
                 <input
-                  type="number"
+                  type="text"
                   placeholder="Type ID"
                   required
                   disabled={isEditing}
@@ -271,7 +290,7 @@ const MasterDataPage = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      loco_type_id: parseInt(e.target.value),
+                      loco_type_id: e.target.value,
                     })
                   }
                 />
@@ -360,7 +379,7 @@ const MasterDataPage = () => {
             {activeTab === "jobs" && (
               <>
                 <input
-                  type="number"
+                  type="text"
                   placeholder="Job ID"
                   required
                   disabled={isEditing}
@@ -368,7 +387,7 @@ const MasterDataPage = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      job_id: parseInt(e.target.value),
+                      job_id: e.target.value,
                     })
                   }
                 />

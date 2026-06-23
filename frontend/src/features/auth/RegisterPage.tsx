@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Lock, BadgeInfo, Home } from "lucide-react";
+import { User, Lock, BadgeInfo, Home, Mail, ShieldCheck, RefreshCw } from "lucide-react";
 import axios from "axios";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -16,12 +16,28 @@ const RegisterPage = () => {
     ticket_number: "",
     name: "",
     designation_id: "",
+    email: "",
     password: "",
   });
+  const [captcha, setCaptcha] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("");
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
 
   useEffect(() => {
     const fetchDesignations = async () => {
@@ -38,12 +54,30 @@ const RegisterPage = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!/^\d+$/.test(formData.ticket_number)) {
+      setError("Ticket number must contain only digits.");
+      return;
+    }
+
+    const emailRegex = /^[\w\.-]+@[\w\.-]+\.\w+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (captcha.trim().toUpperCase() !== captchaCode) {
+      setError("Incorrect captcha code. Please try again.");
+      setCaptcha("");
+      generateCaptcha();
+      return;
+    }
+
     setLoading(true);
 
     try {
       await api.post("/auth/register", {
         ...formData,
-        ticket_number: parseInt(formData.ticket_number),
         designation_id: parseInt(formData.designation_id),
       });
       navigate("/login");
@@ -82,7 +116,7 @@ const RegisterPage = () => {
               <User size={18} className="input-icon" />
               <input
                 id="ticket"
-                type="number"
+                type="text"
                 placeholder="123456"
                 value={formData.ticket_number}
                 onChange={(e) =>
@@ -104,6 +138,23 @@ const RegisterPage = () => {
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="email">Email ID</label>
+            <div className="input-wrapper">
+              <Mail size={18} className="input-icon" />
+              <input
+                id="email"
+                type="email"
+                placeholder="employee@lwms.com"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
                 }
                 required
               />
@@ -153,6 +204,28 @@ const RegisterPage = () => {
                 }
                 required
               />
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="captcha">Captcha</label>
+            <div className="captcha-row">
+              <div className="captcha-box" style={{ fontFamily: "monospace" }}>{captchaCode}</div>
+              <button type="button" className="refresh-btn" onClick={generateCaptcha} title="Refresh Captcha">
+                <RefreshCw size={16} />
+              </button>
+              <div className="input-wrapper" style={{ flex: 1 }}>
+                <ShieldCheck size={18} className="input-icon" style={{ zIndex: 1 }} />
+                <input
+                  id="captcha"
+                  type="text"
+                  placeholder="Enter Captcha"
+                  value={captcha}
+                  onChange={(e) => setCaptcha(e.target.value)}
+                  style={{ textTransform: "uppercase" }}
+                  required
+                />
+              </div>
             </div>
           </div>
 

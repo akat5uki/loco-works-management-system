@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import Integer, extract, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,7 +24,14 @@ class LocoTypeBase(BaseModel):
 
 
 class LocoTypeCreate(LocoTypeBase):
-    loco_type_id: int
+    loco_type_id: str
+
+    @field_validator('loco_type_id')
+    @classmethod
+    def validate_id(cls, v: str) -> int:
+        if not v.isdigit():
+            raise ValueError("Type ID must contain only digits")
+        return int(v)
 
 
 class LocoTypeRead(LocoTypeBase):

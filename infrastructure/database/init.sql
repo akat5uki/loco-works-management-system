@@ -18,6 +18,7 @@ CREATE TABLE "public"."employees" (
     "ticket_number" int NOT NULL,
     "name" varchar NOT NULL,
     "designation_id" int NOT NULL,
+    "email" varchar UNIQUE,
     "password" varchar NOT NULL,
     "nonce" varchar NOT NULL,
     PRIMARY KEY ("ticket_number")
