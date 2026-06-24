@@ -170,6 +170,11 @@ const EmployeesBookingWizard = () => {
   const [remarksState, setRemarksState] = useState<Record<number, { completed: boolean; remarks: string }>>({});
   const [taskRemarksState, setTaskRemarksState] = useState<Record<number, { completed: boolean; remarks: string }>>({});
 
+  // Keep a ref so fetchData can read the current selectedLoco without being
+  // listed as a dependency (avoids re-triggering full data fetch on loco switch)
+  const selectedLocoRef = useRef<string | null>(null);
+  useEffect(() => { selectedLocoRef.current = selectedLoco; }, [selectedLoco]);
+
   // Active View Tab
   const [activeViewTab, setActiveViewTab] = useState<"loco" | "supervisor" | "staff">("loco");
 
@@ -311,7 +316,7 @@ const EmployeesBookingWizard = () => {
       setBookings(bookingsRes.data);
 
       // Reset selection forms if loco no longer available
-      if (selectedLoco && !locosRes.data.locos.includes(selectedLoco)) {
+      if (selectedLocoRef.current && !locosRes.data.locos.includes(selectedLocoRef.current)) {
         setSelectedLoco(null);
       }
 
@@ -341,7 +346,7 @@ const EmployeesBookingWizard = () => {
       setTempSupervisorLocos(supLocoMap);
 
       // Proactively set selected locomotive for preview if none is set
-      if (!selectedLoco && locosRes.data.locos.length > 0) {
+      if (!selectedLocoRef.current && locosRes.data.locos.length > 0) {
         setSelectedLoco(locosRes.data.locos[0]);
       }
 
@@ -356,7 +361,7 @@ const EmployeesBookingWizard = () => {
     } catch (err) {
       console.error("Error fetching wizard data", err);
     }
-  }, [dateStr, shift, selectedLoco]);
+  }, [dateStr, shift]);  // ← selectedLoco intentionally excluded; read via ref below
 
   useEffect(() => {
     if (currentUser) {
@@ -370,6 +375,7 @@ const EmployeesBookingWizard = () => {
     } else {
       setLocoJobs(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLoco, dateStr, shift]);
 
   // Reset wizard steps when date or shift changes to verify supervisors first
@@ -575,7 +581,7 @@ const EmployeesBookingWizard = () => {
 
 
   // ── Carry Forward / Completion panel ──
-  const loadLocoJobs = async (locoNum: string) => {
+  const loadLocoJobs = useCallback(async (locoNum: string) => {
     try {
       // We will look at bookings for this loco/shift, and retrieve the jobs and tasks
       const bookingsRes = await api.get(`/bookings/?start_date=${dateStr}&end_date=${dateStr}`);
@@ -636,7 +642,7 @@ const EmployeesBookingWizard = () => {
     } catch (err) {
       console.error("Failed to load jobs/tasks", err);
     }
-  };
+  }, [dateStr, shift]);
 
 
 
