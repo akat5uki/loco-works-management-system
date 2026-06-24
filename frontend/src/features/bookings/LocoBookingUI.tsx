@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Train, Search, Plus, Trash2, Calendar, ClipboardList,
-  Clock, User, FileText, ArrowLeft, History, X, ChevronDown, ChevronUp, AlertTriangle
-} from "lucide-react";
+import { Train, ArrowLeft, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Edit2 } from "lucide-react";
 import api from "../../shared/services/api";
 import { AxiosError } from "axios";
 import ThemeToggle from "../../shared/components/ThemeToggle";
+import LocoBookingTabs from "./components/loco/LocoBookingTabs";
+import LocoBookingForm from "./components/loco/LocoBookingForm";
+import LocoBookingList from "./components/loco/LocoBookingList";
+import LocoBookingHistory from "./components/loco/LocoBookingHistory";
 import "./LocoBooking.css";
 
 /* ── types ─────────────────────────────────────────────────────────── */
@@ -30,46 +30,12 @@ const getLocalDateString = (dateInput: Date | string) => {
 };
 
 const todayISO = () => getLocalDateString(new Date());
-const tomorrowISO = () => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return getLocalDateString(tomorrow);
-};
-
-
 
 const guessShift = () => {
   const h = new Date().getHours();
   if (h >= 6 && h < 14) return 1;
   if (h >= 14 && h < 22) return 2;
   return 1; // Default fallback for off-shift night hours
-};
-
-
-
-const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => {
-  const curDateStr = todayISO();
-  const curShift = guessShift();
-  
-  let nextDateStr = curDateStr;
-  let nextShift = 1;
-  
-  if (curShift === 1) {
-    nextShift = 2;
-  } else {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const year = tomorrow.getFullYear();
-    const month = String(tomorrow.getMonth() + 1).padStart(2, "0");
-    const day = String(tomorrow.getDate()).padStart(2, "0");
-    nextDateStr = `${year}-${month}-${day}`;
-    nextShift = 1;
-  }
-  
-  const isCurrent = (selDateStr === curDateStr && selShift === curShift);
-  const isNext = (selDateStr === nextDateStr && selShift === nextShift);
-  
-  return isCurrent || isNext;
 };
 
 function groupBookings(list: RawBooking[]) {
@@ -210,37 +176,6 @@ const LocoBookingUI = () => {
 
   /* ── loco type name helper ── */
   const typeName = (id: number) => locoTypes.find(t => t.loco_type_id === id)?.loco_type_name ?? String(id);
-
-  /* ── select loco → preload existing booking for chosen date+shift ── */
-  const handleSelectLoco = (loco: Loco) => {
-    if (loco.despatched) return; // cannot book a despatched loco
-    setSelectedLoco(loco);
-    setSearchTerm(loco.loco_number.toString());
-    setIsAddingLoco(false);
-
-    const existing = bookings.filter(b =>
-      b.loco_number === loco.loco_number &&
-      b.shift === bookingShift &&
-      getLocalDateString(b.date_time) === bookingDate
-    );
-
-    if (existing.length > 0) {
-      const preJobs: Job[] = [];
-      const preTasks: Record<number, string[]> = {};
-      existing.forEach(b => {
-        const jobObj = jobs.find(j => j.job_id === b.job_id);
-        if (jobObj && !preJobs.some(j => j.job_id === jobObj.job_id)) preJobs.push(jobObj);
-        if (b.task_description) {
-          if (!preTasks[b.job_id]) preTasks[b.job_id] = [];
-          preTasks[b.job_id].push(b.task_description);
-        }
-      });
-      setSelectedJobs(preJobs); setJobTasks(preTasks);
-      setMessage("Editing existing booking for this locomotive.");
-    } else {
-      setSelectedJobs([]); setJobTasks({}); setMessage("");
-    }
-  };
 
   /* ── when date or shift changes, reload preloaded booking ── */
   useEffect(() => {
@@ -586,12 +521,6 @@ const LocoBookingUI = () => {
     });
   };
 
-  /* ── filtered search ── */
-  const filteredLocos = locos.filter(l => {
-    const matchesSearch = l.loco_number.toString().includes(searchTerm);
-    const matchesStage = showStage6 || l.stage !== 6;
-    return matchesSearch && matchesStage;
-  });
 
   /* ─────────────────────── RENDER ──────────────────────────────────── */
   return (
@@ -599,7 +528,9 @@ const LocoBookingUI = () => {
       {/* ── HEADER ── */}
       <header className="workspace-header">
         <div className="header-actions">
-          <button className="back-btn" onClick={() => navigate("/dashboard")}><ArrowLeft size={18} /> Dashboard</button>
+          <button className="back-btn" onClick={() => navigate("/dashboard")} type="button">
+            <ArrowLeft size={18} /> Dashboard
+          </button>
           <ThemeToggle />
         </div>
         
@@ -611,810 +542,125 @@ const LocoBookingUI = () => {
           </div>
         </div>
         
-        <div className="tabs-navigation">
-          <button className={`tab-btn ${activeTab === 'booking' ? 'active' : ''}`} onClick={() => setActiveTab('booking')}>Loco Booking</button>
-          <button className={`tab-btn ${activeTab === 'list' ? 'active' : ''}`} onClick={() => setActiveTab('list')}>Booking List</button>
-          <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Booking Logs</button>
-        </div>
+        <LocoBookingTabs activeTab={activeTab} setActiveTab={setActiveTab} />
       </header>
 
       <div className="workspace-grid">
         {activeTab === 'booking' && (
-          <section className="booking-entry-panel" style={{ width: '100%' }}>
-            <div className="panel-card">
-              <h2>Book Locomotive &amp; Jobs</h2>
-              <form onSubmit={handleBookingSubmit} className="booking-wizard-form">
-                {/* STEP 1 – Loco search */}
-              <div className="wizard-step">
-                <label className="step-label">1. Search &amp; Select Locomotive</label>
-                <div className="search-box-wrapper">
-                  <Search className="search-icon" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Type Loco Number (e.g. 31012)…"
-                    value={searchTerm}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setSearchTerm(val);
-                      const found = locos.find(l => l.loco_number.toString() === val.trim());
-                      if (found) {
-                        handleSelectLoco(found);
-                      } else {
-                        setSelectedLoco(null);
-                        setSelectedJobs([]);
-                        setJobTasks({});
-                        setMessage("");
-                      }
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    id="showStage6LocoBooking"
-                    checked={showStage6}
-                    onChange={e => setShowStage6(e.target.checked)}
-                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
-                  />
-                  <label htmlFor="showStage6LocoBooking" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
-                    Show Stage 6 Locomotives
-                  </label>
-                </div>
-
-                {searchTerm && !selectedLoco && !isAddingLoco && (
-                  <div className="search-results-dropdown">
-                    {filteredLocos.map(l => (
-                      <div
-                        key={l.loco_number}
-                        className="search-item"
-                        onClick={() => handleSelectLoco(l)}
-                        style={l.despatched ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" } : {}}
-                      >
-                        <Train size={16} />
-                        <span>Locomotive #{l.loco_number} ({typeName(l.loco_type_id)})</span>
-                        {l.despatched && (
-                          <span style={{
-                            marginLeft: "auto",
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            padding: "0.15rem 0.45rem",
-                            borderRadius: "9999px",
-                            background: "rgba(239,68,68,0.12)",
-                            color: "#ef4444",
-                          }}>Despatched</span>
-                        )}
-                      </div>
-                    ))}
-                    {filteredLocos.length === 0 && (
-                      <div className="no-loco-banner">
-                        <p>Locomotive #{searchTerm} is not in the system.</p>
-                        <button type="button" className="btn-add-loco-trigger"
-                          onClick={() => { setNewLcoNum(searchTerm); setIsAddingLoco(true); }}>
-                          <Plus size={16} /> Add Locomotive #{searchTerm}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {selectedLoco && (
-                  <div className="selected-loco-tag">
-                    <Train size={18} />
-                    <div className="tag-details">
-                      <strong>Locomotive #{selectedLoco.loco_number} ({typeName(selectedLoco.loco_type_id)})</strong>
-                      <span>Stage: {selectedLoco.stage}</span>
-                    </div>
-                    <div className="loco-tag-actions">
-                      <button type="button" className="btn-history"
-                        onClick={() => setActiveTab('history')}>
-                        <History size={14} /> View Logs
-                      </button>
-                      <button type="button" className="clear-loco-btn"
-                        onClick={() => { setSelectedLoco(null); setSearchTerm(""); setSelectedJobs([]); setJobTasks({}); setMessage(""); }}>
-                        Change
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {isAddingLoco && (
-                  <div className="add-loco-inline-form">
-                    <h3>Create New Locomotive Entry</h3>
-                    <div className="inline-grid">
-                      <div className="form-group">
-                        <label>Loco Number</label>
-                        <input type="text" value={newLcoNum} onChange={e => setNewLcoNum(e.target.value)} required />
-                      </div>
-                      <div className="form-group">
-                        <label>Loco Type</label>
-                        <select value={newLcoType} onChange={e => setNewLcoType(e.target.value)} required>
-                          <option value="">-- Select Type --</option>
-                          {locoTypes.map(t => <option key={t.loco_type_id} value={t.loco_type_id}>{t.loco_type_name}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>Current Stage</label>
-                        <select value={newLcoStage} onChange={e => setNewLcoStage(e.target.value)} required style={{ width: '100%', height: '38px', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}>
-                          <option value="0">0</option>
-                          <option value="5">5</option>
-                          <option value="6">6</option>
-                          <option value="7">7</option>
-                          <option value="9">9</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>Current Shift</label>
-                        <select value={newLcoShift} onChange={e => setNewLcoShift(e.target.value)} required>
-                          <option value="1">Shift 1</option><option value="2">Shift 2</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="form-actions">
-                      <button type="button" className="btn-cancel" onClick={() => setIsAddingLoco(false)}>Cancel</button>
-                      <button type="button" className="btn-submit" onClick={handleAddLocoSubmit} disabled={loading}>Create &amp; Select</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* STEP 2 – Date & Shift */}
-              {selectedLoco && (
-                <div className="wizard-step">
-                  <label className="step-label">2. Select Booking Date &amp; Shift</label>
-                  <div className="date-shift-row">
-                    <div className="form-group date-field">
-                      <label><Calendar size={14} /> Date</label>
-                      <input
-                        type="date"
-                        required={true}
-                        value={bookingDate}
-                        min={todayISO()}
-                        max={tomorrowISO()}
-                        onChange={e => setBookingDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group shift-field">
-                      <label><Clock size={14} /> Shift</label>
-                      <div className="shift-btn-group">
-                        {[1, 2].map(s => (
-                          <button key={s} type="button"
-                            className={`shift-btn${bookingShift === s ? " active" : ""}`}
-                            onClick={() => setBookingShift(s)}>
-                            Shift {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  {!isCurrentOrNextShift(bookingDate, bookingShift) && (
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      background: "rgba(245, 158, 11, 0.1)",
-                      border: "1px solid #f59e0b",
-                      color: "#f59e0b",
-                      padding: "0.75rem",
-                      borderRadius: "0.375rem",
-                      marginTop: "1rem",
-                      fontSize: "0.85rem",
-                      fontWeight: 600
-                    }}>
-                      <AlertTriangle size={16} />
-                      <span>Warning: You are booking for a shift other than the current or next shift.</span>
-                    </div>
-                  )}
-                  {message.includes("Editing") && (
-                    <p className="editing-hint">⚠️ An existing booking for this date &amp; shift will be replaced.</p>
-                  )}
-                </div>
-              )}
-
-              {/* STEP 3 – Job selection */}
-              {selectedLoco && (
-                <div className="wizard-step">
-                  <label className="step-label">3. Select Jobs</label>
-                  <div className="jobs-checkbox-list">
-                    {jobs.map(job => (
-                      <label key={job.job_id} className="job-checkbox-item">
-                        <input type="checkbox"
-                          checked={selectedJobs.some(j => j.job_id === job.job_id)}
-                          onChange={() => handleToggleJob(job)} />
-                        <span className="job-desc">{job.job_description} (Stage {job.stage})</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4 – Tasks */}
-              {selectedLoco && selectedJobs.length > 0 && (
-                <div className="wizard-step">
-                  <label className="step-label">4. Write Tasks for Selected Jobs</label>
-                  <div className="selected-jobs-tasks-panel">
-                    {selectedJobs.map(job => (
-                      <div key={job.job_id} className="selected-job-card">
-                        <div className="card-header"><h4>{job.job_description}</h4></div>
-                        <div className="added-tasks-list">
-                          {(jobTasks[job.job_id] || []).map((taskDesc, idx) => (
-                            <div key={idx} className="added-task-item">
-                              <span>{taskDesc}</span>
-                              <button type="button" className="remove-task-btn" onClick={() => handleRemoveTask(job.job_id, idx)}><Trash2 size={14} /></button>
-                            </div>
-                          ))}
-                          {(jobTasks[job.job_id] || []).length === 0 && (
-                            <p className="no-tasks-hint">No tasks written yet. (Will book job without tasks)</p>
-                          )}
-                        </div>
-                        <div className="task-entry-row">
-                          <input type="text" placeholder="Add task details…"
-                            value={taskInputs[job.job_id] || ""}
-                            onChange={e => setTaskInputs(p => ({ ...p, [job.job_id]: e.target.value }))}
-                            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddTask(job.job_id); } }}
-                          />
-                          <button type="button" className="btn-add-task" onClick={() => handleAddTask(job.job_id)}>Add</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedLoco && selectedJobs.length > 0 && (
-                <button type="submit" className="btn-confirm-booking" disabled={loading}>
-                  {loading ? "Processing…" : "Confirm & Save Booking"}
-                </button>
-              )}
-            </form>
-          </div>
-        </section>
-      )}
-
+          <LocoBookingForm
+            locos={locos}
+            jobs={jobs}
+            locoTypes={locoTypes}
+            loading={loading}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedLoco={selectedLoco}
+            setSelectedLoco={setSelectedLoco}
+            selectedJobs={selectedJobs}
+            setSelectedJobs={setSelectedJobs}
+            jobTasks={jobTasks}
+            setJobTasks={setJobTasks}
+            taskInputs={taskInputs}
+            setTaskInputs={setTaskInputs}
+            bookingDate={bookingDate}
+            setBookingDate={setBookingDate}
+            bookingShift={bookingShift}
+            setBookingShift={setBookingShift}
+            isAddingLoco={isAddingLoco}
+            setIsAddingLoco={setIsAddingLoco}
+            newLcoNum={newLcoNum}
+            setNewLcoNum={setNewLcoNum}
+            newLcoType={newLcoType}
+            setNewLcoType={setNewLcoType}
+            newLcoStage={newLcoStage}
+            setNewLcoStage={setNewLcoStage}
+            newLcoShift={newLcoShift}
+            setNewLcoShift={setNewLcoShift}
+            showStage6={showStage6}
+            setShowStage6={setShowStage6}
+            handleAddLocoSubmit={handleAddLocoSubmit}
+            handleToggleJob={handleToggleJob}
+            handleRemoveTask={handleRemoveTask}
+            handleAddTask={handleAddTask}
+            handleSubmit={handleBookingSubmit}
+            message={message}
+            setMessage={setMessage}
+            typeName={typeName}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
         {activeTab === 'list' && (
-          <section className="bookings-list-panel" style={{ width: '100%' }}>
-            <div className="panel-card scrollable">
-              <h2>Booked Workshop Operations (Today)</h2>
-              
-              <div className="list-filters-bar" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div className="filter-group" style={{ flexGrow: 1, minWidth: '200px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Search Locomotive</label>
-                  <div className="search-box-wrapper">
-                    <Search className="search-icon" size={16} />
-                    <input
-                      type="text"
-                      placeholder="Search by Loco Number..."
-                      value={listSearch}
-                      onChange={e => setListSearch(e.target.value)}
-                      style={{ paddingLeft: '2.25rem' }}
-                    />
-                  </div>
-                </div>
-                <div className="filter-group" style={{ minWidth: '150px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Filter by Shift</label>
-                  <select
-                    className="modal-select"
-                    value={listShift}
-                    onChange={e => setListShift(e.target.value)}
-                    style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.85rem' }}
-                  >
-                    <option value="all">All Shifts</option>
-                    <option value="1">Shift 1</option>
-                    <option value="2">Shift 2</option>
-                  </select>
-                </div>
-                <div className="filter-group" style={{ minWidth: '120px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Actions</label>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '0.375rem',
-                    border: '1px solid var(--border)',
-                    background: isEditMode ? 'var(--accent-bg)' : 'transparent',
-                    borderColor: isEditMode ? 'var(--accent)' : 'var(--border)',
-                    height: '38px',
-                    transition: 'all 0.2s',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={isEditMode}
-                      onChange={e => setIsEditMode(e.target.checked)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        accentColor: 'var(--accent)',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <span style={{
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: isEditMode ? 'var(--accent)' : 'var(--text-h)',
-                    }}>
-                      Edit Mode
-                    </span>
-                  </label>
-                </div>
-                <div className="filter-group" style={{ minWidth: '150px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Stage 6 Filter</label>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '0.375rem',
-                    border: '1px solid var(--border)',
-                    background: showStage6 ? 'var(--accent-bg)' : 'transparent',
-                    borderColor: showStage6 ? 'var(--accent)' : 'var(--border)',
-                    height: '38px',
-                    transition: 'all 0.2s',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={showStage6}
-                      onChange={e => setShowStage6(e.target.checked)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        accentColor: 'var(--accent)',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <span style={{
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: showStage6 ? 'var(--accent)' : 'var(--text-h)',
-                    }}>
-                      Show Stage 6
-                    </span>
-                  </label>
-                </div>
-                <div className="filter-group" style={{ minWidth: '180px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>View Controls</label>
-                  <div className="collapse-controls-group">
-                    <button
-                      type="button"
-                      onClick={expandAllToday}
-                      className="btn-collapse-control"
-                      title="Expand all dates, shifts, and locomotives"
-                    >
-                      <ChevronDown size={14} /> Expand All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={collapseAllToday}
-                      className="btn-collapse-control"
-                      title="Collapse all dates, shifts, and locomotives"
-                    >
-                      <ChevronUp size={14} /> Collapse All
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="timeline-grouped-bookings">
-                {Object.keys(groupedToday).map(dateStr => {
-                  const isDateCollapsed = collapsedDates.has(dateStr);
-                  return (
-                    <div key={dateStr} className="date-group-card">
-                      <div
-                        className="date-header"
-                        onClick={() => toggleDate(dateStr)}
-                        style={{
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          userSelect: 'none',
-                          borderBottom: isDateCollapsed ? 'none' : '1px solid var(--border)'
-                        }}
-                      >
-                        <Calendar size={16} />
-                        <h3>{dateStr}</h3>
-                        <div style={{ flexGrow: 1 }} />
-                        {!isDateCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </div>
-
-                      {!isDateCollapsed && (
-                        <div>
-                          {Object.keys(groupedToday[dateStr]).map(shift => {
-                            const shiftKey = `${dateStr}-${shift}`;
-                            const isShiftCollapsed = collapsedShifts.has(shiftKey);
-                            return (
-                              <div key={shift} className="shift-block" style={{ borderBottom: isShiftCollapsed ? 'none' : '1px solid var(--border)' }}>
-                                <div
-                                  className="shift-header"
-                                  onClick={() => toggleShift(shiftKey)}
-                                  style={{
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    userSelect: 'none',
-                                    marginBottom: isShiftCollapsed ? 0 : '0.85rem'
-                                  }}
-                                >
-                                  <Clock size={14} />
-                                  <h4>Shift {shift}</h4>
-                                  <div style={{ flexGrow: 1 }} />
-                                  {!isShiftCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </div>
-
-                                {!isShiftCollapsed && (
-                                  <div className="locos-list">
-                                    {Object.keys(groupedToday[dateStr][parseInt(shift)]).map(locoStr => {
-                                      const locoNum = locoStr;
-                                      const record = groupedToday[dateStr][parseInt(shift)][locoNum];
-                                      const ml = locos.find(l => l.loco_number === locoNum);
-                                      const tn = ml ? typeName(ml.loco_type_id) : null;
-                                      const isExpanded = expandedLocos.has(`${dateStr}-${shift}-${locoNum}`);
-                                      return (
-                                        <div key={locoNum} className="loco-booking-card collapsible">
-                                          <div className="loco-card-title" onClick={() => toggleLoco(`${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
-                                            <Train size={16} />
-                                            <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
-                                            <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
-                                            <div style={{flexGrow:1}}/>
-                                            {isEditMode && (
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleDeleteLocoBooking(locoNum, record.date_time);
-                                                }}
-                                                className="delete-loco-btn"
-                                                title="Delete entire locomotive booking"
-                                              >
-                                                <Trash2 size={14} />
-                                              </button>
-                                            )}
-                                            {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                                          </div>
-                                          {isExpanded && (
-                                            <div className="loco-jobs-list">
-                                              {Object.keys(record.jobs).map(jobIdStr => {
-                                                const jobId = parseInt(jobIdStr);
-                                                const job = record.jobs[jobId];
-                                                return (
-                                                  <div key={jobIdStr} className="loco-job-item">
-                                                    <div className="job-meta">
-                                                      <ClipboardList size={14} /><h6>{job.job_description}</h6>
-                                                      {isEditMode && (
-                                                        <div className="action-buttons">
-                                                          <button onClick={() => handleEditJob(locoNum, record.date_time, jobId)}><Edit2 size={12}/></button>
-                                                          <button onClick={() => handleDeleteJob(locoNum, record.date_time, jobId)}><Trash2 size={12}/></button>
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                    {job.tasks.length > 0 && (
-                                                      <ul className="job-tasks-sublist">
-                                                        {job.tasks.map((t, i) => (
-                                                          <li key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                                            <span><FileText size={12} style={{marginRight:4}}/>{t.desc}</span>
-                                                            {isEditMode && (
-                                                              <div className="action-buttons">
-                                                                <button onClick={() => handleEditTask(t.id, t.desc)}><Edit2 size={12}/></button>
-                                                                <button onClick={() => handleDeleteTask(t.id)}><Trash2 size={12}/></button>
-                                                              </div>
-                                                            )}
-                                                          </li>
-                                                        ))}
-                                                      </ul>
-                                                    )}
-                                                    {isEditMode && (
-                                                      <div className="job-add-task-row" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.65rem', paddingLeft: '1.5rem' }}>
-                                                        <input
-                                                          type="text"
-                                                          placeholder="Add new task..."
-                                                          className="list-add-task-input"
-                                                          value={newTaskInputs[`${locoNum}-${record.date_time}-${jobId}`] || ""}
-                                                          onChange={e => setNewTaskInputs(p => ({ ...p, [`${locoNum}-${record.date_time}-${jobId}`]: e.target.value }))}
-                                                          onKeyDown={async e => {
-                                                            if (e.key === "Enter") {
-                                                              e.preventDefault();
-                                                              await handleAddSingleTask(locoNum, record.date_time, jobId);
-                                                            }
-                                                          }}
-                                                          style={{
-                                                            flexGrow: 1,
-                                                            fontSize: "0.75rem",
-                                                            padding: "0.25rem 0.5rem",
-                                                            borderRadius: "0.25rem",
-                                                            border: "1px solid var(--border)",
-                                                            background: "var(--bg)",
-                                                            color: "var(--text)"
-                                                          }}
-                                                        />
-                                                        <button
-                                                          onClick={() => handleAddSingleTask(locoNum, record.date_time, jobId)}
-                                                          style={{
-                                                            fontSize: "0.75rem",
-                                                            padding: "0.25rem 0.5rem",
-                                                            background: "#10b981",
-                                                            color: "white",
-                                                            border: "none",
-                                                            borderRadius: "0.25rem",
-                                                            cursor: "pointer",
-                                                            fontWeight: 600
-                                                          }}
-                                                        >
-                                                          Add
-                                                        </button>
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                );
-                                              })}
-                                              {isEditMode && (
-                                                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-start' }}>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => setAddingJobLoco({ locoNum, dateTime: record.date_time, shift: parseInt(shift) })}
-                                                    className="add-job-list-btn"
-                                                    style={{
-                                                      display: "flex",
-                                                      alignItems: "center",
-                                                      gap: "0.35rem",
-                                                      fontSize: "0.8rem",
-                                                      fontWeight: 600,
-                                                      color: "#2563eb",
-                                                      background: "none",
-                                                      border: "none",
-                                                      cursor: "pointer",
-                                                      padding: "0.4rem 0.6rem",
-                                                      borderRadius: "0.375rem",
-                                                      transition: "background 0.15s"
-                                                    }}
-                                                  >
-                                                    <Plus size={14} /> Add Job
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {filteredTodayBookings.length === 0 && <p className="no-records-hint">No workshop operations booked for today.</p>}
-              </div>
-            </div>
-          </section>
+          <LocoBookingList
+            bookings={bookings}
+            locos={locos}
+            jobs={jobs}
+            locoTypes={locoTypes}
+            listSearch={listSearch}
+            setListSearch={setListSearch}
+            listShift={listShift}
+            setListShift={setListShift}
+            isEditMode={isEditMode}
+            setIsEditMode={setIsEditMode}
+            showStage6={showStage6}
+            setShowStage6={setShowStage6}
+            expandedLocos={expandedLocos}
+            toggleLoco={toggleLoco}
+            collapsedDates={collapsedDates}
+            toggleDate={toggleDate}
+            collapsedShifts={collapsedShifts}
+            toggleShift={toggleShift}
+            expandAllToday={expandAllToday}
+            collapseAllToday={collapseAllToday}
+            handleDeleteLocoBooking={handleDeleteLocoBooking}
+            handleEditJob={handleEditJob}
+            handleDeleteJob={handleDeleteJob}
+            handleEditTask={handleEditTask}
+            handleDeleteTask={handleDeleteTask}
+            newTaskInputs={newTaskInputs}
+            setNewTaskInputs={setNewTaskInputs}
+            handleAddSingleTask={handleAddSingleTask}
+            setAddingJobLoco={setAddingJobLoco}
+            typeName={typeName}
+          />
         )}
 
         {activeTab === 'history' && (
-          <section className="bookings-list-panel" style={{ width: '100%' }}>
-            <div className="panel-card scrollable">
-              <h2>Booked Workshop Operations Logs</h2>
-
-              <div className="history-filters-bar" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div className="filter-group" style={{ flexGrow: 1, minWidth: '200px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Search Locomotive</label>
-                  <div className="search-box-wrapper">
-                    <Search className="search-icon" size={16} />
-                    <input
-                      type="text"
-                      placeholder="Search by Loco Number..."
-                      value={historySearch}
-                      onChange={e => setHistorySearch(e.target.value)}
-                      style={{ paddingLeft: '2.25rem' }}
-                    />
-                  </div>
-                </div>
-                <div className="filter-group" style={{ width: '120px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Shift</label>
-                  <select
-                    className="modal-select"
-                    value={historyShift}
-                    onChange={e => setHistoryShift(e.target.value)}
-                    style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.85rem' }}
-                  >
-                    <option value="all">All Shifts</option>
-                    <option value="1">Shift 1</option>
-                    <option value="2">Shift 2</option>
-                  </select>
-                </div>
-                <div className="filter-group" style={{ width: '160px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> Start Date</label>
-                  <input
-                    type="date"
-                    required={true}
-                    value={historyStartDate}
-                    onChange={e => setHistoryStartDate(e.target.value)}
-                    style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
-                  />
-                </div>
-                 <div className="filter-group" style={{ width: '160px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}><Calendar size={14} style={{ marginRight: 4 }} /> End Date</label>
-                  <input
-                    type="date"
-                    required={true}
-                    value={historyEndDate}
-                    onChange={e => setHistoryEndDate(e.target.value)}
-                    style={{ padding: '0.45rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', width: '100%' }}
-                  />
-                </div>
-                <div className="filter-group" style={{ minWidth: '150px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Stage 6 Filter</label>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '0.375rem',
-                    border: '1px solid var(--border)',
-                    background: showStage6 ? 'var(--accent-bg)' : 'transparent',
-                    borderColor: showStage6 ? 'var(--accent)' : 'var(--border)',
-                    height: '38px',
-                    transition: 'all 0.2s',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={showStage6}
-                      onChange={e => setShowStage6(e.target.checked)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        accentColor: 'var(--accent)',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <span style={{
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: showStage6 ? 'var(--accent)' : 'var(--text-h)',
-                    }}>
-                      Show Stage 6
-                    </span>
-                  </label>
-                </div>
-                <div className="filter-group" style={{ minWidth: '180px' }}>
-                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>View Controls</label>
-                  <div className="collapse-controls-group">
-                    <button
-                      type="button"
-                      onClick={expandAllHistory}
-                      className="btn-collapse-control"
-                      title="Expand all dates, shifts, and locomotives"
-                    >
-                      <ChevronDown size={14} /> Expand All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={collapseAllHistory}
-                      className="btn-collapse-control"
-                      title="Collapse all dates, shifts, and locomotives"
-                    >
-                      <ChevronUp size={14} /> Collapse All
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="timeline-grouped-bookings">
-                {Object.keys(groupedAll).map(dateStr => {
-                  const dateKey = `hist-${dateStr}`;
-                  const isDateCollapsed = collapsedDates.has(dateKey);
-                  return (
-                    <div key={dateStr} className="date-group-card">
-                      <div
-                        className="date-header"
-                        onClick={() => toggleDate(dateKey)}
-                        style={{
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          userSelect: 'none',
-                          borderBottom: isDateCollapsed ? 'none' : '1px solid var(--border)'
-                        }}
-                      >
-                        <Calendar size={16} />
-                        <h3>{dateStr}</h3>
-                        <div style={{ flexGrow: 1 }} />
-                        {!isDateCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </div>
-
-                      {!isDateCollapsed && (
-                        <div>
-                          {Object.keys(groupedAll[dateStr]).map(shift => {
-                            const shiftKey = `hist-${dateStr}-${shift}`;
-                            const isShiftCollapsed = collapsedShifts.has(shiftKey);
-                            return (
-                              <div key={shift} className="shift-block" style={{ borderBottom: isShiftCollapsed ? 'none' : '1px solid var(--border)' }}>
-                                <div
-                                  className="shift-header"
-                                  onClick={() => toggleShift(shiftKey)}
-                                  style={{
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    userSelect: 'none',
-                                    marginBottom: isShiftCollapsed ? 0 : '0.85rem'
-                                  }}
-                                >
-                                  <Clock size={14} />
-                                  <h4>Shift {shift}</h4>
-                                  <div style={{ flexGrow: 1 }} />
-                                  {!isShiftCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </div>
-
-                                {!isShiftCollapsed && (
-                                  <div className="locos-list">
-                                    {Object.keys(groupedAll[dateStr][parseInt(shift)]).map(locoStr => {
-                                      const locoNum = locoStr;
-                                      const record = groupedAll[dateStr][parseInt(shift)][locoNum];
-                                      const ml = locos.find(l => l.loco_number === locoNum);
-                                      const tn = ml ? typeName(ml.loco_type_id) : null;
-                                      const isExpanded = expandedLocos.has(`hist-${dateStr}-${shift}-${locoNum}`);
-                                      return (
-                                        <div key={locoNum} className="loco-booking-card collapsible">
-                                          <div className="loco-card-title" onClick={() => toggleLoco(`hist-${dateStr}-${shift}-${locoNum}`)} style={{cursor: 'pointer'}}>
-                                            <Train size={16} />
-                                            <h5>Locomotive #{locoNum}{tn ? ` (${tn})` : ""}</h5>
-                                            <span className="booked-by-badge"><User size={12} /> {record.employee_name}</span>
-                                            <div style={{flexGrow:1}}/>
-                                            {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                                          </div>
-                                          {isExpanded && (
-                                            <div className="loco-jobs-list">
-                                              {Object.keys(record.jobs).map(jobIdStr => {
-                                                const jobId = parseInt(jobIdStr);
-                                                const job = record.jobs[jobId];
-                                                return (
-                                                  <div key={jobIdStr} className="loco-job-item">
-                                                    <div className="job-meta">
-                                                      <ClipboardList size={14} /><h6>{job.job_description}</h6>
-                                                    </div>
-                                                    {job.tasks.length > 0 && (
-                                                      <ul className="job-tasks-sublist">
-                                                        {job.tasks.map((t, i) => (
-                                                          <li key={i}>
-                                                            <FileText size={12} style={{marginRight:4}}/><span>{t.desc}</span>
-                                                          </li>
-                                                        ))}
-                                                      </ul>
-                                                    )}
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {filteredHistoryBookings.length === 0 && <p className="no-records-hint">No workshop operations booked in this range.</p>}
-              </div>
-            </div>
-          </section>
+          <LocoBookingHistory
+            historyBookings={historyBookings}
+            locos={locos}
+            jobs={jobs}
+            locoTypes={locoTypes}
+            historySearch={historySearch}
+            setHistorySearch={setHistorySearch}
+            historyShift={historyShift}
+            setHistoryShift={setHistoryShift}
+            historyStartDate={historyStartDate}
+            setHistoryStartDate={setHistoryStartDate}
+            historyEndDate={historyEndDate}
+            setHistoryEndDate={setHistoryEndDate}
+            showStage6={showStage6}
+            setShowStage6={setShowStage6}
+            expandedLocos={expandedLocos}
+            toggleLoco={toggleLoco}
+            collapsedDates={collapsedDates}
+            toggleDate={toggleDate}
+            collapsedShifts={collapsedShifts}
+            toggleShift={toggleShift}
+            expandAllHistory={expandAllHistory}
+            collapseAllHistory={collapseAllHistory}
+            isEditMode={isEditMode}
+            handleDeleteLocoBooking={handleDeleteLocoBooking}
+            handleEditJob={handleEditJob}
+            handleDeleteJob={handleDeleteJob}
+            handleEditTask={handleEditTask}
+            handleDeleteTask={handleDeleteTask}
+            newTaskInputs={newTaskInputs}
+            setNewTaskInputs={setNewTaskInputs}
+            handleAddSingleTask={handleAddSingleTask}
+            setAddingJobLoco={setAddingJobLoco}
+            typeName={typeName}
+          />
         )}
       </div>
 

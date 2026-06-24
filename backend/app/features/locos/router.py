@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -53,6 +53,7 @@ class LocoRead(BaseModel):
     loco_type_id: int
     stage: int
     despatched: bool = False
+    despatch_date: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -164,6 +165,8 @@ async def create_loco(
     data.pop("date_time", None)
     data.pop("shift", None)
     db_loco = Loco(**data)
+    if db_loco.despatched:
+        db_loco.despatch_date = datetime.now(timezone.utc)
     db.add(db_loco)
     try:
         await db.commit()
@@ -256,6 +259,14 @@ async def update_loco(
     data["loco_number"] = encode_loco_number(data["loco_number"])
     data.pop("date_time", None)
     data.pop("shift", None)
+    
+    # Capture or reset despatch date
+    if data.get("despatched"):
+        if not db_loco.despatched or db_loco.despatch_date is None:
+            db_loco.despatch_date = datetime.now(timezone.utc)
+    else:
+        db_loco.despatch_date = None
+
     for key, value in data.items():
         setattr(db_loco, key, value)
     

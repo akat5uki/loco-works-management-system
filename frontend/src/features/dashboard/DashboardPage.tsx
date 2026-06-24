@@ -8,12 +8,12 @@ import {
   LogOut,
   ClipboardList,
   BarChart3,
-  MessageSquare,
-  Bell
+  MessageSquare
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import ChatPage from "../chat/ChatPage";
+import NotificationBell from "../bookings/components/NotificationBell";
 import "./Dashboard.css";
 
 interface UserProfile {
@@ -56,7 +56,6 @@ const DashboardPage = () => {
   // Real-time assignment and notifications
   const [assignments, setAssignments] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<EmployeeNotification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   const fetchAssignmentsAndNotifs = useCallback(async (profile: UserProfile) => {
     try {
@@ -266,49 +265,10 @@ const DashboardPage = () => {
             <ThemeToggle />
             
             {/* Notification Bell */}
-            <div className="notification-bell-container" onClick={() => setShowNotifications(!showNotifications)} style={{ position: "relative", cursor: "pointer" }}>
-              <Bell size={20} />
-              {notifications.filter(n => !n.is_read).length > 0 && (
-                <div className="notification-badge" style={{
-                  position: "absolute", top: "-2px", right: "-2px",
-                  background: "#ef4444", color: "white", fontSize: "0.65rem",
-                  fontWeight: 700, borderRadius: "50%", width: "15px", height: "15px",
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}>
-                  {notifications.filter(n => !n.is_read).length}
-                </div>
-              )}
-              {showNotifications && (
-                <div className="notifications-popup" onClick={e => e.stopPropagation()} style={{
-                  position: "absolute", top: "45px", right: 0, width: "300px",
-                  background: "var(--bg-secondary)", border: "1px solid var(--border)",
-                  borderRadius: "0.5rem", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                  padding: "1rem", zIndex: 100
-                }}>
-                  <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.35rem" }}>Notifications</h3>
-                  {notifications.length === 0 ? (
-                    <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0.5rem 0" }}>No new notifications.</p>
-                  ) : (
-                    <div style={{ maxHeight: "250px", overflowY: "auto" }}>
-                      {notifications.map(n => (
-                        <div
-                          key={n.notification_id}
-                          className="notif-item"
-                          style={{
-                            padding: "0.45rem 0", borderBottom: "1px solid var(--border)",
-                            fontSize: "0.8rem", cursor: "pointer",
-                            fontWeight: !n.is_read ? 600 : 400
-                          }}
-                          onClick={() => handleMarkAsRead(n.notification_id)}
-                        >
-                          <div>{n.message}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <NotificationBell
+              notifications={notifications}
+              handleMarkAsRead={handleMarkAsRead}
+            />
 
             <div className="header-date">
               {new Date().toLocaleDateString("en-US", {

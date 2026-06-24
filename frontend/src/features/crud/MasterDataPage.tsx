@@ -1,16 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Settings,
-  Plus,
-  Train,
-  Briefcase,
-  ArrowLeft,
-} from "lucide-react";
+import { Settings, Plus, ArrowLeft, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
 import { AxiosError } from "axios";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import TrainLoader from "../../shared/components/TrainLoader";
+import MasterDataTabs from "./components/MasterDataTabs";
+import MasterDataForm from "./components/MasterDataForm";
+import MasterDataList from "./components/MasterDataList";
 import "./MasterData.css";
 
 interface LocoType {
@@ -23,6 +20,7 @@ interface Loco {
   loco_type_id: number;
   stage: number;
   despatched: boolean;
+  despatch_date?: string | null;
 }
 
 interface Job {
@@ -52,9 +50,7 @@ const MasterDataPage = () => {
     checkAccess();
   }, [navigate]);
 
-  const [activeTab, setActiveTab] = useState<
-    "types" | "locos" | "jobs"
-  >("types");
+  const [activeTab, setActiveTab] = useState<"types" | "locos" | "jobs">("types");
   const [data, setData] = useState<MasterDataItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -67,6 +63,7 @@ const MasterDataPage = () => {
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -105,6 +102,7 @@ const MasterDataPage = () => {
     setFormData({});
     setError("");
     setCurrentPage(1);
+    setSearchQuery("");
     fetchData();
   }, [fetchData]);
 
@@ -160,8 +158,12 @@ const MasterDataPage = () => {
     } catch (err) {
       const axiosError = err as AxiosError<{ detail?: unknown }>;
       console.error("Save error details:", axiosError.response?.data);
-      const detail = axiosError.response?.data?.detail || "Ensure fields are correct and IDs are unique.";
-      setError(typeof detail === "object" ? JSON.stringify(detail) : String(detail));
+      const detail =
+        axiosError.response?.data?.detail ||
+        "Ensure fields are correct and IDs are unique.";
+      setError(
+        typeof detail === "object" ? JSON.stringify(detail) : String(detail)
+      );
     } finally {
       setLoading(false);
     }
@@ -177,7 +179,7 @@ const MasterDataPage = () => {
   const handleDelete = async (item: MasterDataItem) => {
     let confirmMsg = "Are you sure you want to delete this record?";
     let deleteUrl = "";
-    
+
     if (activeTab === "types") {
       const typeItem = item as LocoType;
       confirmMsg = `Are you sure you want to delete Loco Type "${typeItem.loco_type_name}" (ID: ${typeItem.loco_type_id})?`;
@@ -203,17 +205,64 @@ const MasterDataPage = () => {
     } catch (err) {
       const axiosError = err as AxiosError<{ detail?: unknown }>;
       console.error("Delete error details:", axiosError.response?.data);
-      const detail = axiosError.response?.data?.detail || "Failed to delete record. It may be referenced by other active tables.";
-      setError(typeof detail === "object" ? JSON.stringify(detail) : String(detail));
+      const detail =
+        axiosError.response?.data?.detail ||
+        "Failed to delete record. It may be referenced by other active tables.";
+      setError(
+        typeof detail === "object" ? JSON.stringify(detail) : String(detail)
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredData = data.filter((item) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.trim().toLowerCase();
+    
+    // For types
+    if (activeTab === "types") {
+      const type = item as LocoType;
+      return (
+        String(type.loco_type_id).toLowerCase().includes(query) ||
+        type.loco_type_name.toLowerCase().includes(query)
+      );
+    }
+    // For locos
+    if (activeTab === "locos") {
+      const loco = item as Loco;
+      const typeName = locoTypes.find((t) => t.loco_type_id === loco.loco_type_id)?.loco_type_name ?? "";
+      const formattedDespatchDate = loco.despatch_date
+        ? new Date(loco.despatch_date).toLocaleString().toLowerCase()
+        : "";
+      return (
+        String(loco.loco_number).toLowerCase().includes(query) ||
+        String(loco.stage).toLowerCase().includes(query) ||
+        typeName.toLowerCase().includes(query) ||
+        (loco.despatched ? "despatched" : "active").includes(query) ||
+        formattedDespatchDate.includes(query)
+      );
+    }
+    // For jobs
+    if (activeTab === "jobs") {
+      const job = item as Job;
+      return (
+        String(job.job_id).toLowerCase().includes(query) ||
+        job.job_description.toLowerCase().includes(query) ||
+        String(job.stage).toLowerCase().includes(query)
+      );
+    }
+    return true;
+  });
+
   return (
     <div className="master-container">
       <header className="master-header">
-        <button className="back-btn" onClick={() => navigate("/dashboard")}>
+        <button
+          className="back-btn"
+          onClick={() => navigate("/dashboard")}
+          type="button"
+        >
           <ArrowLeft size={20} /> Dashboard
         </button>
         <div className="title-section">
@@ -225,321 +274,113 @@ const MasterDataPage = () => {
         </div>
       </header>
 
-      <nav className="master-tabs">
-        <button
-          className={activeTab === "types" ? "active" : ""}
-          onClick={() => setActiveTab("types")}
-        >
-          <Train size={18} /> Loco Types
-        </button>
-        <button
-          className={activeTab === "locos" ? "active" : ""}
-          onClick={() => setActiveTab("locos")}
-        >
-          <Train size={18} /> Locomotives
-        </button>
-        <button
-          className={activeTab === "jobs" ? "active" : ""}
-          onClick={() => setActiveTab("jobs")}
-        >
-          <Briefcase size={18} /> Jobs
-        </button>
-      </nav>
+      <MasterDataTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main className="master-main">
         {error && !showForm && (
-          <div className="error-message page-error-message">
-            {error}
-          </div>
+          <div className="error-message page-error-message">{error}</div>
         )}
+
         <div className="action-bar">
           <h3>
-            {isEditing ? "Edit" : "Existing"}{" "}
-            {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            Existing{" "}
+            {activeTab === "types"
+              ? "Loco Types"
+              : activeTab === "locos"
+              ? "Locomotives"
+              : "Jobs"}
           </h3>
-          <button 
-            className="btn-add" 
-            onClick={() => {
-              if (showForm) {
-                setShowForm(false);
+          <div className="action-bar-right">
+            <div className={`search-box-wrapper master-search ${searchQuery ? "has-clear" : ""}`}>
+              <Search className="search-icon" size={16} />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            <button
+              className="btn-add"
+              onClick={() => {
+                setShowForm(true);
                 setIsEditing(false);
                 setFormData({});
                 setError("");
-              } else {
-                setShowForm(true);
-                setError("");
-              }
-            }}
-          >
-            <Plus size={18} />{" "}
-            {showForm ? "Cancel" : `Add ${activeTab === "types" ? "Type" : activeTab === "locos" ? "Locomotive" : "Job"}`}
-          </button>
+              }}
+              type="button"
+            >
+              <Plus size={18} /> Add{" "}
+              {activeTab === "types"
+                ? "Type"
+                : activeTab === "locos"
+                ? "Locomotive"
+                : "Job"}
+            </button>
+          </div>
         </div>
 
         {showForm && (
-          <form className="crud-form" onSubmit={handleSubmit}>
-            {error && <div className="error-message form-error-message">{error}</div>}
-            {activeTab === "types" && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Type ID"
-                  required
-                  disabled={isEditing}
-                  value={formData.loco_type_id ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      loco_type_id: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="text"
-                  placeholder="Type Name (e.g. WAP-7)"
-                  required
-                  value={formData.loco_type_name ?? ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, loco_type_name: e.target.value })
-                  }
-                />
-              </>
-            )}
-            {activeTab === "locos" && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Loco Number"
-                  required
-                  disabled={isEditing}
-                  value={formData.loco_number ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      loco_number: e.target.value.trim(),
-                    })
-                  }
-                />
-                <select
-                  required
-                  value={formData.loco_type_id ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      loco_type_id: parseInt(e.target.value),
-                    })
-                  }
-                >
-                  <option value="">-- Select Loco Type --</option>
-                  {locoTypes.map((t) => (
-                    <option key={t.loco_type_id} value={t.loco_type_id}>
-                      {t.loco_type_name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  required
-                  value={formData.stage ?? ""}
-                  onChange={(e) => {
-                    const nextStage = parseInt(e.target.value);
-                    setFormData({
-                      ...formData,
-                      stage: nextStage,
-                      despatched: nextStage === 9,
-                    });
-                  }}
-                >
-                  <option value="">-- Select Stage --</option>
-                  <option value="0">0</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                  <option value="9">9</option>
-                </select>
-
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: "1rem", height: "1rem", accentColor: "var(--accent)" }}
-                    checked={!!formData.despatched}
-                    onChange={(e) => {
-                      const nextDespatched = e.target.checked;
-                      setFormData({
-                        ...formData,
-                        despatched: nextDespatched,
-                        stage: nextDespatched ? 9 : (formData.stage === 9 ? 0 : (formData.stage ?? 0)),
-                      });
-                    }}
-                  />
-                  Despatched (left production unit)
-                </label>
-              </>
-            )}
-            {activeTab === "jobs" && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Job ID"
-                  required
-                  disabled={isEditing}
-                  value={formData.job_id ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      job_id: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="text"
-                  placeholder="Description"
-                  required
-                  value={formData.job_description ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      job_description: e.target.value,
-                    })
-                  }
-                />
-                <select
-                  required
-                  value={formData.stage ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      stage: parseInt(e.target.value),
-                    })
-                  }
-                >
-                  <option value="">-- Select Job Stage --</option>
-                  <option value="0">0</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                  <option value="9">9</option>
-                </select>
-              </>
-            )}
-            <button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Record"}
-            </button>
-          </form>
+          <MasterDataForm
+            activeTab={activeTab}
+            isEditing={isEditing}
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onCancel={() => {
+              setShowForm(false);
+              setIsEditing(false);
+              setFormData({});
+              setError("");
+            }}
+            locoTypes={locoTypes}
+            loading={loading}
+            error={error}
+          />
         )}
 
-        <div className="table-wrapper">
-          {loading && !showForm ? (
-            <TrainLoader message={`Fetching ${activeTab === "types" ? "Loco Types" : activeTab === "locos" ? "Locomotives" : "Jobs"}...`} />
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  {data.length > 0 &&
-                    Object.keys(data[0]).map((key) => (
-                      <th key={key}>
-                        {key === "loco_type_id" && activeTab === "locos"
-                          ? "LOCO TYPE"
-                          : key.replace("_", " ").toUpperCase()}
-                      </th>
-                    ))}
-                  {data.length > 0 && <th style={{ textAlign: "right" }}>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item, i) => {
-                  const itemKeys = data.length > 0 ? Object.keys(data[0]) : [];
-                  const globalIndex = (currentPage - 1) * itemsPerPage + i;
-                  return (
-                    <tr key={globalIndex}>
-                      {itemKeys.map((key, j) => {
-                        const val = (item as any)[key];
-                        return (
-                          <td key={j}>
-                            {key === "loco_type_id" && activeTab === "locos"
-                              ? (locoTypes.find((t) => t.loco_type_id === val)?.loco_type_name || val)
-                              : key === "despatched"
-                                ? <span style={{
-                                    display: "inline-block",
-                                    padding: "0.2rem 0.6rem",
-                                    borderRadius: "9999px",
-                                    fontSize: "0.75rem",
-                                    fontWeight: 700,
-                                    background: val ? "rgba(239,68,68,0.12)" : "rgba(16,185,129,0.12)",
-                                    color: val ? "#ef4444" : "#10b981",
-                                  }}>{val ? "Despatched" : "Active"}</span>
-                                : typeof val === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)
-                                  ? new Date(val).toLocaleString()
-                                  : String(val)}
-                          </td>
-                        );
-                      })}
-                      <td>
-                        <div className="actions-cell" style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                          <button className="btn-edit-action" onClick={() => handleEdit(item)}>
-                            Edit
-                          </button>
-                          <button className="btn-delete-action" onClick={() => handleDelete(item)}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-          {!loading && data.length > itemsPerPage && (
-            <div className="pagination-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", borderTop: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
-              <span style={{ fontSize: "0.875rem", color: "var(--text)" }}>
-                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, data.length)} of {data.length} records
-              </span>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => prev - 1)}
-                  style={{
-                    padding: "0.5rem 0.75rem",
-                    borderRadius: "0.375rem",
-                    border: "1px solid var(--border)",
-                    background: "var(--bg-card)",
-                    color: "var(--text)",
-                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                  }}
-                >
-                  Previous
-                </button>
-                <span style={{ display: "flex", alignItems: "center", padding: "0 0.5rem", fontSize: "0.875rem", fontWeight: 600, color: "var(--text-h)" }}>
-                  Page {currentPage} of {Math.ceil(data.length / itemsPerPage)}
-                </span>
-                <button
-                  type="button"
-                  disabled={currentPage === Math.ceil(data.length / itemsPerPage)}
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  style={{
-                    padding: "0.5rem 0.75rem",
-                    borderRadius: "0.375rem",
-                    border: "1px solid var(--border)",
-                    background: "var(--bg-card)",
-                    color: "var(--text)",
-                    cursor: currentPage === Math.ceil(data.length / itemsPerPage) ? "not-allowed" : "pointer",
-                    opacity: currentPage === Math.ceil(data.length / itemsPerPage) ? 0.5 : 1,
-                  }}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-          {!loading && data.length === 0 && (
-            <p className="empty-state">
-              No records found. Add one to get started.
-            </p>
-          )}
-        </div>
+        {loading && !showForm ? (
+          <div style={{ padding: "3rem 0" }}>
+            <TrainLoader
+              message={`Fetching ${
+                activeTab === "types"
+                  ? "Loco Types"
+                  : activeTab === "locos"
+                  ? "Locomotives"
+                  : "Jobs"
+              }...`}
+            />
+          </div>
+        ) : (
+          <MasterDataList
+            data={filteredData}
+            activeTab={activeTab}
+            locoTypes={locoTypes}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            loading={loading}
+            searchQuery={searchQuery}
+          />
+        )}
       </main>
     </div>
   );

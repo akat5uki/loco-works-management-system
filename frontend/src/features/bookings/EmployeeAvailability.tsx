@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
+import AvailabilityGroup from "./components/AvailabilityGroup";
 import "./EmployeesBooking.css";
 
 interface Employee {
@@ -319,64 +320,12 @@ const EmployeeAvailability = () => {
           </div>
 
           <div className="availability-list" style={{ maxHeight: "600px", paddingRight: "0.25rem" }}>
-            {groupedEmployees.length === 0 ? (
-              <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No employees match search criteria.</p>
-            ) : (
-              groupedEmployees.map(cat => (
-                <div key={cat.category_id} className="category-group" style={{ marginBottom: "1.5rem" }}>
-                  <h3 style={{
-                    fontSize: "1.05rem",
-                    fontWeight: 700,
-                    color: "var(--accent)",
-                    borderBottom: "1.5px solid var(--border)",
-                    paddingBottom: "0.25rem",
-                    marginBottom: "0.75rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.03em"
-                  }}>
-                    {cat.category_name}s
-                  </h3>
-                  
-                  {cat.designations.map(desig => (
-                    <div key={desig.designation_id} className="designation-group" style={{ marginBottom: "1rem", paddingLeft: "0.5rem" }}>
-                      <h4 style={{
-                        fontSize: "0.9rem",
-                        fontWeight: 600,
-                        color: "var(--text-h)",
-                        marginBottom: "0.5rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem"
-                      }}>
-                        <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent)" }}></span>
-                        {desig.designation_name} ({desig.employees.length})
-                      </h4>
-                      
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingLeft: "0.5rem" }}>
-                        {desig.employees.map(emp => {
-                          const isAvailable = availableTickets.has(emp.ticket_number);
-                          return (
-                            <div key={emp.ticket_number} className={`employee-toggle-item ${isAvailable ? 'available' : ''}`}>
-                              <div className="emp-meta">
-                                <span className="emp-name">{emp.name} (Ticket #{emp.ticket_number})</span>
-                                <span className="emp-badge">{emp.designation_name}</span>
-                              </div>
-                              <button
-                                className={`avail-toggle-btn ${isAvailable ? 'active' : ''}`}
-                                onClick={() => handleToggleAvailability(emp.ticket_number)}
-                                disabled={!!lockOwner}
-                              >
-                                {isAvailable ? "Available" : "Unavailable"}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))
-            )}
+            <AvailabilityGroup
+              groupedEmployees={groupedEmployees}
+              availableTickets={availableTickets}
+              handleToggleAvailability={handleToggleAvailability}
+              lockOwner={lockOwner}
+            />
           </div>
         </section>
       </div>

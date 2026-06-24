@@ -8,12 +8,16 @@ import {
   Calendar,
   Lock,
   RefreshCw,
-  Bell,
-  AlertTriangle,
-  ClipboardList
+  AlertTriangle
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
+import WizardProgress from "./components/WizardProgress";
+import SupervisorAssignStep from "./components/SupervisorAssignStep";
+import StaffAssignStep from "./components/StaffAssignStep";
+import LocoOpsPreview from "./components/LocoOpsPreview";
+import AssignmentsView from "./components/AssignmentsView";
+import NotificationBell from "./components/NotificationBell";
 import "./EmployeesBooking.css";
 
 interface Employee {
@@ -147,7 +151,6 @@ const EmployeesBookingWizard = () => {
   
   // Notifications
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   // Lock management
   const [lockOwner, setLockOwner] = useState<{ name: string; ticket_number: number } | null>(null);
@@ -695,13 +698,12 @@ const EmployeesBookingWizard = () => {
     return acc;
   }, {} as Record<string, Employee[]>);
 
-
   return (
     <div className="employees-booking-workspace">
       {/* ── HEADER ── */}
       <header className="workspace-header">
         <div className="header-actions">
-          <button className="back-btn" onClick={() => navigate("/dashboard")}>
+          <button className="back-btn" onClick={() => navigate("/dashboard")} type="button">
             <ArrowLeft size={18} /> Dashboard
           </button>
           
@@ -709,33 +711,10 @@ const EmployeesBookingWizard = () => {
             <ThemeToggle />
             
             {/* Notification Center */}
-            <div className="notification-bell-container" onClick={() => setShowNotifications(!showNotifications)}>
-              <Bell size={20} />
-              {notifications.filter(n => !n.is_read).length > 0 && (
-                <div className="notification-badge">
-                  {notifications.filter(n => !n.is_read).length}
-                </div>
-              )}
-              {showNotifications && (
-                <div className="notifications-popup" onClick={e => e.stopPropagation()}>
-                  <h3>Notifications</h3>
-                  {notifications.length === 0 ? (
-                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "1rem 0" }}>No new notifications.</p>
-                  ) : (
-                    notifications.map(n => (
-                      <div
-                        key={n.notification_id}
-                        className={`notif-item ${!n.is_read ? 'unread' : ''}`}
-                        onClick={() => handleMarkAsRead(n.notification_id)}
-                      >
-                        <div>{n.message}</div>
-                        <span className="notif-time">{new Date(n.created_at).toLocaleTimeString()}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
+            <NotificationBell
+              notifications={notifications}
+              handleMarkAsRead={handleMarkAsRead}
+            />
           </div>
         </div>
 
@@ -791,373 +770,76 @@ const EmployeesBookingWizard = () => {
             <option value={2}>Shift 2 (Night)</option>
           </select>
         </div>
-        <button className="back-btn" onClick={fetchData} style={{ height: "38px" }}>
+        <button className="back-btn" onClick={fetchData} style={{ height: "38px" }} type="button">
           <RefreshCw size={14} /> Refresh Data
         </button>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "2rem", marginBottom: "3rem" }}>
+      <div className="wizard-split-layout">
         {/* ── PANEL: Actual Booking Wizard ── */}
-        <section className="panel-card">
+        <section className="panel-card wizard-panel-card">
           <h2>Book Employees to Locomotives</h2>
           
           {locos.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "2rem" }}>
+            <div className="empty-wizard-state-card" style={{ textAlign: "center", padding: "2rem" }}>
               <Train size={36} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />
               <p style={{ color: "var(--text-muted)" }}>No locomotives are booked in this shift. Assign locos under "Loco Booking" first.</p>
             </div>
           ) : (
-            <div className="booking-form">
+            <div className="booking-form-wizard">
               {/* Step Navigation Indicator */}
-              <div style={{ display: "flex", gap: "1rem", borderBottom: "2px solid var(--border)", marginBottom: "1.5rem" }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveStep(1)}
-                  style={{
-                    padding: "0.75rem 1rem",
-                    border: "none",
-                    background: "none",
-                    fontWeight: "bold",
-                    color: activeStep === 1 ? "var(--accent)" : "var(--text-muted)",
-                    borderBottom: activeStep === 1 ? "3px solid var(--accent)" : "none",
-                    cursor: "pointer",
-                    fontSize: "1rem"
-                  }}
-                >
-                  Step 1: Book Supervisors to Locomotives
-                </button>
-                <button
-                  type="button"
-                  onClick={() => !isStep2Disabled && setActiveStep(2)}
-                  disabled={isStep2Disabled}
-                  style={{
-                    padding: "0.75rem 1rem",
-                    border: "none",
-                    background: "none",
-                    fontWeight: "bold",
-                    color: activeStep === 2 ? "var(--accent)" : "var(--text-muted)",
-                    borderBottom: activeStep === 2 ? "3px solid var(--accent)" : "none",
-                    cursor: !isStep2Disabled ? "pointer" : "not-allowed",
-                    opacity: !isStep2Disabled ? 1 : 0.5,
-                    fontSize: "1rem"
-                  }}
-                >
-                  Step 2: Book Staff under Supervisors
-                </button>
-              </div>
-
-              {isStep1Unsaved && activeStep === 1 && (
-                <div style={{ color: "#f59e0b", fontSize: "0.85rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <AlertTriangle size={14} />
-                  <span>You have unsaved changes in Step 1. Save assignments to enable Step 2.</span>
-                </div>
-              )}
+              <WizardProgress
+                activeStep={activeStep}
+                setActiveStep={setActiveStep}
+                isStep2Disabled={isStep2Disabled}
+                isStep1Unsaved={isStep1Unsaved}
+              />
 
               {/* Main Panel Layout: Split-screen column view */}
-              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "2rem", marginTop: "1rem" }}>
+              <div className="wizard-form-ops-split">
                 
                 {/* Column 1: Forms based on active step */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                  
+                <div className="wizard-active-step-column">
                   {activeStep === 1 && (
-                    <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "1.5rem", background: "rgba(255,255,255,0.01)" }}>
-                      <h3 style={{ marginTop: 0, fontSize: "1.2rem", color: "var(--text-h)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        Assign Available Supervisors to Locomotives
-                      </h3>
-                      <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.25rem", marginBottom: "1.5rem" }}>
-                        Select the supervisors assigned to each locomotive. You can also click a locomotive card to preview its operations. Supervisor bookings must be fully saved to proceed to staff booking.
-                      </p>
-
-                      {supervisorList.filter(sup => availableTickets.has(sup.ticket_number)).length === 0 ? (
-                        <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                          No available supervisors found. Please mark them available in the availability list.
-                        </p>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxHeight: "400px", overflowY: "auto", paddingRight: "0.5rem", marginBottom: "1.5rem" }}>
-                          {locos.map(locoNum => {
-                            const isSelectedForPreview = selectedLoco === locoNum;
-                            // Find all supervisors assigned to this locomotive
-                            const assignedSupervisors = supervisorList
-                              .filter(sup => availableTickets.has(sup.ticket_number))
-                              .filter(sup => (tempSupervisorLocos[sup.ticket_number] || []).includes(locoNum));
-
-                            return (
-                              <div
-                                key={locoNum}
-                                onClick={() => setSelectedLoco(locoNum)}
-                                style={{
-                                  border: `1px solid ${isSelectedForPreview ? "var(--accent)" : "var(--border)"}`,
-                                  borderRadius: "8px",
-                                  padding: "1rem",
-                                  background: "var(--bg)",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "0.5rem",
-                                  cursor: "pointer",
-                                  boxShadow: isSelectedForPreview ? "0 0 0 1px var(--accent)" : "none",
-                                }}
-                              >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <strong style={{ fontSize: "0.95rem" }}>Locomotive #{locoNum}</strong>
-                                  {assignedSupervisors.length > 0 && (
-                                    <span style={{ fontSize: "0.75rem", background: "var(--accent-bg)", color: "var(--accent)", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
-                                      {assignedSupervisors.length} Supervisor(s) Assigned
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" }}>
-                                  {supervisorList
-                                    .filter(sup => availableTickets.has(sup.ticket_number))
-                                    .map(sup => {
-                                      const isAssigned = (tempSupervisorLocos[sup.ticket_number] || []).includes(locoNum);
-                                      return (
-                                        <div
-                                          key={sup.ticket_number}
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "0.4rem",
-                                            padding: "0.4rem 0.8rem",
-                                            borderRadius: "20px",
-                                            border: `1px solid ${isAssigned ? "var(--accent)" : "var(--border)"}`,
-                                            background: isAssigned ? "var(--accent-bg)" : "var(--bg-secondary)",
-                                            cursor: "pointer",
-                                            userSelect: "none",
-                                            fontSize: "0.85rem",
-                                            fontWeight: "bold",
-                                            color: isAssigned ? "var(--accent)" : "var(--text-muted)"
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleSupervisorLoco(sup.ticket_number, locoNum);
-                                          }}
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={isAssigned}
-                                            disabled={!!lockOwner}
-                                            onChange={(e) => {
-                                              e.stopPropagation();
-                                              handleToggleSupervisorLoco(sup.ticket_number, locoNum);
-                                            }}
-                                            style={{ cursor: "pointer" }}
-                                          />
-                                          <span>{sup.name} (SSE/JE)</span>
-                                        </div>
-                                      );
-                                    })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        className="btn-primary-action"
-                        style={{ width: "100%" }}
-                        onClick={handleSaveSupervisors}
-                        disabled={!!lockOwner || saving}
-                      >
-                        {saving ? "Saving Assignments..." : "Save Supervisor Assignments & Proceed"}
-                      </button>
-                    </div>
+                    <SupervisorAssignStep
+                      locos={locos}
+                      supervisorList={supervisorList}
+                      availableTickets={availableTickets}
+                      tempSupervisorLocos={tempSupervisorLocos}
+                      handleToggleSupervisorLoco={handleToggleSupervisorLoco}
+                      handleSaveSupervisors={handleSaveSupervisors}
+                      lockOwner={lockOwner}
+                      saving={saving}
+                    />
                   )}
 
                   {activeStep === 2 && (
-                    <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "1.5rem", background: "rgba(255,255,255,0.01)" }}>
-                      <h3 style={{ marginTop: 0, fontSize: "1.2rem", color: "var(--text-h)" }}>
-                        Assign Staff to Locomotive
-                      </h3>
-                      
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem", marginTop: "1rem", marginBottom: "1.5rem" }}>
-                        <div>
-                          <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: "bold" }}>Select Locomotive</label>
-                          <select
-                            className="config-select"
-                            style={{ width: "100%", marginTop: "0.5rem" }}
-                            value={selectedLoco || ""}
-                            onChange={e => setSelectedLoco(e.target.value || null)}
-                            disabled={!!lockOwner}
-                          >
-                            <option value="">-- Choose Locomotive --</option>
-                            {locos.map(locoNum => (
-                              <option key={locoNum} value={locoNum}>
-                                Loco #{locoNum}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {selectedLoco && (() => {
-                        // Find supervisors assigned to selectedLoco in Step 1/tempSupervisorLocos
-                        const assignedSupervisors = supervisorList.filter(sup => {
-                          const assignedLocos = tempSupervisorLocos[sup.ticket_number] || [];
-                          return assignedLocos.includes(selectedLoco);
-                        });
-
-                        if (assignedSupervisors.length === 0) {
-                          return (
-                            <div style={{ padding: "1rem", background: "rgba(245, 158, 11, 0.08)", border: "1px solid #f59e0b", borderRadius: "6px", color: "#f59e0b", fontSize: "0.9rem" }}>
-                              <AlertTriangle size={16} style={{ marginRight: 6, verticalAlign: "middle" }} />
-                              No supervisors are assigned to Loco #{selectedLoco}. Staff booking is not required for this locomotive.
-                            </div>
-                          );
-                        }
-
-                        const key = selectedLoco;
-
-                        return (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                            <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "1.25rem", background: "var(--bg)", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                              <h4 style={{ margin: "0", color: "var(--text-h)", fontSize: "1.05rem" }}>
-                                Staff Assignments for Loco #{selectedLoco}
-                              </h4>
-                              
-                              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", background: "var(--bg-card)", padding: "0.75rem", borderRadius: "6px", border: "1px solid var(--border)" }}>
-                                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--text-muted)" }}>Linked Supervisors:</span>
-                                {assignedSupervisors.map(sup => (
-                                  <span key={sup.ticket_number} style={{ fontSize: "0.8rem", background: "rgba(99, 102, 241, 0.12)", color: "var(--accent)", padding: "0.2rem 0.5rem", borderRadius: "4px", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
-                                    {sup.name} ({sup.designation_name})
-                                  </span>
-                                ))}
-                              </div>
-
-                              <div className="staff-hierarchy-list" style={{ maxHeight: "350px", overflowY: "auto", border: "1px solid var(--border)", padding: "0.75rem", borderRadius: "6px", background: "var(--bg-card)", marginBottom: "0.5rem" }}>
-                                {Object.entries(groupedStaffList)
-                                  .sort((a, b) => {
-                                    const aDesigId = a[1][0]?.designation_id || 99;
-                                    const bDesigId = b[1][0]?.designation_id || 99;
-                                    return aDesigId - bDesigId;
-                                  })
-                                  .map(([desigName, staffMembers]) => (
-                                    <div key={desigName} className="hierarchy-section" style={{ marginBottom: "1rem" }}>
-                                      <h5 style={{ margin: "0 0 0.5rem 0", borderBottom: "1px solid var(--border)", paddingBottom: "0.25rem", color: "var(--accent)" }}>{desigName}</h5>
-                                      <div className="hierarchy-items" style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                                        {staffMembers.map(staff => {
-                                          const isAvailable = availableTickets.has(staff.ticket_number);
-                                          const isChecked = (locoStaffMap[key] || []).includes(staff.ticket_number);
-                                          const warning = getStaffWarning(staff.ticket_number);
-                                          const isMultipleSups = warning && warning.includes("multiple supervisors");
-
-                                          return (
-                                            <div
-                                              key={staff.ticket_number}
-                                              className={`staff-selection-row ${isChecked ? 'selected' : ''} ${!isAvailable ? 'unavailable' : ''}`}
-                                              onClick={() => isAvailable && handleToggleStaffSelection(staff.ticket_number)}
-                                              style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: isAvailable ? "pointer" : "not-allowed", padding: "0.25rem", borderRadius: "4px" }}
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                disabled={!isAvailable || !!lockOwner}
-                                                onChange={() => {}}
-                                              />
-                                              <span style={{ fontSize: "0.85rem" }}>{staff.name} (Ticket #{staff.ticket_number})</span>
-                                              {!isAvailable && <span className="warning-badge" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", fontSize: "0.75rem" }}>Unavailable</span>}
-                                              {warning && (
-                                                <span 
-                                                  className="warning-badge" 
-                                                  style={{ 
-                                                    background: isMultipleSups ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.1)", 
-                                                    color: "#f59e0b", 
-                                                    fontSize: "0.75rem",
-                                                    border: isMultipleSups ? "1px solid rgba(245,158,11,0.4)" : "none",
-                                                    fontWeight: isMultipleSups ? "bold" : "normal"
-                                                  }}
-                                                >
-                                                  <AlertTriangle size={10} style={{ marginRight: 3 }} /> {warning}
-                                                </span>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-
-                              <button
-                                type="button"
-                                className="btn-primary-action"
-                                style={{ width: "100%" }}
-                                onClick={handleSaveStaff}
-                                disabled={!!lockOwner || saving}
-                              >
-                                {saving ? "Saving Staff Assignments..." : `Save Staff Assignments for Loco #${selectedLoco}`}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
+                    <StaffAssignStep
+                      locos={locos}
+                      selectedLoco={selectedLoco}
+                      setSelectedLoco={setSelectedLoco}
+                      supervisorList={supervisorList}
+                      tempSupervisorLocos={tempSupervisorLocos}
+                      groupedStaffList={groupedStaffList}
+                      availableTickets={availableTickets}
+                      locoStaffMap={locoStaffMap}
+                      handleToggleStaffSelection={handleToggleStaffSelection}
+                      getStaffWarning={getStaffWarning}
+                      handleSaveStaff={handleSaveStaff}
+                      lockOwner={lockOwner}
+                      saving={saving}
+                    />
                   )}
-
                 </div>
 
                 {/* Column 2: Locomotive Operations Detail (visible in both steps!) */}
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {selectedLoco ? (
-                    locoJobs ? (
-                      <div className="loco-ops-preview" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "1.5rem", height: "100%", minHeight: "350px" }}>
-                        <h3 style={{ color: "var(--accent)", display: "flex", alignItems: "center", gap: "0.5rem", marginTop: 0 }}>
-                          <ClipboardList size={18} /> Operations for Loco #{selectedLoco} (Current Shift)
-                        </h3>
-                        {locoJobs.jobs.length === 0 ? (
-                          <p style={{ color: "var(--text-muted)", fontStyle: "italic", margin: "1rem 0 0 0" }}>No operations booked for this locomotive in this shift.</p>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem", maxHeight: "550px", overflowY: "auto", paddingRight: "0.5rem" }}>
-                            {locoJobs.jobs.map(job => {
-                              const remarkObj = remarksState[job.job_id];
-                              return (
-                                <div key={job.job_id} style={{ fontSize: "0.9rem", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.75rem" }}>
-                                  <strong style={{ display: "block", color: "var(--text-h)" }}>Job {job.job_id}: {job.job_description}</strong>
-                                  {remarkObj && (
-                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.35rem", background: "rgba(255,255,255,0.02)", padding: "0.5rem", borderRadius: "4px" }}>
-                                      Status: <span style={{ color: remarkObj.completed ? "#10b981" : "#f59e0b", fontWeight: "bold" }}>{remarkObj.completed ? "Completed" : "In Progress"}</span>
-                                      {remarkObj.remarks && <span style={{ display: "block", marginTop: "0.25rem", fontStyle: "italic" }}>Remarks: "{remarkObj.remarks}"</span>}
-                                    </div>
-                                  )}
-                                  {job.tasks.length > 0 && (
-                                    <div style={{ marginTop: "0.5rem" }}>
-                                      <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: "bold" }}>Tasks:</span>
-                                      <ul style={{ margin: "0.25rem 0 0 1.2rem", padding: 0, listStyle: "disc", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                                        {job.tasks.map(t => {
-                                          const taskRemark = taskRemarksState[t.task_id];
-                                          return (
-                                            <li key={t.task_id} style={{ marginBottom: "0.25rem" }}>
-                                              <span>{t.task_description}</span>
-                                              {taskRemark && (
-                                                <span style={{ display: "block", fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.15rem", background: "rgba(255,255,255,0.015)", padding: "0.15rem 0.4rem", borderRadius: "3px", borderLeft: `2px solid ${taskRemark.completed ? "#10b981" : "#f59e0b"}` }}>
-                                                  Status: <span style={{ color: taskRemark.completed ? "#10b981" : "#f59e0b", fontWeight: "bold" }}>{taskRemark.completed ? "Completed" : "In Progress"}</span>
-                                                  {taskRemark.remarks && ` | Remarks: "${taskRemark.remarks}"`}
-                                                </span>
-                                              )}
-                                            </li>
-                                          );
-                                        })}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px dashed var(--border)", borderRadius: "8px", padding: "3rem", height: "100%", color: "var(--text-muted)" }}>
-                        <p style={{ fontStyle: "italic" }}>Loading locomotive operations details...</p>
-                      </div>
-                    )
-                  ) : (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px dashed var(--border)", borderRadius: "8px", padding: "3rem", height: "100%", color: "var(--text-muted)" }}>
-                      <p style={{ fontStyle: "italic" }}>Select a locomotive number to see its active operations preview.</p>
-                    </div>
-                  )}
+                <div className="wizard-ops-preview-column">
+                  <LocoOpsPreview
+                    selectedLoco={selectedLoco}
+                    locoJobs={locoJobs}
+                    remarksState={remarksState}
+                    taskRemarksState={taskRemarksState}
+                  />
                 </div>
 
               </div>
@@ -1168,105 +850,11 @@ const EmployeesBookingWizard = () => {
       </div>
 
       {/* ── SECTION 3: Views ── */}
-      <section className="view-content-card" style={{ marginBottom: "3rem" }}>
-        <h2>Employee Assignments View</h2>
-        <div className="views-tabs" style={{ marginTop: "1rem" }}>
-          <button className={`view-tab-btn ${activeViewTab === "loco" ? "active" : ""}`} onClick={() => setActiveViewTab("loco")}>
-            By Loco View
-          </button>
-          <button className={`view-tab-btn ${activeViewTab === "supervisor" ? "active" : ""}`} onClick={() => setActiveViewTab("supervisor")}>
-            By Supervisor View
-          </button>
-          <button className={`view-tab-btn ${activeViewTab === "staff" ? "active" : ""}`} onClick={() => setActiveViewTab("staff")}>
-            By Staff View
-          </button>
-        </div>
-
-        {viewsData === null ? (
-          <p>Loading views data...</p>
-        ) : (
-          <div>
-            {activeViewTab === "loco" && (
-              <div>
-                {viewsData.by_loco.length === 0 && <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No assignments found.</p>}
-                {viewsData.by_loco.map(lData => (
-                  <div key={lData.loco_number} className="view-item-box">
-                    <h3>Locomotive #{lData.loco_number}</h3>
-                    <div className="view-details-grid">
-                      {lData.supervisors.map(sup => (
-                        <div key={sup.supervisor_ticket_number} className="sub-detail-group">
-                          <div className="sub-detail-title">
-                            Supervisor: {sup.supervisor_name} (Ticket #{sup.supervisor_ticket_number})
-                            {!sup.is_forwarded && <span style={{ color: "red", fontSize: "0.75rem", marginLeft: 8 }}>(Draft)</span>}
-                          </div>
-                          {sup.staff.length === 0 ? (
-                            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>No staff assigned.</p>
-                          ) : (
-                            <ul className="sub-detail-list">
-                              {sup.staff.map(st => (
-                                <li key={st.staff_ticket_number}>{st.staff_name} (Ticket #{st.staff_ticket_number})</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeViewTab === "supervisor" && (
-              <div>
-                {viewsData.by_supervisor.length === 0 && <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No supervisor assignments found.</p>}
-                {viewsData.by_supervisor.map(sData => (
-                  <div key={sData.supervisor_ticket_number} className="view-item-box">
-                    <h3>Supervisor: {sData.supervisor_name} (Ticket #{sData.supervisor_ticket_number})</h3>
-                    <div className="view-details-grid">
-                      {sData.locos.map(l => (
-                        <div key={l.loco_number} className="sub-detail-group">
-                          <div className="sub-detail-title">Loco #{l.loco_number}</div>
-                          {l.staff.length === 0 ? (
-                            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>No staff assigned.</p>
-                          ) : (
-                            <ul className="sub-detail-list">
-                              {l.staff.map(st => (
-                                <li key={st.staff_ticket_number}>{st.staff_name} (Ticket #{st.staff_ticket_number})</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeViewTab === "staff" && (
-              <div>
-                {viewsData.by_staff.length === 0 && <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No staff assignments found.</p>}
-                {viewsData.by_staff.map(stData => (
-                  <div key={stData.staff_ticket_number} className="view-item-box">
-                    <h3>Staff: {stData.staff_name} (Ticket #{stData.staff_ticket_number})</h3>
-                    <div className="view-details-grid">
-                      {stData.assignments.map((asg, idx) => (
-                        <div key={idx} className="sub-detail-group">
-                          <div className="sub-detail-title">Loco #{asg.loco_number}</div>
-                          <span style={{ fontSize: "0.85rem" }}>Supervisor: {asg.supervisor_name} (Ticket #{asg.supervisor_ticket_number})</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-
-
+      <AssignmentsView
+        viewsData={viewsData}
+        activeViewTab={activeViewTab}
+        setActiveViewTab={setActiveViewTab}
+      />
     </div>
   );
 };
