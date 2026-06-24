@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { User, Lock, BadgeInfo, Home, Mail, ShieldCheck, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, Lock, BadgeInfo, Mail } from "lucide-react";
 import axios from "axios";
 import api from "../../shared/services/api";
-import ThemeToggle from "../../shared/components/ThemeToggle";
+import { useCaptcha } from "./hooks/useCaptcha";
+import AuthCard from "./components/AuthCard";
+import AuthHeader from "./components/AuthHeader";
+import AuthFormField from "./components/AuthFormField";
+import AuthSelectField from "./components/AuthSelectField";
+import CaptchaField from "./components/CaptchaField";
+import AuthFooter from "./components/AuthFooter";
 import "./Auth.css";
 
 interface Designation {
@@ -19,37 +25,26 @@ const RegisterPage = () => {
     email: "",
     password: "",
   });
-  const [captcha, setCaptcha] = useState("");
-  const [captchaCode, setCaptchaCode] = useState("");
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
-
-  const generateCaptcha = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "";
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setCaptchaCode(code);
-  };
+  const { captcha, setCaptcha, captchaCode, refreshCaptcha, validate } =
+    useCaptcha();
 
   useEffect(() => {
-    generateCaptcha();
+    api
+      .get("/employees/designations")
+      .then((res) => setDesignations(res.data))
+      .catch(() => {
+        // Non-critical — select will remain empty
+      });
   }, []);
 
-  useEffect(() => {
-    const fetchDesignations = async () => {
-      try {
-        const response = await api.get("/employees/designations");
-        setDesignations(response.data);
-      } catch (err) {
-        // Failed to load designations from the API
-      }
-    };
-    fetchDesignations();
-  }, []);
+  const patch = (field: string) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,21 +55,19 @@ const RegisterPage = () => {
       return;
     }
 
-    const emailRegex = /^[\w\.-]+@[\w\.-]+\.\w+$/;
+    const emailRegex = /^[\w.-]+@[\w.-]+\.\w+$/;
     if (!emailRegex.test(formData.email)) {
       setError("Please enter a valid email address.");
       return;
     }
 
-    if (captcha.trim().toUpperCase() !== captchaCode) {
+    if (!validate()) {
       setError("Incorrect captcha code. Please try again.");
-      setCaptcha("");
-      generateCaptcha();
+      refreshCaptcha();
       return;
     }
 
     setLoading(true);
-
     try {
       await api.post("/auth/register", {
         ...formData,
@@ -93,152 +86,85 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="auth-container">
-      <Link to="/" className="auth-home-btn" title="Home">
-        <Home size={20} />
-      </Link>
-      <div style={{ position: "absolute", top: "1.5rem", right: "1.5rem" }}>
-        <ThemeToggle />
-      </div>
-      <div className="auth-card">
-        <div className="auth-header">
-          <img src="/favicon.svg" alt="LWMS Logo" className="logo-box" />
-          <h2>Create Account</h2>
-          <p>Register as a new employee</p>
-        </div>
+    <AuthCard>
+      <AuthHeader title="Create Account" subtitle="Register as a new employee" />
 
-        <form onSubmit={handleRegister} className="auth-form">
-          {error && <div className="error-message">{error}</div>}
+      <form onSubmit={handleRegister} className="auth-form">
+        {error && <div className="error-message">{error}</div>}
 
-          <div className="input-group">
-            <label htmlFor="ticket">Ticket Number</label>
-            <div className="input-wrapper">
-              <User size={18} className="input-icon" />
-              <input
-                id="ticket"
-                type="text"
-                placeholder="123456"
-                value={formData.ticket_number}
-                onChange={(e) =>
-                  setFormData({ ...formData, ticket_number: e.target.value })
-                }
-                required
-              />
-            </div>
-          </div>
+        <AuthFormField
+          id="ticket"
+          label="Ticket Number"
+          placeholder="123456"
+          value={formData.ticket_number}
+          onChange={patch("ticket_number")}
+          Icon={User}
+          required
+        />
 
-          <div className="input-group">
-            <label htmlFor="name">Full Name</label>
-            <div className="input-wrapper">
-              <BadgeInfo size={18} className="input-icon" />
-              <input
-                id="name"
-                type="text"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
-            </div>
-          </div>
+        <AuthFormField
+          id="name"
+          label="Full Name"
+          placeholder="John Doe"
+          value={formData.name}
+          onChange={patch("name")}
+          Icon={BadgeInfo}
+          required
+        />
 
-          <div className="input-group">
-            <label htmlFor="email">Email ID</label>
-            <div className="input-wrapper">
-              <Mail size={18} className="input-icon" />
-              <input
-                id="email"
-                type="email"
-                placeholder="employee@lwms.com"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                required
-              />
-            </div>
-          </div>
+        <AuthFormField
+          id="email"
+          label="Email ID"
+          type="email"
+          placeholder="employee@lwms.com"
+          value={formData.email}
+          onChange={patch("email")}
+          Icon={Mail}
+          required
+        />
 
-          <div className="input-group">
-            <label htmlFor="designation">Designation</label>
-            <div className="input-wrapper">
-              <select
-                id="designation"
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  borderRadius: "0.5rem",
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--bg)",
-                  color: "var(--text-h)",
-                }}
-                value={formData.designation_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, designation_id: e.target.value })
-                }
-                required
-              >
-                <option value="">Select Designation</option>
-                {designations.map((d) => (
-                  <option key={d.designation_id} value={d.designation_id}>
-                    {d.designation_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+        <AuthSelectField
+          id="designation"
+          label="Designation"
+          value={formData.designation_id}
+          onChange={patch("designation_id")}
+          options={designations.map((d) => ({
+            value: d.designation_id,
+            label: d.designation_name,
+          }))}
+          placeholder="Select Designation"
+          required
+        />
 
-          <div className="input-group">
-            <label htmlFor="password">Password</label>
-            <div className="input-wrapper">
-              <Lock size={18} className="input-icon" />
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                required
-              />
-            </div>
-          </div>
+        <AuthFormField
+          id="password"
+          label="Password"
+          type="password"
+          placeholder="••••••••"
+          value={formData.password}
+          onChange={patch("password")}
+          Icon={Lock}
+          required
+        />
 
-          <div className="input-group">
-            <label htmlFor="captcha">Captcha</label>
-            <div className="captcha-row">
-              <div className="captcha-box" style={{ fontFamily: "monospace" }}>{captchaCode}</div>
-              <button type="button" className="refresh-btn" onClick={generateCaptcha} title="Refresh Captcha">
-                <RefreshCw size={16} />
-              </button>
-              <div className="input-wrapper" style={{ flex: 1 }}>
-                <ShieldCheck size={18} className="input-icon" style={{ zIndex: 1 }} />
-                <input
-                  id="captcha"
-                  type="text"
-                  placeholder="Enter Captcha"
-                  value={captcha}
-                  onChange={(e) => setCaptcha(e.target.value)}
-                  style={{ textTransform: "uppercase" }}
-                  required
-                />
-              </div>
-            </div>
-          </div>
+        <CaptchaField
+          captchaCode={captchaCode}
+          captcha={captcha}
+          onCaptchaChange={setCaptcha}
+          onRefresh={refreshCaptcha}
+        />
 
-          <button type="submit" className="btn-auth" disabled={loading}>
-            {loading ? "Registering..." : "Register"}
-          </button>
-        </form>
+        <button type="submit" className="btn-auth" disabled={loading}>
+          {loading ? "Registering…" : "Register"}
+        </button>
+      </form>
 
-        <div className="auth-footer">
-          Already have an account? <Link to="/login">Sign in</Link>
-        </div>
-      </div>
-    </div>
+      <AuthFooter
+        message="Already have an account?"
+        linkText="Sign in"
+        linkTo="/login"
+      />
+    </AuthCard>
   );
 };
 

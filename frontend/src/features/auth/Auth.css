@@ -1,194 +1,300 @@
-/* Auth.css */
+/* ── Auth.css ─────────────────────────────────────────────────────── */
+
+/* ── Container ───────────────────────────────────────────────────── */
 .auth-container {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--bg-secondary);
-    padding: 1rem;
-    position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  padding: 1rem;
+  position: relative;
 }
 
+/* ── Top-bar controls ────────────────────────────────────────────── */
 .auth-home-btn {
-    position: absolute;
-    top: 1.5rem;
-    left: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.5rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    text-decoration: none;
-    box-shadow: var(--shadow);
-    transition: color 0.2s, background 0.2s, transform 0.15s;
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: color 0.2s, background 0.2s, transform 0.15s;
+  z-index: 10;
 }
 
 .auth-home-btn:hover {
-    color: var(--accent);
-    background: var(--accent-bg);
-    transform: translateY(-1px);
+  color: var(--accent);
+  background: var(--accent-bg);
+  transform: translateY(-1px);
 }
 
+/* Replaced the repeated inline absolute div with this class */
+.auth-topbar-right {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+}
 
+/* ── Card ────────────────────────────────────────────────────────── */
 .auth-card {
-    background: var(--bg-card);
-    padding: 2.5rem;
-    border-radius: 1rem;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-    width: 100%;
-    max-width: 400px;
+  background: var(--bg-card);
+  padding: 2.5rem;
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 420px;
 }
 
+/* ── Header ──────────────────────────────────────────────────────── */
 .auth-header {
-    text-align: center;
-    margin-bottom: 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-header .logo-box {
+  width: 3.5rem;
+  height: 3.5rem;
 }
 
 .auth-header h2 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin: 1rem 0 0.5rem;
-    color: var(--text-h);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 1rem 0 0.5rem;
+  color: var(--text-h);
 }
 
 .auth-header p {
-    color: var(--text);
-    font-size: 0.875rem;
+  color: var(--text);
+  font-size: 0.875rem;
 }
 
+/* ── Form fields ─────────────────────────────────────────────────── */
 .auth-form .input-group {
-    margin-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
 }
 
 .auth-form label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-h);
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-h);
 }
 
 .input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .input-icon {
-    position: absolute;
-    left: 0.75rem;
-    color: var(--text);
-    opacity: 0.7;
+  position: absolute;
+  left: 0.75rem;
+  color: var(--text);
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 .input-wrapper input {
-    width: 100%;
-    padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    background-color: var(--bg);
-    color: var(--text-h);
-    outline: none;
-    transition: border-color 0.2s;
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--bg);
+  color: var(--text-h);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 44px; /* accessible touch target */
+  box-sizing: border-box;
 }
 
 .input-wrapper input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
+/* Select field (Designation in Register) */
+.auth-select {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--text-h);
+  font-size: 1rem;
+  outline: none;
+  min-height: 44px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+/* ── Captcha row ─────────────────────────────────────────────────── */
 .captcha-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
 }
 
 .captcha-box {
-    background: var(--bg-secondary);
-    color: var(--accent);
-    padding: 0.75rem 1.25rem;
-    border-radius: 0.5rem;
-    font-size: 1.05rem;
-    font-weight: 800;
-    letter-spacing: 0.2em;
-    font-style: italic;
-    user-select: none;
-    border: 1px solid var(--border);
-    min-width: 88px;
-    height: 47px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+  background: var(--bg-secondary);
+  color: var(--accent);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  font-style: italic;
+  font-family: monospace;
+  user-select: none;
+  border: 1px solid var(--border);
+  min-width: 88px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .refresh-btn {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    color: var(--text);
-    cursor: pointer;
-    width: 47px;
-    height: 47px;
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .refresh-btn:hover {
-    background: var(--border);
-    color: var(--text-h);
+  background: var(--border);
+  color: var(--text-h);
 }
 
+/* Input wrapper inside captcha row grows to fill remaining space */
+.captcha-input-wrapper {
+  flex: 1 1 120px;
+  min-width: 100px;
+}
+
+/* ── Submit button ───────────────────────────────────────────────── */
 .btn-auth {
-    width: 100%;
-    background: var(--accent);
-    color: white;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    margin-top: 1rem;
-    transition: opacity 0.2s;
+  width: 100%;
+  background: var(--accent);
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  margin-top: 1rem;
+  min-height: 44px;
+  transition: opacity 0.2s;
 }
 
 .btn-auth:hover:not(:disabled) {
-    opacity: 0.9;
+  opacity: 0.9;
 }
 
 .btn-auth:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
+/* ── Error message ───────────────────────────────────────────────── */
 .error-message {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    margin-bottom: 1.25rem;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+/* ── Footer link ─────────────────────────────────────────────────── */
 .auth-footer {
-    margin-top: 1.5rem;
-    text-align: center;
-    font-size: 0.875rem;
-    color: var(--text);
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text);
 }
 
 .auth-footer a {
-    color: var(--accent);
-    font-weight: 600;
-    text-decoration: none;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
 }
 
+/* ── Responsive — Smartphone (≤ 480px) ──────────────────────────── */
+@media (max-width: 480px) {
+  .auth-home-btn {
+    top: 1rem;
+    left: 1rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .auth-topbar-right {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .auth-card {
+    padding: 1.5rem 1.25rem;
+    border-radius: 0.75rem;
+    /* fill the screen width minus side margins */
+    width: calc(100% - 2rem);
+    max-width: none;
+    /* push it down so it doesn't hide behind the top controls */
+    margin-top: 3.5rem;
+  }
+
+  .auth-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-header .logo-box {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .auth-header h2 {
+    font-size: 1.25rem;
+  }
+
+  /* On very small screens the captcha row items stack:
+     code + refresh on one line, input below */
+  .captcha-row {
+    row-gap: 0.5rem;
+  }
+
+  .captcha-input-wrapper {
+    flex: 1 1 100%;
+  }
+}
