@@ -1,19 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  Train,
-  Users,
-  Settings,
-  FileText,
-  LogOut,
-  ClipboardList,
-  BarChart3,
-  MessageSquare
-} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import api from "../../shared/services/api";
-import ThemeToggle from "../../shared/components/ThemeToggle";
 import ChatPage from "../chat/ChatPage";
-import NotificationBell from "../bookings/components/NotificationBell";
+import DashboardSidebar from "./components/DashboardSidebar";
+import DashboardHeader from "./components/DashboardHeader";
+import DashboardTiles from "./components/DashboardTiles";
+import UserProfileTab from "./components/UserProfileTab";
+import AssignmentsTab from "./components/AssignmentsTab";
 import "./Dashboard.css";
 
 interface UserProfile {
@@ -141,58 +134,7 @@ const DashboardPage = () => {
     } catch (err) {}
   };
 
-  const tiles = [
-    ...(isSupervisor
-      ? [
-          {
-            title: "Loco Booking",
-            icon: <Train size={32} />,
-            color: "#3b82f6",
-            description: "Book a locomotive for a job",
-            path: "/bookings/loco",
-          },
-          {
-            title: "Employee Availability",
-            icon: <ClipboardList size={32} />,
-            color: "#ec4899",
-            description: "Mark daily availability for staff",
-            path: "/bookings/availability",
-          },
-          {
-            title: "Employees Booking",
-            icon: <Users size={32} />,
-            color: "#10b981",
-            description: "Assign supervisors & staff to active locos",
-            path: "/bookings/employees",
-          },
-          {
-            title: "Job Completion & Carry Forward",
-            icon: <ClipboardList size={32} />,
-            color: "#f59e0b",
-            description: "Submit remarks and carry forward jobs/tasks to the next shift",
-            path: "/bookings/carry-forward",
-          },
-        ]
-      : []),
-    {
-      title: "Booking Preview & Export",
-      icon: <FileText size={32} />,
-      color: "#06b6d4",
-      description: "Preview shift details and export to PDF/Excel",
-      path: "/bookings/preview",
-    },
-    ...(isSupervisor
-      ? [
-          {
-            title: "Master Data Management",
-            icon: <Settings size={32} />,
-            color: "#6366f1",
-            description: "Manage locos, jobs, and staff",
-            path: "/crud",
-          },
-        ]
-      : []),
-  ];
+
 
   const handleLogout = async () => {
     try {
@@ -206,239 +148,36 @@ const DashboardPage = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <img src="/favicon.svg" alt="LWMS Logo" className="logo-box" />
-          <span>LWMS</span>
-        </div>
-        <nav className="sidebar-nav">
-          <div
-            className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-            onClick={() => setActiveTab("dashboard")}
-            style={{ cursor: "pointer" }}
-          >
-            <Train size={20} /> <span>Dashboard</span>
-          </div>
-          <div
-            className={`nav-item ${activeTab === "profile" ? "active" : ""}`}
-            onClick={() => setActiveTab("profile")}
-            style={{ cursor: "pointer" }}
-          >
-            <Users size={20} /> <span>Profile</span>
-          </div>
-          <div
-            className={`nav-item ${activeTab === "chat" ? "active" : ""}`}
-            onClick={() => setActiveTab("chat")}
-            style={{ cursor: "pointer" }}
-          >
-            <MessageSquare size={20} /> <span>Chat</span>
-          </div>
-          <div
-            className={`nav-item ${activeTab === "my_booking" ? "active" : ""}`}
-            onClick={() => setActiveTab("my_booking")}
-            style={{ cursor: "pointer" }}
-          >
-            <ClipboardList size={20} /> <span>My Booking</span>
-          </div>
-          <div
-            className="nav-item"
-            onClick={() => navigate("/")}
-            style={{ cursor: "pointer" }}
-          >
-            <BarChart3 size={20} /> <span>Statistics</span>
-          </div>
-        </nav>
-        <button className="logout-btn" onClick={handleLogout}>
-          <LogOut size={20} /> <span>Logout</span>
-        </button>
-      </aside>
+      <DashboardSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        handleLogout={handleLogout}
+      />
 
       {/* Main Content */}
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-user">
-            <h2>Welcome back, {userName}</h2>
-            <p>Workplace Overview & Quick Actions</p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <ThemeToggle />
-            
-            {/* Notification Bell */}
-            <NotificationBell
-              notifications={notifications}
-              handleMarkAsRead={handleMarkAsRead}
-            />
-
-            <div className="header-date">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </div>
-          </div>
-        </header>
+        <DashboardHeader
+          userName={userName}
+          notifications={notifications}
+          handleMarkAsRead={handleMarkAsRead}
+        />
 
         {activeTab === "dashboard" ? (
-          <section className="tiles-grid">
-            {tiles.map((tile, index) => (
-              <div
-                key={index}
-                className="tile-card"
-                style={{ "--tile-color": tile.color } as React.CSSProperties}
-                onClick={() => navigate(tile.path)}
-              >
-                <div
-                  className="tile-icon"
-                  style={{
-                    backgroundColor: tile.color + "15",
-                    color: tile.color,
-                  }}
-                >
-                  {tile.icon}
-                </div>
-                <div className="tile-content">
-                  <h3>{tile.title}</h3>
-                  <p>{tile.description}</p>
-                </div>
-              </div>
-            ))}
-          </section>
+          <DashboardTiles isSupervisor={isSupervisor} />
         ) : activeTab === "chat" ? (
           <ChatPage
             isSupervisor={isSupervisor}
             currentTicket={userProfile?.ticket_number ?? 0}
           />
         ) : activeTab === "my_booking" ? (
-          <section className="profile-container" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div className="profile-card" style={{ padding: "2rem", width: "100%", maxWidth: "800px" }}>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 800, borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1.5rem", color: "var(--text-h)" }}>
-                Your Current Assignments (This Shift)
-              </h3>
-              {assignments.length === 0 ? (
-                <p style={{ color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.9rem", margin: 0 }}>
-                  No locomotive assignments for the current shift.
-                </p>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
-                  {(userProfile?.designation_id === 1 || userProfile?.designation_id === 2) ? (
-                    // Supervisor assignments view
-                    assignments.map((asg: any) => (
-                      asg.locos.map((l: any) => (
-                        <div key={l.loco_number} style={{ border: "1px solid var(--border)", borderRadius: "0.75rem", padding: "1.25rem", background: "var(--bg-secondary)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
-                            <div 
-                              style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)", cursor: "pointer" }}
-                              onClick={() => navigate("/bookings/carry-forward", { state: { selectLoco: l.loco_number } })}
-                            >
-                              <Train size={18} /> Loco #{l.loco_number}
-                            </div>
-                            {l.status && (
-                              <span style={{
-                                fontSize: "0.7rem",
-                                fontWeight: "bold",
-                                padding: "0.15rem 0.4rem",
-                                borderRadius: "4px",
-                                background: l.status === "completed" ? "rgba(16, 185, 129, 0.15)" : l.status === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                                color: l.status === "completed" ? "#10b981" : l.status === "partially completed" ? "#f59e0b" : "#ef4444",
-                                border: `1px solid ${l.status === "completed" ? "rgba(16, 185, 129, 0.3)" : l.status === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
-                              }}>
-                                {l.status.toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem" }}>Assigned Staff:</div>
-                          {l.staff.length === 0 ? (
-                            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>No staff assigned yet.</p>
-                          ) : (
-                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
-                              {l.staff.map((st: any) => (
-                                <li key={st.staff_ticket_number}>{st.staff_name} (Ticket #{st.staff_ticket_number})</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))
-                    ))
-                  ) : (
-                    // Staff assignments view
-                    assignments.map((asg: any) => (
-                      asg.assignments.map((asgn: any, idx: number) => (
-                        <div key={idx} style={{ border: "1px solid var(--border)", borderRadius: "0.75rem", padding: "1.25rem", background: "var(--bg-secondary)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)" }}>
-                              <Train size={18} /> Loco #{asgn.loco_number}
-                            </div>
-                            {asgn.status && (
-                              <span style={{
-                                fontSize: "0.7rem",
-                                fontWeight: "bold",
-                                padding: "0.15rem 0.4rem",
-                                borderRadius: "4px",
-                                background: asgn.status === "completed" ? "rgba(16, 185, 129, 0.15)" : asgn.status === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                                color: asgn.status === "completed" ? "#10b981" : asgn.status === "partially completed" ? "#f59e0b" : "#ef4444",
-                                border: `1px solid ${asgn.status === "completed" ? "rgba(16, 185, 129, 0.3)" : asgn.status === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
-                              }}>
-                                {asgn.status.toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: "0.85rem" }}>
-                            <strong>Supervisor:</strong> {asgn.supervisor_name} (Ticket #{asgn.supervisor_ticket_number})
-                          </div>
-                        </div>
-                      ))
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
+          userProfile && (
+            <AssignmentsTab
+              userProfile={userProfile}
+              assignments={assignments}
+            />
+          )
         ) : (
-          <section className="profile-container">
-            {userProfile && (
-              <div className="profile-card">
-                <div className="profile-card-header">
-                  <div className="profile-avatar">
-                    {userProfile.name
-                      ? userProfile.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                      : "E"}
-                  </div>
-                  <div className="profile-header-meta">
-                    <h3>{userProfile.name}</h3>
-                    <div className="profile-role-badge">
-                      {userProfile.category_name || (userProfile.is_supervisor ? "Supervisor" : "Staff")}
-                    </div>
-                  </div>
-                </div>
-                <div className="profile-body">
-                  <div className="profile-info-grid">
-                    <div className="profile-info-item">
-                      <span className="profile-info-label">Ticket / Employee ID</span>
-                      <span className="profile-info-value">#{userProfile.ticket_number}</span>
-                    </div>
-                    <div className="profile-info-item">
-                      <span className="profile-info-label">Email ID</span>
-                      <span className="profile-info-value">{userProfile.email || "Not Specified"}</span>
-                    </div>
-                    <div className="profile-info-item">
-                      <span className="profile-info-label">Designation</span>
-                      <span className="profile-info-value">{userProfile.designation_name || "Not Specified"}</span>
-                    </div>
-                    <div className="profile-info-item">
-                      <span className="profile-info-label">Role Category</span>
-                      <span className="profile-info-value">{userProfile.category_name || "Employee"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+          userProfile && <UserProfileTab userProfile={userProfile} />
         )}
       </main>
     </div>

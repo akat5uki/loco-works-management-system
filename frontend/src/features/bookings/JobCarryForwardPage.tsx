@@ -1,18 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  ArrowLeft,
-  Clock,
-  Calendar,
-  Lock,
-  RefreshCw,
-  AlertTriangle,
-  ClipboardList,
-  Train
-} from "lucide-react";
+import { ArrowLeft, ClipboardList } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./EmployeesBooking.css";
+
+import LockBanner from "./components/carry_forward/LockBanner";
+import CarryForwardFilterBar from "./components/carry_forward/CarryForwardFilterBar";
+import LocoSelectorTabs from "./components/carry_forward/LocoSelectorTabs";
+import CarryForwardForm from "./components/carry_forward/CarryForwardForm";
 
 interface TaskInfo {
   task_id: number;
@@ -49,7 +45,7 @@ const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => 
   const curShift = guessShift();
   
   let nextDateStr = curDateStr;
-  let nextShift = 1;
+  let nextShift: number;
   
   if (curShift === 1) {
     nextShift = 2;
@@ -80,9 +76,16 @@ const JobCarryForwardPage = () => {
   const [dateStr, setDateStr] = useState(todayISO());
   const [shift, setShift] = useState(guessShift());
 
-  // Data lists
   const [locos, setLocos] = useState<string[]>([]);
   const [selectedLoco, setSelectedLoco] = useState<string | null>(null);
+
+  const [prevDateStr, setPrevDateStr] = useState(dateStr);
+  const [prevShift, setPrevShift] = useState(shift);
+  if (dateStr !== prevDateStr || shift !== prevShift) {
+    setPrevDateStr(dateStr);
+    setPrevShift(shift);
+    setSelectedLoco(null);
+  }
   
   // Lock management
   const [lockOwner, setLockOwner] = useState<{ name: string; ticket_number: number } | null>(null);
@@ -127,18 +130,23 @@ const JobCarryForwardPage = () => {
     }
   }, [dateStr, shift]);
 
-  // Handle locking heartbeats
   useEffect(() => {
     if (lockTimer.current) {
       clearInterval(lockTimer.current);
     }
     
+    let timerId: number | null = null;
     if (currentUser && currentUser.is_supervisor) {
-      refreshLock();
+      timerId = window.setTimeout(() => {
+        refreshLock();
+      }, 0);
       lockTimer.current = window.setInterval(refreshLock, 15000);
     }
 
     return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
       if (lockTimer.current) {
         clearInterval(lockTimer.current);
       }
@@ -187,14 +195,12 @@ const JobCarryForwardPage = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchLocos();
+      const timer = setTimeout(() => {
+        fetchLocos();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [currentUser, dateStr, shift, fetchLocos]);
-
-  // Reset selected loco when shift or date changes
-  useEffect(() => {
-    setSelectedLoco(null);
-  }, [dateStr, shift]);
 
   // Load jobs and remarks for selected locomotive
   const loadLocoJobs = async (locoNum: string) => {
@@ -267,11 +273,19 @@ const JobCarryForwardPage = () => {
   };
 
   useEffect(() => {
-    if (selectedLoco) {
-      loadLocoJobs(selectedLoco);
-    } else {
-      setLocoJobs(null);
-    }
+    let active = true;
+    const timer = setTimeout(() => {
+      if (!active) return;
+      if (selectedLoco) {
+        loadLocoJobs(selectedLoco);
+      } else {
+        setLocoJobs(null);
+      }
+    }, 0);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [selectedLoco, dateStr, shift]);
 
   const handleAddCarryForwardJob = (jobId: number) => {
@@ -333,7 +347,7 @@ const JobCarryForwardPage = () => {
       alert("Remarks submitted and incomplete tasks successfully carried forward!");
       setLocoJobs(null);
       fetchLocos();
-    } catch (err) {
+    } catch {
       alert("Failed to submit remarks.");
     }
   };
@@ -358,277 +372,51 @@ const JobCarryForwardPage = () => {
         </div>
       </header>
 
-      {/* Lock Warn Overlay */}
-      {lockOwner && (
-        <div className="lock-banner">
-          <Lock size={18} />
-          <span>
-            Locked: {lockOwner.name} (Ticket #{lockOwner.ticket_number}) is currently editing. You are in VIEW-ONLY mode.
-          </span>
-        </div>
-      )}
-
-      {/* Shift Edit Restriction Warning Overlay */}
-      {!isCurrentOrNextShift(dateStr, shift) && (
-        <div className="lock-banner" style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", color: "#f59e0b" }}>
-          <AlertTriangle size={18} />
-          <span>
-            Warning: You are viewing/editing comments for a shift other than the current or next shift.
-          </span>
-        </div>
-      )}
+      {/* Lock Banner Overlays */}
+      <LockBanner
+        lockOwner={lockOwner}
+        isCurrentOrNextShift={isCurrentOrNextShift(dateStr, shift)}
+      />
 
       {/* ── Global Selection Bar ── */}
-      <div className="global-config-bar">
-        <div className="config-group">
-          <label><Calendar size={14} style={{ marginRight: 4 }} /> Date</label>
-          <input
-            type="date"
-            className="config-input"
-            required={true}
-            value={dateStr}
-            onChange={e => setDateStr(e.target.value)}
-          />
-        </div>
-        <div className="config-group">
-          <label><Clock size={14} style={{ marginRight: 4 }} /> Shift</label>
-          <select
-            className="config-select"
-            value={shift}
-            onChange={e => setShift(parseInt(e.target.value))}
-          >
-            <option value={1}>Shift 1 (Day)</option>
-            <option value={2}>Shift 2 (Night)</option>
-          </select>
-        </div>
-        <button className="back-btn" onClick={fetchLocos} style={{ height: "38px" }}>
-          <RefreshCw size={14} /> Refresh Locomotives
-        </button>
-      </div>
+      <CarryForwardFilterBar
+        dateStr={dateStr}
+        setDateStr={setDateStr}
+        shift={shift}
+        setShift={setShift}
+        fetchLocos={fetchLocos}
+      />
 
       {/* ── Main Section ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: "2rem", marginBottom: "3rem" }}>
         
         {/* Locomotive Selector */}
-        <section className="panel-card">
-          <h2>Active Locomotives</h2>
-          {locos.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "2rem" }}>
-              <Train size={36} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />
-              <p style={{ color: "var(--text-muted)", margin: 0 }}>No locomotives are booked in this shift.</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-              {locos.map(locoNum => (
-                <button
-                  key={locoNum}
-                  className={`back-btn ${selectedLoco === locoNum ? 'active' : ''}`}
-                  style={selectedLoco === locoNum ? { borderColor: "var(--accent)", color: "var(--accent)" } : {}}
-                  onClick={() => setSelectedLoco(locoNum)}
-                >
-                  <Train size={16} /> Loco #{locoNum}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+        <LocoSelectorTabs
+          locos={locos}
+          selectedLoco={selectedLoco}
+          setSelectedLoco={setSelectedLoco}
+        />
 
         {/* Remarks & Carry Forward Panel */}
         {selectedLoco && locoJobs && (
-          <section className="view-content-card">
-            <h2>Job Completion Status &amp; Carry Forward Panel</h2>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "-0.5rem" }}>
-              Submit remarks for non-completed operations or carry forward tasks to the next shift.
-            </p>
-
-            <div className="remarks-loco-card" style={{ marginTop: "1.5rem" }}>
-              <h3>In-Progress Operations for Loco #{locoJobs.loco_number}</h3>
-              <div className="remarks-grid" style={{ marginTop: "1rem" }}>
-                
-                {locoJobs.jobs.length === 0 && (
-                  <p style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                    No operations booked for this locomotive.
-                  </p>
-                )}
-                
-                {locoJobs.jobs.map(job => (
-                  <div key={job.job_id} className="remarks-row-item">
-                    <div className="remarks-row-item-header">
-                      <strong>{job.job_description}</strong>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={remarksState[job.job_id]?.completed ?? false}
-                          onChange={e => {
-                            const val = e.target.checked;
-                            setRemarksState(prev => ({
-                              ...prev,
-                              [job.job_id]: { ...prev[job.job_id], completed: val }
-                            }));
-                          }}
-                        />
-                        Completed
-                      </label>
-                    </div>
-                    <textarea
-                      placeholder="Add Job Remarks (reason for non-completion or faults found during testing)..."
-                      className="remarks-textarea"
-                      value={remarksState[job.job_id]?.remarks ?? ""}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setRemarksState(prev => ({
-                          ...prev,
-                          [job.job_id]: { ...prev[job.job_id], remarks: val }
-                        }));
-                      }}
-                    />
-
-                    {/* Task specific remarks */}
-                    {job.tasks.length > 0 && (
-                      <div style={{ marginLeft: "1.5rem", marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                        <span style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>Tasks</span>
-                        {job.tasks.map(task => (
-                          <div key={task.task_id} className="remarks-row-item" style={{ background: "var(--bg-secondary)", margin: 0, padding: "0.75rem" }}>
-                            <div className="remarks-row-item-header">
-                              <span style={{ fontSize: "0.85rem" }}>{task.task_description}</span>
-                              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", cursor: "pointer" }}>
-                                <input
-                                  type="checkbox"
-                                  checked={taskRemarksState[task.task_id]?.completed ?? false}
-                                  onChange={e => {
-                                    const val = e.target.checked;
-                                    setTaskRemarksState(prev => ({
-                                      ...prev,
-                                      [task.task_id]: { ...prev[task.task_id], completed: val }
-                                    }));
-                                  }}
-                                />
-                                Completed
-                              </label>
-                            </div>
-                            <input
-                              type="text"
-                              placeholder="Task specific remarks..."
-                              className="config-input"
-                              style={{ width: "100%", padding: "0.35rem 0.5rem", fontSize: "0.8rem" }}
-                              value={taskRemarksState[task.task_id]?.remarks ?? ""}
-                              onChange={e => {
-                                const val = e.target.value;
-                                setTaskRemarksState(prev => ({
-                                  ...prev,
-                                  [task.task_id]: { ...prev[task.task_id], remarks: val }
-                                }));
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Carry Forward Section */}
-                <div className="carry-forward-section">
-                  <h3>Carry Forward to Next Shift</h3>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                    Select new jobs or type additional tasks to be carry-forwarded directly into next shift's work bookings.
-                  </p>
-
-                  <div style={{ marginTop: "1rem" }}>
-                    <label style={{ fontSize: "0.85rem", fontWeight: 700 }}>Add Carry Forward Job</label>
-                    <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                      <select
-                        id="carryForwardJobSelect"
-                        className="config-select"
-                        style={{ flex: 1 }}
-                        defaultValue=""
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (val) {
-                            handleAddCarryForwardJob(parseInt(val));
-                            e.target.value = "";
-                          }
-                        }}
-                      >
-                        <option value="">-- Choose Job --</option>
-                        {allMasterJobs.map(mj => (
-                          <option key={mj.job_id} value={mj.job_id}>{mj.job_description}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {newJobs.length > 0 && (
-                    <div style={{ marginTop: "1rem" }}>
-                      <strong>Selected Jobs for Next Shift:</strong>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
-                        {newJobs.map(jobId => {
-                          const job = allMasterJobs.find(mj => mj.job_id === jobId);
-                          return (
-                            <span key={jobId} className="warning-badge" style={{ background: "var(--accent-bg)", color: "var(--accent)", border: "1px solid var(--accent)", padding: "0.35rem 0.75rem", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
-                              {job ? job.job_description : `#${jobId}`}
-                              <button style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontWeight: "bold" }} onClick={() => handleRemoveCarryForwardJob(jobId)}>x</button>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Add carry forward tasks under selected/existing jobs */}
-                  {(locoJobs.jobs.filter(j => !remarksState[j.job_id]?.completed).map(j => j.job_id).concat(newJobs)).length > 0 && (
-                    <div style={{ marginTop: "1.5rem" }}>
-                      <label style={{ fontSize: "0.85rem", fontWeight: 700 }}>Add New Tasks for Next Shift</label>
-                      <div className="new-tasks-list">
-                        {locoJobs.jobs
-                          .filter(j => !remarksState[j.job_id]?.completed)
-                          .concat(newJobs.map(id => ({ job_id: id, job_description: allMasterJobs.find(mj => mj.job_id === id)?.job_description ?? "", stage: 5, tasks: [] })))
-                          .map(job => (
-                            <div key={job.job_id} className="new-task-entry" style={{ marginTop: "0.5rem" }}>
-                              <input
-                                type="text"
-                                placeholder={`Add task for "${job.job_description}"...`}
-                                value={typedTask[job.job_id] || ""}
-                                onChange={e => setTypedTask(prev => ({ ...prev, [job.job_id]: e.target.value }))}
-                              />
-                              <button onClick={() => handleAddCarryForwardTask(job.job_id)}>Add Task</button>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {newTasks.length > 0 && (
-                    <div style={{ marginTop: "1rem" }}>
-                      <strong>New Tasks added for Next Shift:</strong>
-                      <ul style={{ margin: "0.5rem 0 0 0", paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
-                        {newTasks.map((nt, idx) => {
-                          const job = allMasterJobs.find(mj => mj.job_id === nt.job_id);
-                          return (
-                            <li key={idx} style={{ marginBottom: "0.25rem" }}>
-                              <strong>{job ? job.job_description : `#${nt.job_id}`}</strong>: {nt.task_description}
-                              <button style={{ background: "none", border: "none", color: "red", cursor: "pointer", marginLeft: "0.5rem" }} onClick={() => handleRemoveCarryForwardTask(idx)}>Remove</button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-
-                </div>
-
-                <button
-                  className="btn-primary-action"
-                  style={{ width: "100%", marginTop: "1.5rem" }}
-                  onClick={handleSubmitRemarks}
-                  disabled={!!lockOwner}
-                >
-                  Submit Remarks &amp; Carry Forward Incomplete Work
-                </button>
-
-              </div>
-            </div>
-          </section>
+          <CarryForwardForm
+            locoJobs={locoJobs}
+            lockOwner={lockOwner}
+            remarksState={remarksState}
+            setRemarksState={setRemarksState}
+            taskRemarksState={taskRemarksState}
+            setTaskRemarksState={setTaskRemarksState}
+            newJobs={newJobs}
+            handleAddCarryForwardJob={handleAddCarryForwardJob}
+            handleRemoveCarryForwardJob={handleRemoveCarryForwardJob}
+            newTasks={newTasks}
+            handleAddCarryForwardTask={handleAddCarryForwardTask}
+            handleRemoveCarryForwardTask={handleRemoveCarryForwardTask}
+            typedTask={typedTask}
+            setTypedTask={setTypedTask}
+            allMasterJobs={allMasterJobs}
+            handleSubmitRemarks={handleSubmitRemarks}
+          />
         )}
 
       </div>

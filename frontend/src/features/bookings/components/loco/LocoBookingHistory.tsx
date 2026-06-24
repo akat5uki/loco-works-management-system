@@ -255,12 +255,13 @@ const LocoBookingHistory: React.FC<LocoBookingHistoryProps> = ({
 
         <div className="timeline-grouped-bookings">
           {Object.keys(groupedHistory).map((dateStr) => {
-            const isDateCollapsed = collapsedDates.has(dateStr);
+            const dateKey = `hist-${dateStr}`;
+            const isDateCollapsed = collapsedDates.has(dateKey);
             return (
               <div key={dateStr} className="date-group-card">
                 <div
                   className="date-header"
-                  onClick={() => toggleDate(dateStr)}
+                  onClick={() => toggleDate(dateKey)}
                   style={{ cursor: "pointer" }}
                 >
                   <Calendar size={16} />
@@ -272,7 +273,7 @@ const LocoBookingHistory: React.FC<LocoBookingHistoryProps> = ({
                 {!isDateCollapsed && (
                   <div className="date-group-content">
                     {Object.keys(groupedHistory[dateStr]).map((shift) => {
-                      const shiftKey = `${dateStr}-${shift}`;
+                      const shiftKey = `hist-${dateStr}-${shift}`;
                       const isShiftCollapsed = collapsedShifts.has(shiftKey);
                       return (
                         <div key={shift} className="shift-block">
@@ -295,13 +296,13 @@ const LocoBookingHistory: React.FC<LocoBookingHistoryProps> = ({
                                 const ml = locos.find((l) => l.loco_number === locoNum);
                                 const tn = ml ? typeName(ml.loco_type_id) : null;
                                 const isExpanded = expandedLocos.has(
-                                  `${dateStr}-${shift}-${locoNum}`
+                                  `hist-${dateStr}-${shift}-${locoNum}`
                                 );
                                 return (
                                   <div key={locoNum} className="loco-booking-card collapsible">
                                     <div
                                       className="loco-card-title"
-                                      onClick={() => toggleLoco(`${dateStr}-${shift}-${locoNum}`)}
+                                      onClick={() => toggleLoco(`hist-${dateStr}-${shift}-${locoNum}`)}
                                       style={{ cursor: "pointer" }}
                                     >
                                       <Train size={16} />
@@ -336,8 +337,10 @@ const LocoBookingHistory: React.FC<LocoBookingHistoryProps> = ({
                                           return (
                                             <div key={jobIdStr} className="loco-job-item">
                                               <div className="job-meta">
-                                                <ClipboardList size={14} />
-                                                <h6>{job.job_description}</h6>
+                                                <div className="job-title-group">
+                                                  <ClipboardList size={14} />
+                                                  <h6>{job.job_description}</h6>
+                                                </div>
                                                 {isEditMode && (
                                                   <div className="action-buttons">
                                                     <button

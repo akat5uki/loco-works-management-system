@@ -317,8 +317,10 @@ const LocoBookingList: React.FC<LocoBookingListProps> = ({
                                           return (
                                             <div key={jobIdStr} className="loco-job-item">
                                               <div className="job-meta">
-                                                <ClipboardList size={14} />
-                                                <h6>{job.job_description}</h6>
+                                                <div className="job-title-group">
+                                                  <ClipboardList size={14} />
+                                                  <h6>{job.job_description}</h6>
+                                                </div>
                                                 {isEditMode && (
                                                   <div className="action-buttons">
                                                     <button

@@ -648,8 +648,17 @@
 .job-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.5rem;
   color: var(--text-h);
+}
+
+.job-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-grow: 1;
 }
 
 .job-meta h6 {
@@ -1363,10 +1372,7 @@
   gap: 0.5rem;
 }
 
-.job-meta {
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
+/* .job-meta responsive rules merged into base rule above */
 
 /* Despatched badge in search results */
 .despatched-badge {
@@ -1471,5 +1477,20 @@
   .btn-collapse-control {
     width: 100%;
     justify-content: center;
+  }
+
+  /* Job list alignment on mobile */
+  .job-title-group {
+    flex-basis: 100%;
+    flex-grow: 1;
+  }
+
+  .job-meta .action-buttons {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .job-tasks-sublist {
+    padding-left: 0.75rem;
   }
 }

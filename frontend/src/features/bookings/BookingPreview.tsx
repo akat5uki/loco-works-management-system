@@ -1,26 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowLeft,
-  Train,
-  Clock,
-  Calendar,
-  Printer,
-  FileSpreadsheet,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  User,
-  Users,
-  ClipboardList,
-  CheckSquare
-} from "lucide-react";
+import { ArrowLeft, Train } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import "./EmployeesBooking.css";
+
+import PreviewFilterBar from "./components/preview/PreviewFilterBar";
+import AvailabilitySummary from "./components/preview/AvailabilitySummary";
+import LocoSummaryCard from "./components/preview/LocoSummaryCard";
 
 interface Employee {
   ticket_number: number;
@@ -76,7 +63,7 @@ const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => 
   const curShift = guessShift();
   
   let nextDateStr = curDateStr;
-  let nextShift = 1;
+  let nextShift: number;
   
   if (curShift === 1) {
     nextShift = 2;
@@ -228,7 +215,10 @@ const BookingPreview = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchData();
+      const timer = setTimeout(() => {
+        fetchData();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [currentUser, dateStr, shift, fetchData]);
 
@@ -308,51 +298,17 @@ const BookingPreview = () => {
         </div>
       </header>
 
-      {/* Warning Banner */}
-      {!isCurrentOrNextShift(dateStr, shift) && (
-        <div className="lock-banner no-print" style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", color: "#f59e0b", marginBottom: "1.5rem" }}>
-          <AlertTriangle size={18} />
-          <span>
-            Warning: You are viewing summary data for a shift other than the current or next shift.
-          </span>
-        </div>
-      )}
-
-      {/* ── Global Selection Bar ── */}
-      <div className="global-config-bar no-print">
-        <div className="config-group">
-          <label><Calendar size={14} style={{ marginRight: 4 }} /> Date</label>
-          <input
-            type="date"
-            className="config-input"
-            required={true}
-            value={dateStr}
-            onChange={e => setDateStr(e.target.value)}
-          />
-        </div>
-        <div className="config-group">
-          <label><Clock size={14} style={{ marginRight: 4 }} /> Shift</label>
-          <select
-            className="config-select"
-            value={shift}
-            onChange={e => setShift(parseInt(e.target.value))}
-          >
-            <option value={1}>Shift 1 (Day)</option>
-            <option value={2}>Shift 2 (Night)</option>
-          </select>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button className="back-btn" onClick={fetchData} style={{ height: "38px" }}>
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button className="back-btn" onClick={exportToExcel} style={{ height: "38px", background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}>
-            <FileSpreadsheet size={14} /> Export Excel
-          </button>
-          <button className="back-btn" onClick={handlePrint} style={{ height: "38px" }}>
-            <Printer size={14} /> Print PDF
-          </button>
-        </div>
-      </div>
+      {/* ── Filter Bar & Warnings ── */}
+      <PreviewFilterBar
+        dateStr={dateStr}
+        setDateStr={setDateStr}
+        shift={shift}
+        setShift={setShift}
+        fetchData={fetchData}
+        exportToExcel={exportToExcel}
+        handlePrint={handlePrint}
+        isCurrentOrNextShift={isCurrentOrNextShift(dateStr, shift)}
+      />
 
       {/* Printable Preview Page */}
       <div className="print-page-layout">
@@ -367,49 +323,13 @@ const BookingPreview = () => {
           </div>
         </div>
 
-        <h2 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "1rem" }}>
-          1. Employee Availability Summary (Current Shift)
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginBottom: "3rem" }}>
-          
-          <div>
-            <h3 style={{ color: "#10b981", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem" }}>
-              <CheckCircle size={18} /> Available Employees ({availableEmployees.length})
-            </h3>
-            {availableEmployees.length === 0 ? (
-              <p style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No employees available.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem", background: "var(--bg)" }}>
-                {availableEmployees.map(e => (
-                  <div key={e.ticket_number} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                    <span>{e.name} (Ticket #{e.ticket_number})</span>
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{e.designation_name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* 1. Employee Availability Summary */}
+        <AvailabilitySummary
+          availableEmployees={availableEmployees}
+          unavailableEmployees={unavailableEmployees}
+        />
 
-          <div>
-            <h3 style={{ color: "#ef4444", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem" }}>
-              <XCircle size={18} /> Unavailable Employees ({unavailableEmployees.length})
-            </h3>
-            {unavailableEmployees.length === 0 ? (
-              <p style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No employees unavailable.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem", background: "var(--bg)" }}>
-                {unavailableEmployees.map(e => (
-                  <div key={e.ticket_number} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                    <span>{e.name} (Ticket #{e.ticket_number})</span>
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{e.designation_name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>
-
+        {/* 2. Final Locomotive Assignment Details */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "1rem" }}>
           <h2 style={{ margin: 0 }}>
             2. Final Locomotive Assignment Details
@@ -423,322 +343,16 @@ const BookingPreview = () => {
           <p style={{ fontStyle: "italic", color: "var(--text-muted)", padding: "1rem 0" }}>No locomotive bookings available for this shift.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            {viewsData.by_loco.map(l => {
-              const locoNum = l.loco_number;
-              const locoStatus = l.status || "incomplete";
-              const jobs = allLocoJobs[locoNum] || [];
-              const isLocoExpanded = isNodeExpanded(locoNum, false);
-
-              return (
-                <div key={locoNum} style={{ border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg)", marginBottom: "1rem", overflow: "hidden" }}>
-                  
-                  {/* Collapsible Header */}
-                  <div 
-                    style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between", 
-                      alignItems: "center", 
-                      padding: "1rem 1.5rem", 
-                      background: "var(--bg-secondary)", 
-                      cursor: "pointer", 
-                      userSelect: "none" 
-                    }}
-                    onClick={() => toggleNode(locoNum, false)}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontWeight: "bold", fontSize: "1.2rem", color: "var(--accent)" }}>
-                      <span className="no-print" style={{ display: "flex", alignItems: "center" }}>
-                        {isLocoExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                      </span>
-                      <Train size={20} /> Loco #{locoNum}
-                    </div>
-                    
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                      {!isLocoExpanded && l.supervisors.length > 0 && (
-                        <span className="no-print" style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                          ({l.supervisors.map(s => s.supervisor_name).join(", ")})
-                        </span>
-                      )}
-                      <span style={{
-                        fontSize: "0.75rem",
-                        fontWeight: "bold",
-                        padding: "0.2rem 0.5rem",
-                        borderRadius: "4px",
-                        background: locoStatus === "completed" ? "rgba(16, 185, 129, 0.15)" : locoStatus === "partially completed" ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                        color: locoStatus === "completed" ? "#10b981" : locoStatus === "partially completed" ? "#f59e0b" : "#ef4444",
-                        border: `1px solid ${locoStatus === "completed" ? "rgba(16, 185, 129, 0.3)" : locoStatus === "partially completed" ? "rgba(245, 158, 11, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
-                      }}>
-                        {locoStatus.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Collapsible Content */}
-                  <div 
-                    style={{ 
-                      padding: "1.5rem", 
-                      borderTop: "1px solid var(--border)", 
-                      display: isLocoExpanded ? "block" : "none" 
-                    }} 
-                    className="print-visible-block"
-                  >
-                    <div className="tree-container">
-                      
-                      {/* Node: Supervisors */}
-                      {(() => {
-                        const supsKey = `${locoNum}-supervisors-group`;
-                        const isSupsExpanded = isNodeExpanded(supsKey, true);
-                        return (
-                          <div className="tree-node">
-                            <div className="tree-node-row" onClick={() => toggleNode(supsKey, true)}>
-                              <span className="tree-node-toggle">
-                                {isSupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                              </span>
-                              <span className="tree-node-icon">
-                                <Users size={16} />
-                              </span>
-                              <div className="tree-node-label">
-                                <span>Supervisors</span>
-                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                                  ({l.supervisors.length} booked)
-                                </span>
-                              </div>
-                            </div>
-
-                            <div 
-                              className="tree-node-content tree-node-children print-visible-block"
-                              style={{ display: isSupsExpanded ? "flex" : "none" }}
-                            >
-                              {l.supervisors.length === 0 ? (
-                                <div className="tree-node leaf">
-                                  <div className="tree-node-row leaf">
-                                    <span className="tree-node-toggle leaf-spacer"></span>
-                                    <span className="tree-node-icon leaf-icon">•</span>
-                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
-                                      No supervisors booked
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                l.supervisors.map(s => (
-                                  <div key={s.supervisor_ticket_number} className="tree-node leaf">
-                                    <div className="tree-node-row leaf">
-                                      <span className="tree-node-toggle leaf-spacer"></span>
-                                      <span className="tree-node-icon leaf-icon">
-                                        <User size={12} style={{ color: "var(--text-muted)" }} />
-                                      </span>
-                                      <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
-                                        {s.supervisor_name}
-                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                          (Ticket #{s.supervisor_ticket_number})
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Node: Staffs */}
-                      {(() => {
-                        const staffsKey = `${locoNum}-staffs-group`;
-                        const isStaffsExpanded = isNodeExpanded(staffsKey, true);
-                        
-                        // Extract unique staff members
-                        const uniqueStaffMap = new Map<number, { staff_ticket_number: number; staff_name: string }>();
-                        l.supervisors.forEach(s => {
-                          s.staff.forEach(st => {
-                            uniqueStaffMap.set(st.staff_ticket_number, st);
-                          });
-                        });
-                        const staffList = Array.from(uniqueStaffMap.values());
-
-                        return (
-                          <div className="tree-node" style={{ marginTop: "0.5rem" }}>
-                            <div className="tree-node-row" onClick={() => toggleNode(staffsKey, true)}>
-                              <span className="tree-node-toggle">
-                                {isStaffsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                              </span>
-                              <span className="tree-node-icon">
-                                <Users size={16} />
-                              </span>
-                              <div className="tree-node-label">
-                                <span>Staffs</span>
-                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                                  ({staffList.length} booked)
-                                </span>
-                              </div>
-                            </div>
-
-                            <div 
-                              className="tree-node-content tree-node-children print-visible-block"
-                              style={{ display: isStaffsExpanded ? "flex" : "none" }}
-                            >
-                              {staffList.length === 0 ? (
-                                <div className="tree-node leaf">
-                                  <div className="tree-node-row leaf">
-                                    <span className="tree-node-toggle leaf-spacer"></span>
-                                    <span className="tree-node-icon leaf-icon">•</span>
-                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
-                                      No staffs booked
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                staffList.map(st => (
-                                  <div key={st.staff_ticket_number} className="tree-node leaf">
-                                    <div className="tree-node-row leaf">
-                                      <span className="tree-node-toggle leaf-spacer"></span>
-                                      <span className="tree-node-icon leaf-icon">
-                                        <User size={12} style={{ color: "var(--text-muted)" }} />
-                                      </span>
-                                      <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
-                                        {st.staff_name}
-                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                          (Ticket #{st.staff_ticket_number})
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Node: Operations & Carry Forward Details */}
-                      {(() => {
-                        const opsKey = `${locoNum}-operations`;
-                        const isOpsExpanded = isNodeExpanded(opsKey, true);
-                        return (
-                          <div className="tree-node" style={{ marginTop: "0.5rem" }}>
-                            <div className="tree-node-row" onClick={() => toggleNode(opsKey, true)}>
-                              <span className="tree-node-toggle">
-                                {isOpsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                              </span>
-                              <span className="tree-node-icon">
-                                <ClipboardList size={16} />
-                              </span>
-                              <div className="tree-node-label">
-                                <span>Operations &amp; Carry Forward Details</span>
-                                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                                  ({jobs.length} jobs booked)
-                                </span>
-                              </div>
-                            </div>
-
-                            <div 
-                              className="tree-node-content tree-node-children print-visible-block"
-                              style={{ display: isOpsExpanded ? "flex" : "none" }}
-                            >
-                              {jobs.length === 0 ? (
-                                <div className="tree-node leaf">
-                                  <div className="tree-node-row leaf">
-                                    <span className="tree-node-toggle leaf-spacer"></span>
-                                    <span className="tree-node-icon leaf-icon">•</span>
-                                    <span className="tree-node-label" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
-                                      No operations booked for this loco
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                jobs.map(j => {
-                                  const jobKey = `${locoNum}-job-${j.job_id}`;
-                                  const isJobExpanded = isNodeExpanded(jobKey, true);
-                                  const jobRem = remarksState[locoNum]?.jobs[j.job_id] || { completed: false, remarks: "" };
-                                  return (
-                                    <div key={j.job_id} className="tree-node">
-                                      <div className="tree-node-row" onClick={() => toggleNode(jobKey, true)}>
-                                        <span className="tree-node-toggle">
-                                          {j.tasks.length > 0 ? (
-                                            isJobExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-                                          ) : (
-                                            <span className="leaf-spacer"></span>
-                                          )}
-                                        </span>
-                                        <span className="tree-node-icon">
-                                          <ClipboardList size={14} style={{ color: "var(--accent)" }} />
-                                        </span>
-                                        <div className="tree-node-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem" }}>
-                                          <div>
-                                            <strong>Job {j.job_id}:</strong> {j.job_description}
-                                            {jobRem.remarks && (
-                                              <span style={{ marginLeft: "0.5rem", fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                                                (Remarks: "{jobRem.remarks}")
-                                              </span>
-                                            )}
-                                          </div>
-                                          <span style={{
-                                            fontSize: "0.75rem",
-                                            padding: "0.1rem 0.4rem",
-                                            borderRadius: "4px",
-                                            background: jobRem.completed ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                                            color: jobRem.completed ? "#10b981" : "#f59e0b",
-                                            border: `1px solid ${jobRem.completed ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`
-                                          }}>
-                                            {jobRem.completed ? "Completed" : "In Progress"}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      {j.tasks.length > 0 && (
-                                        <div 
-                                          className="tree-node-content tree-node-children print-visible-block"
-                                          style={{ display: isJobExpanded ? "flex" : "none" }}
-                                        >
-                                          {j.tasks.map(t => {
-                                            const taskRem = remarksState[locoNum]?.tasks[t.task_id] || { completed: false, remarks: "" };
-                                            return (
-                                              <div key={t.task_id} className="tree-node leaf">
-                                                <div className="tree-node-row leaf">
-                                                  <span className="tree-node-toggle leaf-spacer"></span>
-                                                  <span className="tree-node-icon leaf-icon">
-                                                    <CheckSquare size={12} style={{ color: taskRem.completed ? "#10b981" : "var(--text-muted)" }} />
-                                                  </span>
-                                                  <div className="tree-node-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
-                                                    <div>
-                                                      {t.task_description}
-                                                      {taskRem.remarks && (
-                                                        <span style={{ marginLeft: "0.5rem", fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.78rem" }}>
-                                                          (Remarks: "{taskRem.remarks}")
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                    <span style={{
-                                                      fontSize: "0.7rem",
-                                                      padding: "0.05rem 0.3rem",
-                                                      borderRadius: "3px",
-                                                      background: taskRem.completed ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
-                                                      color: taskRem.completed ? "#10b981" : "#f59e0b",
-                                                      border: `1px solid ${taskRem.completed ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)"}`
-                                                    }}>
-                                                      {taskRem.completed ? "Completed" : "In Progress"}
-                                                    </span>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                    </div>
-                  </div>
-
-                </div>
-              );
-            })}
+            {viewsData.by_loco.map(l => (
+              <LocoSummaryCard
+                key={l.loco_number}
+                loco={l}
+                jobs={allLocoJobs[l.loco_number] || []}
+                isNodeExpanded={isNodeExpanded}
+                toggleNode={toggleNode}
+                remarksStateForLoco={remarksState[l.loco_number]}
+              />
+            ))}
           </div>
         )}
       </div>
