@@ -842,6 +842,8 @@ const EmployeesBookingWizard = () => {
                 <div className="wizard-ops-preview-column">
                   <LocoOpsPreview
                     selectedLoco={selectedLoco}
+                    locos={locos}
+                    setSelectedLoco={setSelectedLoco}
                     locoJobs={locoJobs}
                     remarksState={remarksState}
                     taskRemarksState={taskRemarksState}
