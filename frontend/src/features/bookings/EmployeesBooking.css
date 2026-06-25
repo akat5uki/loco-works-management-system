@@ -189,6 +189,11 @@
     font-size: 0.95rem;
 }
 
+.emp-ticket {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 .emp-badge {
     font-size: 0.75rem;
     color: var(--text-muted);

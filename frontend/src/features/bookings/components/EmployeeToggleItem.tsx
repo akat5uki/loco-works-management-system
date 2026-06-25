@@ -25,9 +25,8 @@ const EmployeeToggleItem: React.FC<EmployeeToggleItemProps> = ({
   return (
     <div className={`employee-toggle-item ${isAvailable ? "available" : ""}`}>
       <div className="emp-meta">
-        <span className="emp-name">
-          {emp.name} <span className="emp-ticket-lbl">(Ticket #{emp.ticket_number})</span>
-        </span>
+        <span className="emp-name">{emp.name}</span>
+        <span className="emp-ticket">Ticket #{emp.ticket_number}</span>
         <span className="emp-badge">{emp.designation_name}</span>
       </div>
       <button
