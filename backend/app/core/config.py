@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Loco Works Management System"
-    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str
+    API_V1_STR: str
 
     # Database Configuration
     POSTGRES_USER: str
@@ -16,14 +16,14 @@ class Settings(BaseSettings):
 
     # Redis Configuration
     REDIS_SENTINELS: Optional[str] = None
-    REDIS_MASTER_SET: str = "mymaster"
+    REDIS_MASTER_SET: str
     REDIS_PASSWORD: str
-    REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_URL: str
 
     # Security Configuration
     SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"
