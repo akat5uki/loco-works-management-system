@@ -44,26 +44,30 @@ interface ViewsData {
     supervisors: Array<{
       supervisor_ticket_number: number;
       supervisor_name: string;
+      supervisor_designation: string;
       is_forwarded: boolean;
-      staff: Array<{ staff_ticket_number: number; staff_name: string }>;
+      staff: Array<{ staff_ticket_number: number; staff_name: string; staff_designation: string }>;
     }>;
   }>;
   by_supervisor: Array<{
     supervisor_ticket_number: number;
     supervisor_name: string;
+    supervisor_designation: string;
     locos: Array<{
       loco_number: string;
       is_forwarded: boolean;
-      staff: Array<{ staff_ticket_number: number; staff_name: string }>;
+      staff: Array<{ staff_ticket_number: number; staff_name: string; staff_designation: string }>;
     }>;
   }>;
   by_staff: Array<{
     staff_ticket_number: number;
     staff_name: string;
+    staff_designation: string;
     assignments: Array<{
       loco_number: string;
       supervisor_ticket_number: number;
       supervisor_name: string;
+      supervisor_designation: string;
     }>;
   }>;
 }

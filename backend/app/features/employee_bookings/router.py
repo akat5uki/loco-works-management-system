@@ -498,23 +498,28 @@ async def mark_notification_read(
 async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     
-    # Query all bookings joined with Employee names
-    # Aliases for joining supervisor and staff
+    # Query all bookings joined with Employee names and their designations
     from sqlalchemy.orm import aliased
     Supervisor = aliased(Employee)
     Staff = aliased(Employee)
+    SupervisorDesig = aliased(Designation)
+    StaffDesig = aliased(Designation)
     
     query = (
         select(
             EmployeeBooking.loco_number,
             EmployeeBooking.supervisor_ticket_number,
             Supervisor.name.label("supervisor_name"),
+            SupervisorDesig.designation_name.label("supervisor_designation"),
             EmployeeBooking.staff_ticket_number,
             Staff.name.label("staff_name"),
+            StaffDesig.designation_name.label("staff_designation"),
             EmployeeBooking.is_forwarded,
         )
         .join(Supervisor, EmployeeBooking.supervisor_ticket_number == Supervisor.ticket_number)
+        .join(SupervisorDesig, Supervisor.designation_id == SupervisorDesig.designation_id)
         .outerjoin(Staff, EmployeeBooking.staff_ticket_number == Staff.ticket_number)
+        .outerjoin(StaffDesig, Staff.designation_id == StaffDesig.designation_id)
         .where(
             and_(
                 func.date(func.timezone("Asia/Kolkata", EmployeeBooking.date_time)) == local_date,
@@ -594,8 +599,10 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
         loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
         sup_name = r.supervisor_name
+        sup_desig = r.supervisor_designation
         staff_ticket = r.staff_ticket_number
         staff_name = r.staff_name
+        staff_desig = r.staff_designation
         is_f = r.is_forwarded
         
         if loco not in by_loco_dict:
@@ -609,13 +616,18 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
             by_loco_dict[loco]["supervisors"][sup_ticket] = {
                 "supervisor_ticket_number": sup_ticket,
                 "supervisor_name": sup_name,
+                "supervisor_designation": sup_desig,
                 "is_forwarded": is_f,
                 "staff": [],
             }
             
         if staff_ticket:
             by_loco_dict[loco]["supervisors"][sup_ticket]["staff"].append(
-                {"staff_ticket_number": staff_ticket, "staff_name": staff_name}
+                {
+                    "staff_ticket_number": staff_ticket,
+                    "staff_name": staff_name,
+                    "staff_designation": staff_desig,
+                }
             )
             
     by_loco = []
@@ -634,14 +646,17 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
         loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
         sup_name = r.supervisor_name
+        sup_desig = r.supervisor_designation
         staff_ticket = r.staff_ticket_number
         staff_name = r.staff_name
+        staff_desig = r.staff_designation
         is_f = r.is_forwarded
         
         if sup_ticket not in by_sup_dict:
             by_sup_dict[sup_ticket] = {
                 "supervisor_ticket_number": sup_ticket,
                 "supervisor_name": sup_name,
+                "supervisor_designation": sup_desig,
                 "locos": {},
             }
             
@@ -655,7 +670,11 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
             
         if staff_ticket:
             by_sup_dict[sup_ticket]["locos"][loco]["staff"].append(
-                {"staff_ticket_number": staff_ticket, "staff_name": staff_name}
+                {
+                    "staff_ticket_number": staff_ticket,
+                    "staff_name": staff_name,
+                    "staff_designation": staff_desig,
+                }
             )
             
     by_supervisor = []
@@ -664,6 +683,7 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
             {
                 "supervisor_ticket_number": s_data["supervisor_ticket_number"],
                 "supervisor_name": s_data["supervisor_name"],
+                "supervisor_designation": s_data["supervisor_designation"],
                 "locos": list(s_data["locos"].values()),
             }
         )
@@ -674,8 +694,10 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
         loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
         sup_name = r.supervisor_name
+        sup_desig = r.supervisor_designation
         staff_ticket = r.staff_ticket_number
         staff_name = r.staff_name
+        staff_desig = r.staff_designation
         
         if not staff_ticket:
             continue
@@ -684,6 +706,7 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
             by_staff_dict[staff_ticket] = {
                 "staff_ticket_number": staff_ticket,
                 "staff_name": staff_name,
+                "staff_designation": staff_desig,
                 "assignments": [],
             }
             
@@ -693,12 +716,14 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
                 "status": loco_status_dict.get(loco, "incomplete"),
                 "supervisor_ticket_number": sup_ticket,
                 "supervisor_name": sup_name,
+                "supervisor_designation": sup_desig,
             }
         )
         
     by_staff = list(by_staff_dict.values())
     
     return {"by_loco": by_loco, "by_supervisor": by_supervisor, "by_staff": by_staff}
+
 
 
 # 8. Remarks & Carry Forward Endpoints

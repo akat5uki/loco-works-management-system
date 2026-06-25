@@ -3,11 +3,13 @@ import React from "react";
 interface StaffMember {
   staff_ticket_number: number;
   staff_name: string;
+  staff_designation: string;
 }
 
 interface SupervisorData {
   supervisor_ticket_number: number;
   supervisor_name: string;
+  supervisor_designation: string;
   is_forwarded: boolean;
   staff: StaffMember[];
 }
@@ -26,6 +28,7 @@ interface LocoAssignment {
 interface SupervisorViewData {
   supervisor_ticket_number: number;
   supervisor_name: string;
+  supervisor_designation: string;
   locos: LocoAssignment[];
 }
 
@@ -33,11 +36,13 @@ interface StaffAssignment {
   loco_number: string;
   supervisor_ticket_number: number;
   supervisor_name: string;
+  supervisor_designation: string;
 }
 
 interface StaffViewData {
   staff_ticket_number: number;
   staff_name: string;
+  staff_designation: string;
   assignments: StaffAssignment[];
 }
 
@@ -95,6 +100,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         </div>
       ) : (
         <div className="views-details-content">
+
+          {/* ── BY LOCO ── */}
           {activeViewTab === "loco" && (
             <div className="views-grid-list">
               {viewsData.by_loco.length === 0 ? (
@@ -109,9 +116,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                       {lData.supervisors.map((sup) => (
                         <div key={sup.supervisor_ticket_number} className="sub-detail-group">
                           <div className="sub-detail-title">
-                            <span className="sup-indicator">Supervisor</span>
+                            <span className="sup-indicator">{sup.supervisor_designation}</span>
                             <strong>{sup.supervisor_name}</strong>
-                            <span className="sup-ticket">JE/SSE #{sup.supervisor_ticket_number}</span>
+                            <span className="sup-ticket">#{sup.supervisor_ticket_number}</span>
                             {!sup.is_forwarded && <span className="draft-badge">(Draft)</span>}
                           </div>
                           <div className="assigned-staff-list-box">
@@ -122,7 +129,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                               <ul className="sub-detail-list">
                                 {sup.staff.map((st) => (
                                   <li key={st.staff_ticket_number}>
-                                    {st.staff_name} <span className="ticket-lbl">#{st.staff_ticket_number}</span>
+                                    <span className="staff-desig-tag">{st.staff_designation}</span>
+                                    {st.staff_name}{" "}
+                                    <span className="ticket-lbl">#{st.staff_ticket_number}</span>
                                   </li>
                                 ))}
                               </ul>
@@ -137,6 +146,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             </div>
           )}
 
+          {/* ── BY SUPERVISOR ── */}
           {activeViewTab === "supervisor" && (
             <div className="views-grid-list">
               {viewsData.by_supervisor.length === 0 ? (
@@ -146,8 +156,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                   <div key={sData.supervisor_ticket_number} className="view-item-box">
                     <div className="item-box-title">
                       <h3>
-                        Supervisor: {sData.supervisor_name}{" "}
-                        <span className="title-ticket-lbl">JE/SSE #{sData.supervisor_ticket_number}</span>
+                        <span className="title-desig-tag">{sData.supervisor_designation}</span>
+                        {sData.supervisor_name}{" "}
+                        <span className="title-ticket-lbl">#{sData.supervisor_ticket_number}</span>
                       </h3>
                     </div>
                     <div className="view-details-grid">
@@ -165,7 +176,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                               <ul className="sub-detail-list">
                                 {l.staff.map((st) => (
                                   <li key={st.staff_ticket_number}>
-                                    {st.staff_name} <span className="ticket-lbl">#{st.staff_ticket_number}</span>
+                                    <span className="staff-desig-tag">{st.staff_designation}</span>
+                                    {st.staff_name}{" "}
+                                    <span className="ticket-lbl">#{st.staff_ticket_number}</span>
                                   </li>
                                 ))}
                               </ul>
@@ -180,6 +193,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             </div>
           )}
 
+          {/* ── BY STAFF ── */}
           {activeViewTab === "staff" && (
             <div className="views-grid-list">
               {viewsData.by_staff.length === 0 ? (
@@ -189,7 +203,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                   <div key={stData.staff_ticket_number} className="view-item-box">
                     <div className="item-box-title">
                       <h3>
-                        Staff: {stData.staff_name}{" "}
+                        <span className="title-desig-tag">{stData.staff_designation}</span>
+                        {stData.staff_name}{" "}
                         <span className="title-ticket-lbl">#{stData.staff_ticket_number}</span>
                       </h3>
                     </div>
@@ -202,6 +217,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                           <div className="linked-sup-info">
                             <span className="linked-sup-lbl">Supervisor:</span>
                             <span className="linked-sup-val">
+                              <span className="staff-desig-tag">{asg.supervisor_designation}</span>
                               {asg.supervisor_name}{" "}
                               <span className="ticket-lbl">#{asg.supervisor_ticket_number}</span>
                             </span>
@@ -214,6 +230,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               )}
             </div>
           )}
+
         </div>
       )}
     </section>

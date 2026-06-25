@@ -1459,6 +1459,38 @@
     text-transform: uppercase;
 }
 
+/* Designation pill shown next to staff names in lists */
+.staff-desig-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 0.05rem 0.35rem;
+    margin-right: 0.35rem;
+    text-transform: uppercase;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+/* Designation pill in card heading (By Supervisor / By Staff views) */
+.title-desig-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.1rem 0.45rem;
+    margin-right: 0.4rem;
+    text-transform: uppercase;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
 .sup-ticket {
     font-size: 0.75rem;
     color: var(--text-muted);
