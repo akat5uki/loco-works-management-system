@@ -12,6 +12,8 @@ interface Employee {
 
 interface SupervisorAssignStepProps {
   locos: string[];
+  selectedLoco: string | null;
+  setSelectedLoco: (loco: string | null) => void;
   supervisorList: Employee[];
   availableTickets: Set<number>;
   tempSupervisorLocos: Record<number, string[]>;
@@ -23,6 +25,8 @@ interface SupervisorAssignStepProps {
 
 const SupervisorAssignStep: React.FC<SupervisorAssignStepProps> = ({
   locos,
+  selectedLoco,
+  setSelectedLoco,
   supervisorList,
   availableTickets,
   tempSupervisorLocos,
@@ -52,17 +56,30 @@ const SupervisorAssignStep: React.FC<SupervisorAssignStepProps> = ({
             });
 
             return (
-              <div key={locoNum} className="loco-assignment-card">
+              <div
+                key={locoNum}
+                className={`loco-assignment-card${selectedLoco === locoNum ? " loco-card-active" : ""}`}
+                onClick={() => setSelectedLoco(locoNum)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setSelectedLoco(locoNum)}
+                title="Click to preview this locomotive's operations"
+              >
                 <div className="loco-card-header">
                   <span className="loco-number-label">Locomotive #{locoNum}</span>
-                  {assignedSupervisors.length > 0 && (
-                    <span className="badge-assigned-count">
-                      {assignedSupervisors.length} SSE/JE Assigned
-                    </span>
-                  )}
+                  <div className="loco-card-header-badges">
+                    {assignedSupervisors.length > 0 && (
+                      <span className="badge-assigned-count">
+                        {assignedSupervisors.length} SSE/JE Assigned
+                      </span>
+                    )}
+                    {selectedLoco === locoNum && (
+                      <span className="badge-previewing">● Previewing</span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="supervisors-toggle-list">
+                <div className="supervisors-toggle-list" onClick={(e) => e.stopPropagation()}>
                   {supervisorList
                     .filter((sup) => availableTickets.has(sup.ticket_number))
                     .map((sup) => {

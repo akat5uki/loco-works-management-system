@@ -20,8 +20,6 @@ interface ActiveLocoJobs {
 
 interface LocoOpsPreviewProps {
   selectedLoco: string | null;
-  locos: string[];
-  setSelectedLoco: (loco: string | null) => void;
   locoJobs: ActiveLocoJobs | null;
   remarksState: Record<number, { completed: boolean; remarks: string }>;
   taskRemarksState: Record<number, { completed: boolean; remarks: string }>;
@@ -29,8 +27,6 @@ interface LocoOpsPreviewProps {
 
 const LocoOpsPreview: React.FC<LocoOpsPreviewProps> = ({
   selectedLoco,
-  locos,
-  setSelectedLoco,
   locoJobs,
   remarksState,
   taskRemarksState,
@@ -45,24 +41,6 @@ const LocoOpsPreview: React.FC<LocoOpsPreviewProps> = ({
       </div>
     );
   }
-
-  const renderLocoSelector = () => (
-    locos.length > 1 && (
-      <div className="ops-loco-selector">
-        <label htmlFor="ops-loco-pick">Locomotive</label>
-        <select
-          id="ops-loco-pick"
-          className="ops-loco-select"
-          value={selectedLoco || ""}
-          onChange={(e) => setSelectedLoco(e.target.value || null)}
-        >
-          {locos.map((l) => (
-            <option key={l} value={l}>Loco #{l}</option>
-          ))}
-        </select>
-      </div>
-    )
-  );
 
   const renderContent = () => {
     if (!locoJobs) {
@@ -87,7 +65,6 @@ const LocoOpsPreview: React.FC<LocoOpsPreviewProps> = ({
             <X size={20} />
           </button>
         </div>
-        {renderLocoSelector()}
 
         {locoJobs.jobs.length === 0 ? (
           <p className="empty-ops-text">No operations booked for this locomotive in this shift.</p>

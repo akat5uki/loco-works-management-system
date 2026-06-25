@@ -809,6 +809,8 @@ const EmployeesBookingWizard = () => {
                   {activeStep === 1 && (
                     <SupervisorAssignStep
                       locos={locos}
+                      selectedLoco={selectedLoco}
+                      setSelectedLoco={setSelectedLoco}
                       supervisorList={supervisorList}
                       availableTickets={availableTickets}
                       tempSupervisorLocos={tempSupervisorLocos}
@@ -842,8 +844,6 @@ const EmployeesBookingWizard = () => {
                 <div className="wizard-ops-preview-column">
                   <LocoOpsPreview
                     selectedLoco={selectedLoco}
-                    locos={locos}
-                    setSelectedLoco={setSelectedLoco}
                     locoJobs={locoJobs}
                     remarksState={remarksState}
                     taskRemarksState={taskRemarksState}
