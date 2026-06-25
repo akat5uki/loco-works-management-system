@@ -65,7 +65,7 @@ const PreviewFilterBar: React.FC<PreviewFilterBarProps> = ({
             <FileSpreadsheet size={14} /> Export Excel
           </button>
           <button className="back-btn" onClick={handlePrint} style={{ height: "38px" }}>
-            <Printer size={14} /> Print PDF
+            <Printer size={14} /> Download PDF
           </button>
         </div>
       </div>

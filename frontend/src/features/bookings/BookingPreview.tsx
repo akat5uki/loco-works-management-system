@@ -8,6 +8,7 @@ import "./EmployeesBooking.css";
 import PreviewFilterBar from "./components/preview/PreviewFilterBar";
 import AvailabilitySummary from "./components/preview/AvailabilitySummary";
 import LocoSummaryCard from "./components/preview/LocoSummaryCard";
+import { generateShiftSummaryPDF } from "./utils/pdf/pdfGenerator";
 
 interface Employee {
   ticket_number: number;
@@ -303,7 +304,15 @@ const BookingPreview = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    generateShiftSummaryPDF({
+      dateStr,
+      shift,
+      availableEmployees,
+      unavailableEmployees,
+      byLoco: viewsData?.by_loco || [],
+      allLocoJobs,
+      remarksState,
+    });
   };
 
   // Group availabilities
