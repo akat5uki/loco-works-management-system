@@ -69,7 +69,7 @@ export const drawPDFAvailability = (
   } else {
     available.forEach((emp) => {
       y = ensureSpace(doc, 7, y, (newY) => {
-        y = drawTableHeader(doc, newY);
+        return drawTableHeader(doc, newY);
       });
 
       doc.setFont("helvetica", "normal");
@@ -115,7 +115,7 @@ export const drawPDFAvailability = (
   } else {
     unavailable.forEach((emp) => {
       y = ensureSpace(doc, 7, y, (newY) => {
-        y = drawTableHeader(doc, newY);
+        return drawTableHeader(doc, newY);
       });
 
       doc.setFont("helvetica", "normal");

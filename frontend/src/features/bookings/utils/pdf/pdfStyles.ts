@@ -25,13 +25,13 @@ export const ensureSpace = (
   doc: jsPDF,
   heightNeeded: number,
   currentY: number,
-  onNewPage?: (newY: number) => void
+  onNewPage?: (newY: number) => number
 ): number => {
   if (currentY + heightNeeded > PAGE_HEIGHT - MARGIN_BOTTOM) {
     doc.addPage();
     const newY = 15; // Top margin on new page
     if (onNewPage) {
-      onNewPage(newY);
+      return onNewPage(newY);
     }
     return newY;
   }
