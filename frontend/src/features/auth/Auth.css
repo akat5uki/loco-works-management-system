@@ -195,10 +195,9 @@
   color: var(--text-h);
 }
 
-/* Input wrapper inside captcha row grows to fill remaining space */
+/* Input wrapper inside captcha row always takes its own full row */
 .captcha-input-wrapper {
-  flex: 1 1 120px;
-  min-width: 100px;
+  flex: 1 1 100%;
 }
 
 /* ── Submit button ───────────────────────────────────────────────── */
@@ -294,7 +293,5 @@
     row-gap: 0.5rem;
   }
 
-  .captcha-input-wrapper {
-    flex: 1 1 100%;
-  }
+  /* captcha-input-wrapper already 100% by default — no override needed */
 }
