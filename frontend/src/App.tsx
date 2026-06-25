@@ -16,6 +16,7 @@ import BookingPreview from "./features/bookings/BookingPreview";
 import JobCarryForwardPage from "./features/bookings/JobCarryForwardPage";
 import MasterDataPage from "./features/crud/MasterDataPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
+import CookieConsent from "./shared/components/CookieConsent";
 
 function App() {
   return (
@@ -83,6 +84,7 @@ function App() {
         />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <CookieConsent />
     </Router>
   );
 }
