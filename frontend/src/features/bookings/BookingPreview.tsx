@@ -45,6 +45,40 @@ interface ViewsData {
   }>;
 }
 
+interface CurrentUser {
+  ticket_number: number;
+  name: string;
+  designation_id: number;
+  is_supervisor: boolean;
+}
+
+interface RemarkInfo {
+  completed: boolean;
+  remarks: string;
+}
+
+interface LocoRemarks {
+  jobs: Record<number, RemarkInfo>;
+  tasks: Record<number, RemarkInfo>;
+}
+
+interface BookingResponseItem {
+  shift: number;
+  loco_number: number | string;
+  job_id: number;
+  job_description: string;
+  task_id?: number | null;
+  task_description?: string | null;
+}
+
+interface RemarkResponseItem {
+  loco_number: number | string;
+  job_id: number;
+  task_id: number | null;
+  completed: boolean;
+  remarks: string;
+}
+
 const todayISO = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -85,7 +119,7 @@ const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => 
 
 const BookingPreview = () => {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   // Filters & State
   const [dateStr, setDateStr] = useState(todayISO());
@@ -96,7 +130,7 @@ const BookingPreview = () => {
   const [availableTickets, setAvailableTickets] = useState<Set<number>>(new Set());
   const [viewsData, setViewsData] = useState<ViewsData | null>(null);
   const [allLocoJobs, setAllLocoJobs] = useState<Record<string, JobInfo[]>>({});
-  const [remarksState, setRemarksState] = useState<Record<string, any>>({}); // loco_number -> job_id/task_id remarks
+  const [remarksState, setRemarksState] = useState<Record<string, LocoRemarks>>({}); // loco_number -> job_id/task_id remarks
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   const isNodeExpanded = (nodeId: string, defaultVal = true) => {
@@ -167,10 +201,10 @@ const BookingPreview = () => {
 
       // 4. Fetch loco bookings (jobs & tasks)
       const bookingsRes = await api.get(`/bookings/?start_date=${dateStr}&end_date=${dateStr}`);
-      const shiftBookings = bookingsRes.data.filter((b: any) => b.shift === shift);
+      const shiftBookings = bookingsRes.data.filter((b: BookingResponseItem) => b.shift === shift);
       
       const jobMap: Record<string, Record<number, JobInfo>> = {};
-      shiftBookings.forEach((b: any) => {
+      shiftBookings.forEach((b: BookingResponseItem) => {
         const locoNum = b.loco_number.toString();
         if (!jobMap[locoNum]) jobMap[locoNum] = {};
         if (!jobMap[locoNum][b.job_id]) {
@@ -184,7 +218,7 @@ const BookingPreview = () => {
         if (b.task_id) {
           jobMap[locoNum][b.job_id].tasks.push({
             task_id: b.task_id,
-            task_description: b.task_description
+            task_description: b.task_description ?? ""
           });
         }
       });
@@ -196,8 +230,8 @@ const BookingPreview = () => {
 
       // 5. Fetch remarks
       const remarksRes = await api.get(`/bookings/employees/remarks?date_str=${dateStr}&shift=${shift}`);
-      const remState: Record<string, any> = {};
-      remarksRes.data.forEach((r: any) => {
+      const remState: Record<string, LocoRemarks> = {};
+      remarksRes.data.forEach((r: RemarkResponseItem) => {
         const locoNum = r.loco_number.toString();
         if (!remState[locoNum]) remState[locoNum] = { jobs: {}, tasks: {} };
         if (r.task_id === null) {

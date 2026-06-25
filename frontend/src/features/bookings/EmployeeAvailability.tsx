@@ -41,7 +41,7 @@ const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => 
   const curShift = guessShift();
   
   let nextDateStr = curDateStr;
-  let nextShift = 1;
+  let nextShift: number;
   
   if (curShift === 1) {
     nextShift = 2;
@@ -96,9 +96,10 @@ const EmployeeAvailability = () => {
     try {
       await api.post("/bookings/employees/bookings/lock", { date_str: dateStr, shift });
       setLockOwner(null); // Success
-    } catch (err: any) {
-      if (err.response?.status === 409) {
-        const detail = err.response.data?.detail || "";
+    } catch (err) {
+      const error = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (error.response?.status === 409) {
+        const detail = error.response.data?.detail || "";
         const match = detail.match(/locked by (.+?) \(Ticket #(\d+)\)/);
         if (match) {
           setLockOwner({ name: match[1], ticket_number: parseInt(match[2]) });
@@ -116,10 +117,13 @@ const EmployeeAvailability = () => {
       clearInterval(lockTimer.current);
     }
     // Attempt to acquire lock immediately
-    refreshLock();
+    const timer = setTimeout(() => {
+      refreshLock();
+    }, 0);
     lockTimer.current = window.setInterval(refreshLock, 15000);
 
     return () => {
+      clearTimeout(timer);
       if (lockTimer.current) {
         clearInterval(lockTimer.current);
       }
@@ -146,7 +150,10 @@ const EmployeeAvailability = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchData();
+      const timer = setTimeout(() => {
+        fetchData();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [currentUser, dateStr, shift, fetchData]);
 
@@ -172,7 +179,7 @@ const EmployeeAvailability = () => {
         ticket_numbers: Array.from(newAvails)
       });
       fetchData();
-    } catch (err) {
+    } catch {
       alert("Failed to update availability.");
     }
   };

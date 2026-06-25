@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -19,9 +19,7 @@ export function useCaptcha() {
     setCaptcha("");
   };
 
-  useEffect(() => {
-    setCaptchaCode(generateCode());
-  }, []);
+
 
   const validate = (): boolean =>
     captcha.trim().toUpperCase() === captchaCode;

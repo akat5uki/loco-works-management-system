@@ -25,6 +25,30 @@ interface EmployeeNotification {
   is_read: boolean;
   created_at: string;
 }
+interface SupervisorAssignment {
+  supervisor_ticket_number: number;
+  supervisor_name: string;
+  supervisor_designation: string;
+  locos: Array<{
+    loco_number: string;
+    is_forwarded: boolean;
+    staff: Array<{ staff_ticket_number: number; staff_name: string; staff_designation: string }>;
+  }>;
+}
+
+interface StaffAssignment {
+  staff_ticket_number: number;
+  staff_name: string;
+  staff_designation: string;
+  assignments: Array<{
+    loco_number: string;
+    supervisor_ticket_number: number;
+    supervisor_name: string;
+    supervisor_designation: string;
+  }>;
+}
+
+type AssignmentItem = SupervisorAssignment | StaffAssignment;
 
 const todayISO = () => {
   const d = new Date();
@@ -47,7 +71,7 @@ const DashboardPage = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   // Real-time assignment and notifications
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [notifications, setNotifications] = useState<EmployeeNotification[]>([]);
 
   const fetchAssignmentsAndNotifs = useCallback(async (profile: UserProfile) => {
@@ -62,12 +86,12 @@ const DashboardPage = () => {
 
       if (profile.designation_id === 1 || profile.designation_id === 2) {
         const myAssignments = data.by_supervisor.filter(
-          (s: any) => s.supervisor_ticket_number === profile.ticket_number
+          (s: SupervisorAssignment) => s.supervisor_ticket_number === profile.ticket_number
         );
         setAssignments(myAssignments);
       } else {
         const myAssignments = data.by_staff.filter(
-          (st: any) => st.staff_ticket_number === profile.ticket_number
+          (st: StaffAssignment) => st.staff_ticket_number === profile.ticket_number
         );
         setAssignments(myAssignments);
       }
@@ -109,7 +133,7 @@ const DashboardPage = () => {
                 message: payload.message,
                 is_read: false,
                 created_at: new Date().toISOString()
-              } as any,
+              },
               ...prev
             ]);
             
@@ -131,7 +155,9 @@ const DashboardPage = () => {
     try {
       await api.post(`/bookings/employees/notifications/${notifId}/read`);
       setNotifications(prev => prev.map(n => n.notification_id === notifId ? { ...n, is_read: true } : n));
-    } catch (err) {}
+    } catch {
+      // ignore mark as read failure
+    }
   };
 
 

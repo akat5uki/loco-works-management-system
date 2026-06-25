@@ -27,6 +27,23 @@ interface ActiveLocoJobs {
   jobs: JobInfo[];
 }
 
+interface BookingResponseItem {
+  shift: number;
+  loco_number: number | string;
+  job_id: number;
+  job_description: string;
+  task_id?: number | null;
+  task_description?: string | null;
+}
+
+interface RemarkResponseItem {
+  loco_number: number | string;
+  job_id: number;
+  task_id: number | null;
+  completed: boolean;
+  remarks: string;
+}
+
 const todayISO = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -117,9 +134,10 @@ const JobCarryForwardPage = () => {
     try {
       await api.post("/bookings/employees/bookings/lock", { date_str: dateStr, shift });
       setLockOwner(null); // Success
-    } catch (err: any) {
-      if (err.response && err.response.status === 409) {
-        const detail = err.response.data?.detail;
+    } catch (err) {
+      const error = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (error.response && error.response.status === 409) {
+        const detail = error.response.data?.detail || "";
         const match = detail.match(/locked by (.+?) \(Ticket #(\d+)\)/);
         if (match) {
           setLockOwner({ name: match[1], ticket_number: parseInt(match[2]) });
@@ -172,8 +190,9 @@ const JobCarryForwardPage = () => {
 
       // Handle redirect state from dashboard
       let initialLoco = selectedLoco;
-      if (location.state && (location.state as any).selectLoco) {
-        const targetLoco = (location.state as any).selectLoco.toString();
+      const stateObj = location.state as { selectLoco?: string | number } | null;
+      if (stateObj && stateObj.selectLoco) {
+        const targetLoco = stateObj.selectLoco.toString();
         if (locosList.includes(targetLoco)) {
           initialLoco = targetLoco;
         }
@@ -203,14 +222,14 @@ const JobCarryForwardPage = () => {
   }, [currentUser, dateStr, shift, fetchLocos]);
 
   // Load jobs and remarks for selected locomotive
-  const loadLocoJobs = async (locoNum: string) => {
+  const loadLocoJobs = useCallback(async (locoNum: string) => {
     try {
       const bookingsRes = await api.get(`/bookings/?start_date=${dateStr}&end_date=${dateStr}`);
-      const locoBookings = bookingsRes.data.filter((b: any) => b.loco_number.toString() === locoNum.toString() && b.shift === shift);
+      const locoBookings = bookingsRes.data.filter((b: BookingResponseItem) => b.loco_number.toString() === locoNum.toString() && b.shift === shift);
       
       // Group bookings by job
       const jobMap: Record<number, JobInfo> = {};
-      locoBookings.forEach((b: any) => {
+      locoBookings.forEach((b: BookingResponseItem) => {
         if (!jobMap[b.job_id]) {
           jobMap[b.job_id] = {
             job_id: b.job_id,
@@ -225,7 +244,7 @@ const JobCarryForwardPage = () => {
           if (!alreadyExists) {
             jobMap[b.job_id].tasks.push({
               task_id: b.task_id,
-              task_description: b.task_description
+              task_description: b.task_description ?? ""
             });
           }
         }
@@ -239,8 +258,8 @@ const JobCarryForwardPage = () => {
       
       // Fetch existing remarks
       const remarksRes = await api.get(`/bookings/employees/remarks?date_str=${dateStr}&shift=${shift}`);
-      remarksRes.data.forEach((r: any) => {
-        if (r.loco_number === parseInt(locoNum)) {
+      remarksRes.data.forEach((r: RemarkResponseItem) => {
+        if (r.loco_number.toString() === locoNum.toString()) {
           if (r.task_id === null) {
             defRemarks[r.job_id] = { completed: r.completed, remarks: r.remarks };
           } else {
@@ -270,7 +289,7 @@ const JobCarryForwardPage = () => {
     } catch (err) {
       console.error("Failed to load loco jobs/tasks", err);
     }
-  };
+  }, [dateStr, shift]);
 
   useEffect(() => {
     let active = true;
@@ -286,7 +305,7 @@ const JobCarryForwardPage = () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [selectedLoco, dateStr, shift]);
+  }, [selectedLoco, dateStr, shift, loadLocoJobs]);
 
   const handleAddCarryForwardJob = (jobId: number) => {
     if (!newJobs.includes(jobId)) {

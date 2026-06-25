@@ -96,6 +96,24 @@ interface ActiveLocoJobs {
   jobs: JobInfo[];
 }
 
+interface BookingResponseItem {
+  shift: number;
+  loco_number: number | string;
+  job_id: number;
+  job_description: string;
+  task_id?: number | null;
+  task_description?: string | null;
+}
+
+interface RemarkResponseItem {
+  loco_number: number | string;
+  job_id: number;
+  task_id: number | null;
+  completed: boolean;
+  remarks: string;
+}
+
+
 
 const todayISO = () => {
   const d = new Date();
@@ -115,7 +133,7 @@ const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => 
   const curShift = guessShift();
   
   let nextDateStr = curDateStr;
-  let nextShift = 1;
+  let nextShift: number;
   
   if (curShift === 1) {
     nextShift = 2;
@@ -179,6 +197,70 @@ const EmployeesBookingWizard = () => {
   const selectedLocoRef = useRef<string | null>(null);
   useEffect(() => { selectedLocoRef.current = selectedLoco; }, [selectedLoco]);
 
+  // ── Carry Forward / Completion panel ──
+  const loadLocoJobs = useCallback(async (locoNum: string) => {
+    try {
+      // We will look at bookings for this loco/shift, and retrieve the jobs and tasks
+      const bookingsRes = await api.get(`/bookings/?start_date=${dateStr}&end_date=${dateStr}`);
+      const locoBookings = bookingsRes.data.filter((b: BookingResponseItem) => b.loco_number.toString() === locoNum.toString() && b.shift === shift);
+      
+      // Group them by job
+      const jobMap: Record<number, JobInfo> = {};
+      locoBookings.forEach((b: BookingResponseItem) => {
+        if (!jobMap[b.job_id]) {
+          jobMap[b.job_id] = {
+            job_id: b.job_id,
+            job_description: b.job_description,
+            stage: 5, // placeholder
+            tasks: []
+          };
+        }
+        if (b.task_id) {
+          jobMap[b.job_id].tasks.push({
+            task_id: b.task_id,
+            task_description: b.task_description ?? ""
+          });
+        }
+      });
+      
+      setLocoJobs({ loco_number: locoNum, jobs: Object.values(jobMap) });
+      
+      // Pre-populate remarks/completion defaults
+      const defRemarks: Record<number, { completed: boolean; remarks: string }> = {};
+      const defTaskRemarks: Record<number, { completed: boolean; remarks: string }> = {};
+      
+      // Fetch existing remarks
+      const remarksRes = await api.get(`/bookings/employees/remarks?date_str=${dateStr}&shift=${shift}`);
+      remarksRes.data.forEach((r: RemarkResponseItem) => {
+        if (r.loco_number.toString() === locoNum.toString()) {
+          if (r.task_id === null) {
+            defRemarks[r.job_id] = { completed: r.completed, remarks: r.remarks };
+          } else {
+            defTaskRemarks[r.task_id] = { completed: r.completed, remarks: r.remarks };
+          }
+        }
+      });
+
+      // Fill in default empty values for unremarked items
+      Object.values(jobMap).forEach((j: JobInfo) => {
+        if (!defRemarks[j.job_id]) {
+          defRemarks[j.job_id] = { completed: false, remarks: "" };
+        }
+        j.tasks.forEach(t => {
+          if (!defTaskRemarks[t.task_id]) {
+            defTaskRemarks[t.task_id] = { completed: false, remarks: "" };
+          }
+        });
+      });
+
+      setRemarksState(defRemarks);
+      setTaskRemarksState(defTaskRemarks);
+
+    } catch (err) {
+      console.error("Failed to load jobs/tasks", err);
+    }
+  }, [dateStr, shift]);
+
   // Active View Tab
   const [activeViewTab, setActiveViewTab] = useState<"loco" | "supervisor" | "staff">("loco");
 
@@ -237,20 +319,27 @@ const EmployeesBookingWizard = () => {
 
   // Handle selectLoco redirection from Dashboard
   useEffect(() => {
-    if (location.state && (location.state as any).selectLoco) {
-      const targetLoco = (location.state as any).selectLoco.toString();
-      setSelectedLoco(targetLoco);
-      
-      // Clean up the location state so it doesn't trigger on refresh
-      navigate(location.pathname, { replace: true, state: {} });
+    const stateObj = location.state as { selectLoco?: string | number } | null;
+    if (stateObj && stateObj.selectLoco) {
+      const targetLoco = stateObj.selectLoco.toString();
+      const timer = setTimeout(() => {
+        setSelectedLoco(targetLoco);
+        // Clean up the location state so it doesn't trigger on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 0);
 
       // Scroll to the carry forward panel after it renders
-      setTimeout(() => {
+      const scrollTimer = setTimeout(() => {
         const el = document.getElementById("remarks-section");
         if (el) {
           el.scrollIntoView({ behavior: "smooth" });
         }
       }, 500);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(scrollTimer);
+      };
     }
   }, [location, navigate]);
 
@@ -261,9 +350,10 @@ const EmployeesBookingWizard = () => {
     try {
       await api.post("/bookings/employees/bookings/lock", { date_str: dateStr, shift });
       setLockOwner(null); // Success
-    } catch (err: any) {
-      if (err.response && err.response.status === 409) {
-        const detail = err.response.data?.detail;
+    } catch (err) {
+      const error = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (error.response && error.response.status === 409) {
+        const detail = error.response.data?.detail || "";
         const match = detail.match(/locked by (.+?) \(Ticket #(\d+)\)/);
         if (match) {
           setLockOwner({ name: match[1], ticket_number: parseInt(match[2]) });
@@ -280,12 +370,16 @@ const EmployeesBookingWizard = () => {
       clearInterval(lockTimer.current);
     }
     
+    let timer: number | undefined;
     if (currentUser && currentUser.is_supervisor) {
-      refreshLock();
+      timer = window.setTimeout(() => {
+        refreshLock();
+      }, 0);
       lockTimer.current = window.setInterval(refreshLock, 15000);
     }
 
     return () => {
+      if (timer) clearTimeout(timer);
       if (lockTimer.current) {
         clearInterval(lockTimer.current);
       }
@@ -369,23 +463,31 @@ const EmployeesBookingWizard = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchData();
+      const timer = setTimeout(() => {
+        fetchData();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [currentUser, dateStr, shift, fetchData]);
 
   useEffect(() => {
-    if (selectedLoco) {
-      loadLocoJobs(selectedLoco);
-    } else {
-      setLocoJobs(null);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLoco, dateStr, shift]);
+    const timer = setTimeout(() => {
+      if (selectedLoco) {
+        loadLocoJobs(selectedLoco);
+      } else {
+        setLocoJobs(null);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [selectedLoco, dateStr, shift, loadLocoJobs]);
 
   // Reset wizard steps when date or shift changes to verify supervisors first
   useEffect(() => {
-    setActiveStep(1);
-    setSelectedLoco(null);
+    const timer = setTimeout(() => {
+      setActiveStep(1);
+      setSelectedLoco(null);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [dateStr, shift]);
 
 
@@ -426,8 +528,9 @@ const EmployeesBookingWizard = () => {
       alert("All supervisor assignments saved successfully and notifications triggered!");
       await fetchData();
       setActiveStep(2);
-    } catch (err: any) {
-      alert("Failed to save supervisor assignments: " + (err.response?.data?.detail ?? "Error"));
+    } catch (err) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      alert("Failed to save supervisor assignments: " + (error.response?.data?.detail ?? "Error"));
     } finally {
       setSaving(false);
     }
@@ -474,8 +577,9 @@ const EmployeesBookingWizard = () => {
       await Promise.all(promises);
       alert(`Staff assignments for Loco #${selectedLoco} saved successfully!`);
       fetchData();
-    } catch (err: any) {
-      alert("Failed to save staff: " + (err.response?.data?.detail ?? "Error"));
+    } catch (err) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      alert("Failed to save staff: " + (error.response?.data?.detail ?? "Error"));
     } finally {
       setSaving(false);
     }
@@ -580,73 +684,10 @@ const EmployeesBookingWizard = () => {
     try {
       await api.post(`/bookings/employees/notifications/${notifId}/read`);
       setNotifications(prev => prev.map(n => n.notification_id === notifId ? { ...n, is_read: true } : n));
-    } catch (err) {}
-  };
-
-
-  // ── Carry Forward / Completion panel ──
-  const loadLocoJobs = useCallback(async (locoNum: string) => {
-    try {
-      // We will look at bookings for this loco/shift, and retrieve the jobs and tasks
-      const bookingsRes = await api.get(`/bookings/?start_date=${dateStr}&end_date=${dateStr}`);
-      const locoBookings = bookingsRes.data.filter((b: any) => b.loco_number.toString() === locoNum.toString() && b.shift === shift);
-      
-      // Group them by job
-      const jobMap: Record<number, JobInfo> = {};
-      locoBookings.forEach((b: any) => {
-        if (!jobMap[b.job_id]) {
-          jobMap[b.job_id] = {
-            job_id: b.job_id,
-            job_description: b.job_description,
-            stage: 5, // placeholder
-            tasks: []
-          };
-        }
-        if (b.task_id) {
-          jobMap[b.job_id].tasks.push({
-            task_id: b.task_id,
-            task_description: b.task_description
-          });
-        }
-      });
-      
-      setLocoJobs({ loco_number: locoNum, jobs: Object.values(jobMap) });
-      
-      // Pre-populate remarks/completion defaults
-      const defRemarks: Record<number, { completed: boolean; remarks: string }> = {};
-      const defTaskRemarks: Record<number, { completed: boolean; remarks: string }> = {};
-      
-      // Fetch existing remarks
-      const remarksRes = await api.get(`/bookings/employees/remarks?date_str=${dateStr}&shift=${shift}`);
-      remarksRes.data.forEach((r: any) => {
-        if (r.loco_number === locoNum) {
-          if (r.task_id === null) {
-            defRemarks[r.job_id] = { completed: r.completed, remarks: r.remarks };
-          } else {
-            defTaskRemarks[r.task_id] = { completed: r.completed, remarks: r.remarks };
-          }
-        }
-      });
-
-      // Fill in default empty values for unremarked items
-      Object.values(jobMap).forEach((j: JobInfo) => {
-        if (!defRemarks[j.job_id]) {
-          defRemarks[j.job_id] = { completed: false, remarks: "" };
-        }
-        j.tasks.forEach(t => {
-          if (!defTaskRemarks[t.task_id]) {
-            defTaskRemarks[t.task_id] = { completed: false, remarks: "" };
-          }
-        });
-      });
-
-      setRemarksState(defRemarks);
-      setTaskRemarksState(defTaskRemarks);
-
-    } catch (err) {
-      console.error("Failed to load jobs/tasks", err);
+    } catch {
+      // ignore mark as read failure
     }
-  }, [dateStr, shift]);
+  };
 
 
 

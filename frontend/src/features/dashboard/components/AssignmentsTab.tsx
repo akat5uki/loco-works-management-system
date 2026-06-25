@@ -12,9 +12,36 @@ interface UserProfile {
   email: string | null;
 }
 
+interface SupervisorAssignment {
+  supervisor_ticket_number: number;
+  supervisor_name: string;
+  supervisor_designation: string;
+  locos: Array<{
+    loco_number: string;
+    is_forwarded: boolean;
+    staff: Array<{ staff_ticket_number: number; staff_name: string; staff_designation: string }>;
+    status?: string;
+  }>;
+}
+
+interface StaffAssignment {
+  staff_ticket_number: number;
+  staff_name: string;
+  staff_designation: string;
+  assignments: Array<{
+    loco_number: string;
+    supervisor_ticket_number: number;
+    supervisor_name: string;
+    supervisor_designation: string;
+    status?: string;
+  }>;
+}
+
+type AssignmentItem = SupervisorAssignment | StaffAssignment;
+
 interface AssignmentsTabProps {
   userProfile: UserProfile;
-  assignments: any[];
+  assignments: AssignmentItem[];
 }
 
 const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
@@ -37,8 +64,8 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
             {(userProfile?.designation_id === 1 || userProfile?.designation_id === 2) ? (
               // Supervisor assignments view
-              assignments.map((asg: any) => (
-                asg.locos.map((l: any) => (
+              (assignments as SupervisorAssignment[]).map((asg) => (
+                asg.locos.map((l) => (
                   <div key={l.loco_number} style={{ border: "1px solid var(--border)", borderRadius: "0.75rem", padding: "1.25rem", background: "var(--bg-secondary)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
                       <div 
@@ -66,7 +93,7 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                       <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>No staff assigned yet.</p>
                     ) : (
                       <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
-                        {l.staff.map((st: any) => (
+                        {l.staff.map((st) => (
                           <li key={st.staff_ticket_number}>{st.staff_name} (Ticket #{st.staff_ticket_number})</li>
                         ))}
                       </ul>
@@ -76,8 +103,8 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
               ))
             ) : (
               // Staff assignments view
-              assignments.map((asg: any) => (
-                asg.assignments.map((asgn: any, idx: number) => (
+              (assignments as StaffAssignment[]).map((asg) => (
+                asg.assignments.map((asgn, idx: number) => (
                   <div key={idx} style={{ border: "1px solid var(--border)", borderRadius: "0.75rem", padding: "1.25rem", background: "var(--bg-secondary)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "1.1rem", color: "var(--accent)" }}>
