@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.redis import redis_client
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.core.loco_encoder import LocoNumberStr, encode_loco_number, decode_loco_number
-from app.features.employees.models import Employee, Designation, EmployeeCategory
+from app.features.employees.models import Employee, Designation
 from app.features.bookings.models import LocoBooking, BookingTask
 from app.features.employee_bookings.models import (
     EmployeeAvailability,
@@ -173,7 +173,7 @@ async def get_available_locos(date_str: str, shift: int, current_user: CurrentUs
     )
     result = await db.execute(query)
     locos = result.scalars().all()
-    return {"locos": [decode_loco_number(l) for l in locos]}
+    return {"locos": [decode_loco_number(loco_val) for loco_val in locos]}
 
 
 # 3. Lock Endpoints

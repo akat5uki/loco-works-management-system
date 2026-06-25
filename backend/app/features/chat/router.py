@@ -15,12 +15,10 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status
 from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
-from app.core.database import get_db
 from app.core.redis import redis_client
 from app.features.auth.dependencies import CurrentUser
 from app.features.employees.models import Employee, Designation

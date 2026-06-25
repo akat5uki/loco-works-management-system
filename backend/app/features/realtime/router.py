@@ -6,11 +6,10 @@ from typing import Dict, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.core.config import settings
-
-router = APIRouter()
 
 from app.core.redis import redis_client
+
+router = APIRouter()
 
 # Track active websocket connections for workshop telemetry
 active_connections: Set[WebSocket] = set()
