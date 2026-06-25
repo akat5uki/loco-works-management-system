@@ -5,11 +5,13 @@ import LocoSummaryJobs from "./LocoSummaryJobs";
 interface StaffInfo {
   staff_ticket_number: number;
   staff_name: string;
+  staff_designation?: string;
 }
 
 interface SupervisorInfo {
   supervisor_ticket_number: number;
   supervisor_name: string;
+  supervisor_designation?: string;
   is_forwarded: boolean;
   staff: StaffInfo[];
 }
@@ -163,8 +165,13 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
                         <User size={12} style={{ color: "var(--text-muted)" }} />
                       </span>
                       <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
+                        {s.supervisor_designation && (
+                          <span className="staff-desig-tag" style={{ fontSize: "0.6rem", padding: "0.02rem 0.25rem" }}>
+                            {s.supervisor_designation}
+                          </span>
+                        )}
                         {s.supervisor_name}
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.25rem" }}>
                           (Ticket #{s.supervisor_ticket_number})
                         </span>
                       </div>
@@ -215,8 +222,13 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
                         <User size={12} style={{ color: "var(--text-muted)" }} />
                       </span>
                       <div className="tree-node-label" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
+                        {st.staff_designation && (
+                          <span className="staff-desig-tag" style={{ fontSize: "0.6rem", padding: "0.02rem 0.25rem" }}>
+                            {st.staff_designation}
+                          </span>
+                        )}
                         {st.staff_name}
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.25rem" }}>
                           (Ticket #{st.staff_ticket_number})
                         </span>
                       </div>

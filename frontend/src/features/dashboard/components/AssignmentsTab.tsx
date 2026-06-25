@@ -44,6 +44,21 @@ interface AssignmentsTabProps {
   assignments: AssignmentItem[];
 }
 
+const tagStyle: React.CSSProperties = {
+  display: "inline-block",
+  fontSize: "0.6rem",
+  fontWeight: 700,
+  color: "var(--accent)",
+  background: "var(--accent-bg)",
+  border: "1px solid var(--accent)",
+  borderRadius: "3px",
+  padding: "0.02rem 0.25rem",
+  marginRight: "0.35rem",
+  textTransform: "uppercase",
+  verticalAlign: "middle",
+  lineHeight: 1.4,
+};
+
 const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
   userProfile,
   assignments,
@@ -94,7 +109,14 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                     ) : (
                       <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
                         {l.staff.map((st) => (
-                          <li key={st.staff_ticket_number}>{st.staff_name} (Ticket #{st.staff_ticket_number})</li>
+                          <li key={st.staff_ticket_number}>
+                            {st.staff_designation && (
+                              <span style={tagStyle}>
+                                {st.staff_designation}
+                              </span>
+                            )}
+                            {st.staff_name} (Ticket #{st.staff_ticket_number})
+                          </li>
                         ))}
                       </ul>
                     )}
@@ -125,7 +147,13 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                       )}
                     </div>
                     <div style={{ fontSize: "0.85rem" }}>
-                      <strong>Supervisor:</strong> {asgn.supervisor_name} (Ticket #{asgn.supervisor_ticket_number})
+                      <strong>Supervisor:</strong>{" "}
+                      {asgn.supervisor_designation && (
+                        <span style={tagStyle}>
+                          {asgn.supervisor_designation}
+                        </span>
+                      )}
+                      {asgn.supervisor_name} (Ticket #{asgn.supervisor_ticket_number})
                     </div>
                   </div>
                 ))
