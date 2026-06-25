@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 
 interface Notification {
   notification_id: number;
@@ -51,6 +51,15 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         <div className="notifications-popup" onClick={(e) => e.stopPropagation()}>
           <div className="notifications-popup-header">
             <h3>Notifications</h3>
+            <button
+              className="close-notifications-btn"
+              onClick={() => setShowNotifications(false)}
+              type="button"
+              aria-label="Close notifications"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
           </div>
           <div className="notifications-list">
             {notifications.length === 0 ? (

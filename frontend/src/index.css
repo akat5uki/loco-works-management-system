@@ -274,11 +274,36 @@ button,
     padding: 1rem;
 }
 
-.notifications-popup h3 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1rem;
+.notifications-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.notifications-popup-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-h);
+}
+
+.close-notifications-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+
+.close-notifications-btn:hover {
+    background: var(--bg);
     color: var(--text-h);
 }
 
