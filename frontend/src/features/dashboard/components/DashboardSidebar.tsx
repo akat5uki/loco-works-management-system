@@ -57,18 +57,18 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         >
           <BarChart3 size={20} /> <span>Statistics</span>
         </div>
+        <button
+          className="cookie-settings-btn"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-settings"))}
+          type="button"
+          title="Cookie Settings"
+        >
+          <Cookie size={20} /> <span>Cookie Settings</span>
+        </button>
+        <button className="logout-btn" onClick={handleLogout} type="button">
+          <LogOut size={20} /> <span>Logout</span>
+        </button>
       </nav>
-      <button
-        className="cookie-settings-btn"
-        onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-settings"))}
-        type="button"
-        title="Cookie Settings"
-      >
-        <Cookie size={20} /> <span>Cookie Settings</span>
-      </button>
-      <button className="logout-btn" onClick={handleLogout}>
-        <LogOut size={20} /> <span>Logout</span>
-      </button>
     </aside>
   );
 };

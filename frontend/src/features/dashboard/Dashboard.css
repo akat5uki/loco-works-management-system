@@ -380,16 +380,17 @@
     width: 100% !important;
     height: auto !important;
     padding: 0.75rem 1rem !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    align-items: center !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
     border-right: none !important;
     border-bottom: 1px solid var(--border) !important;
+    gap: 0.75rem !important;
   }
 
   .sidebar-header {
     margin-bottom: 0 !important;
     gap: 0.5rem !important;
+    align-self: flex-start !important;
   }
 
   .sidebar-header span {
@@ -398,36 +399,58 @@
   }
 
   .sidebar-nav {
+    display: flex !important;
     flex-direction: row !important;
-    gap: 0.25rem !important;
+    gap: 0.5rem !important;
+    overflow-x: auto !important;
+    padding: 0.25rem 0.25rem 0.5rem 0.25rem !important;
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE 10+ */
+    width: 100% !important;
     flex: unset !important;
   }
 
-  .nav-item {
-    padding: 0.5rem !important;
-    justify-content: center !important;
+  .sidebar-nav::-webkit-scrollbar {
+    display: none !important; /* Safari and Chrome */
   }
 
-  .nav-item span {
-    display: none !important;
+  .nav-item, .cookie-settings-btn, .logout-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem 0.875rem !important;
+    border-radius: 9999px !important; /* Pill style */
+    background-color: var(--bg-secondary) !important;
+    color: var(--text) !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    border: 1px solid var(--border) !important;
+    margin-top: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  .nav-item.active {
+    background-color: var(--accent-bg) !important;
+    color: var(--accent) !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+
+  .nav-item span, .cookie-settings-btn span, .logout-btn span {
+    display: inline !important;
   }
 
   .cookie-settings-btn {
-    margin-top: 0 !important;
-    padding: 0.5rem !important;
-  }
-
-  .cookie-settings-btn span {
-    display: none !important;
+    background: none !important;
+    background-color: var(--bg-secondary) !important;
   }
 
   .logout-btn {
-    margin-top: 0 !important;
-    padding: 0.5rem !important;
-  }
-
-  .logout-btn span {
-    display: none !important;
+    background: none !important;
+    background-color: rgba(239, 68, 68, 0.05) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
   }
 
   .dashboard-main {
