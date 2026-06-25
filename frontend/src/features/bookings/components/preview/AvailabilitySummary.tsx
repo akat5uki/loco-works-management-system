@@ -33,11 +33,21 @@ const AvailabilitySummary: React.FC<AvailabilitySummaryProps> = ({
           {availableEmployees.length === 0 ? (
             <p style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No employees available.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem", background: "var(--bg)" }}>
-              {availableEmployees.map(e => (
-                <div key={e.ticket_number} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                  <span>{e.name} (Ticket #{e.ticket_number})</span>
-                  <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{e.designation_name}</span>
+            <div style={{ display: "flex", flexDirection: "column", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 0.75rem", background: "var(--bg)" }}>
+              {availableEmployees.map((e, index) => (
+                <div 
+                  key={e.ticket_number} 
+                  style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "0.2rem", 
+                    padding: "0.5rem 0", 
+                    borderBottom: index === availableEmployees.length - 1 ? "none" : "1px solid var(--border)" 
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text-h)" }}>{e.name}</div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Ticket #{e.ticket_number}</div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 500 }}>{e.designation_name}</div>
                 </div>
               ))}
             </div>
@@ -51,11 +61,21 @@ const AvailabilitySummary: React.FC<AvailabilitySummaryProps> = ({
           {unavailableEmployees.length === 0 ? (
             <p style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No employees unavailable.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem", background: "var(--bg)" }}>
-              {unavailableEmployees.map(e => (
-                <div key={e.ticket_number} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                  <span>{e.name} (Ticket #{e.ticket_number})</span>
-                  <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{e.designation_name}</span>
+            <div style={{ display: "flex", flexDirection: "column", maxHeight: "300px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 0.75rem", background: "var(--bg)" }}>
+              {unavailableEmployees.map((e, index) => (
+                <div 
+                  key={e.ticket_number} 
+                  style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "0.2rem", 
+                    padding: "0.5rem 0", 
+                    borderBottom: index === unavailableEmployees.length - 1 ? "none" : "1px solid var(--border)" 
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text-h)" }}>{e.name}</div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Ticket #{e.ticket_number}</div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 500 }}>{e.designation_name}</div>
                 </div>
               ))}
             </div>
