@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Cookie, Settings, X, Shield, BarChart3, Sliders } from "lucide-react";
 import "./CookieConsent.css";
 
@@ -11,6 +12,9 @@ interface CookiePreferences {
 const COOKIE_STORAGE_KEY = "cookie_consent_preferences";
 
 export const CookieConsent: React.FC = () => {
+  const location = useLocation();
+  const isLandingPage = location.pathname === "/";
+
   const [prefs, setPrefs] = useState<CookiePreferences>(() => {
     const savedPrefs = localStorage.getItem(COOKIE_STORAGE_KEY);
     if (savedPrefs) {
@@ -223,7 +227,7 @@ export const CookieConsent: React.FC = () => {
       )}
 
       {/* ── PERSISTENT RE-ENTRY TRIGGER ── */}
-      {!showBanner && !showModal && (
+      {isLandingPage && !showBanner && !showModal && (
         <button
           className="cookie-consent-trigger-btn"
           onClick={() => setShowModal(true)}
