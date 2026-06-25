@@ -45,6 +45,12 @@ export const CookieConsent: React.FC = () => {
 
   const [showModal, setShowModal] = useState<boolean>(false);
 
+  React.useEffect(() => {
+    const handleOpen = () => setShowModal(true);
+    window.addEventListener("open-cookie-settings", handleOpen);
+    return () => window.removeEventListener("open-cookie-settings", handleOpen);
+  }, []);
+
   const handleAcceptAll = () => {
     const allAccepted = { necessary: true, analytics: true, preferences: true };
     localStorage.setItem(COOKIE_STORAGE_KEY, JSON.stringify(allAccepted));

@@ -293,6 +293,11 @@ input:disabled + .cookie-consent-slider {
   border-color: var(--accent);
 }
 
+/* Hide floating button when dashboard sidebar is present */
+body:has(.sidebar) .cookie-consent-trigger-btn {
+  display: none !important;
+}
+
 @media (max-width: 480px) {
   .cookie-consent-banner {
     bottom: 0;

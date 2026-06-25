@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Train, Users, MessageSquare, ClipboardList, BarChart3, LogOut } from "lucide-react";
+import { Train, Users, MessageSquare, ClipboardList, BarChart3, LogOut, Cookie } from "lucide-react";
 
 interface DashboardSidebarProps {
   activeTab: "dashboard" | "profile" | "chat" | "my_booking";
@@ -58,6 +58,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <BarChart3 size={20} /> <span>Statistics</span>
         </div>
       </nav>
+      <button
+        className="cookie-settings-btn"
+        onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-settings"))}
+        type="button"
+        title="Cookie Settings"
+      >
+        <Cookie size={20} /> <span>Cookie Settings</span>
+      </button>
       <button className="logout-btn" onClick={handleLogout}>
         <LogOut size={20} /> <span>Logout</span>
       </button>
