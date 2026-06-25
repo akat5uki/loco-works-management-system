@@ -24,7 +24,7 @@ const AvailabilitySummary: React.FC<AvailabilitySummaryProps> = ({
       <h2 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "1rem" }}>
         1. Employee Availability Summary (Current Shift)
       </h2>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginBottom: "3rem" }}>
+      <div className="availability-summary-grid">
         
         <div>
           <h3 style={{ color: "#10b981", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem" }}>

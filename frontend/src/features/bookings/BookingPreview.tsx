@@ -364,11 +364,11 @@ const BookingPreview = () => {
         />
 
         {/* 2. Final Locomotive Assignment Details */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem", marginBottom: "1rem" }}>
+        <div className="loco-details-section-header">
           <h2 style={{ margin: 0 }}>
             2. Final Locomotive Assignment Details
           </h2>
-          <div className="no-print" style={{ display: "flex", gap: "0.5rem" }}>
+          <div className="no-print loco-details-buttons">
             <button className="back-btn" onClick={expandAll} style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", height: "auto" }}>Expand All</button>
             <button className="back-btn" onClick={collapseAll} style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", height: "auto" }}>Collapse All</button>
           </div>

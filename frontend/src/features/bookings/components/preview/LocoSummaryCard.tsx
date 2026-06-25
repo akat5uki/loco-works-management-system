@@ -76,15 +76,7 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
       
       {/* Collapsible Header */}
       <div 
-        style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          padding: "1rem 1.5rem", 
-          background: "var(--bg-secondary)", 
-          cursor: "pointer", 
-          userSelect: "none" 
-        }}
+        className="loco-summary-header"
         onClick={() => toggleNode(locoNum, false)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontWeight: "bold", fontSize: "1.2rem", color: "var(--accent)" }}>
@@ -94,9 +86,9 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
           <Train size={20} /> Loco #{locoNum}
         </div>
         
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <div className="loco-summary-meta">
           {!isLocoExpanded && loco.supervisors.length > 0 && (
-            <span className="no-print" style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+            <span className="no-print loco-summary-sups-preview" style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
               ({loco.supervisors.map(s => s.supervisor_name).join(", ")})
             </span>
           )}
@@ -116,12 +108,10 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
 
       {/* Collapsible Content */}
       <div 
+        className="loco-summary-content print-visible-block"
         style={{ 
-          padding: "1.5rem", 
-          borderTop: "1px solid var(--border)", 
           display: isLocoExpanded ? "block" : "none" 
         }} 
-        className="print-visible-block"
       >
         <div className="tree-container">
           

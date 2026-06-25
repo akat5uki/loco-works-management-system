@@ -57,7 +57,7 @@ const PreviewFilterBar: React.FC<PreviewFilterBarProps> = ({
             <option value={2}>Shift 2 (Night)</option>
           </select>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div className="preview-filter-actions">
           <button className="back-btn" onClick={fetchData} style={{ height: "38px" }}>
             <RefreshCw size={14} /> Refresh
           </button>

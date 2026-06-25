@@ -1600,4 +1600,118 @@
     }
 }
 
+/* Booking Preview Specific Styles */
+.availability-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.preview-filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.loco-details-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.loco-details-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.loco-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.loco-summary-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.loco-summary-content {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+    .availability-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .preview-filter-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .preview-filter-actions button {
+        width: 100% !important;
+        height: auto !important;
+        padding: 0.625rem 1rem !important;
+    }
+
+    .loco-details-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .loco-details-buttons {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .loco-summary-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .loco-summary-meta {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .loco-summary-content {
+        padding: 1rem;
+    }
+
+    .tree-node-children {
+        margin-left: 8px !important;
+        padding-left: 8px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .loco-summary-sups-preview {
+        display: none !important;
+    }
+}
+
+
 
