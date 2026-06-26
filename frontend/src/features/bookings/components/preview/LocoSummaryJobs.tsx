@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronRight, ClipboardList, CheckSquare } from "lucide-react";
+import { ChevronRight, ClipboardList, CheckSquare, MessageSquare } from "lucide-react";
 
 interface TaskInfo {
   task_id: number;
@@ -72,8 +72,8 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
             return (
               <div key={j.job_id} className="tree-node">
                 <div className="tree-node-row" onClick={() => toggleNode(jobKey, true)}>
-                  <span className={`tree-node-toggle ${j.tasks.length > 0 ? "tree-node-toggle-chevron" : ""} ${isJobExpanded ? "expanded" : ""}`}>
-                    {j.tasks.length > 0 ? (
+                  <span className={`tree-node-toggle ${(j.tasks.length > 0 || !!jobRem.remarks) ? "tree-node-toggle-chevron" : ""} ${isJobExpanded ? "expanded" : ""}`}>
+                    {(j.tasks.length > 0 || !!jobRem.remarks) ? (
                       <ChevronRight size={14} />
                     ) : (
                       <span className="leaf-spacer"></span>
@@ -85,11 +85,6 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
                   <div className="tree-node-label job-task-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem" }}>
                     <div>
                       <strong>Job {j.job_id}:</strong> {j.job_description}
-                      {jobRem.remarks && (
-                        <span style={{ marginLeft: "0.5rem", fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                          (Remarks: "{jobRem.remarks}")
-                        </span>
-                      )}
                     </div>
                     <span style={{
                       fontSize: "0.75rem",
@@ -104,7 +99,7 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
                   </div>
                 </div>
 
-                {j.tasks.length > 0 && (
+                {(j.tasks.length > 0 || !!jobRem.remarks) && (
                   <div
                     className={`tree-node-content tree-node-children print-visible-block ${isJobExpanded ? "expanded" : "collapsed"}`}
                   >
@@ -141,6 +136,35 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
                         </div>
                       );
                     })}
+
+                    {jobRem.remarks && (
+                      <div className="tree-node leaf">
+                        <div className="tree-node-row leaf">
+                          <span className="tree-node-toggle leaf-spacer"></span>
+                          <span className="tree-node-icon leaf-icon">
+                            <MessageSquare size={12} style={{ color: "var(--text-muted)" }} />
+                          </span>
+                          <div className="tree-node-label job-task-label" style={{ display: "flex", alignItems: "center", width: "100%", fontSize: "0.85rem", color: "var(--text)", gap: "0.5rem" }}>
+                            <span className="remarks-tag" style={{
+                              fontSize: "0.65rem",
+                              fontWeight: "700",
+                              color: "#f59e0b",
+                              background: "rgba(245, 158, 11, 0.12)",
+                              border: "1px solid rgba(245, 158, 11, 0.3)",
+                              borderRadius: "3px",
+                              padding: "0.05rem 0.35rem",
+                              textTransform: "uppercase",
+                              lineHeight: "1.4"
+                            }}>
+                              Remarks
+                            </span>
+                            <span style={{ fontStyle: "italic", color: "var(--text-muted)" }}>
+                              "{jobRem.remarks}"
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
