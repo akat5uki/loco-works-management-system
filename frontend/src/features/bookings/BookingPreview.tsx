@@ -391,7 +391,7 @@ const BookingPreview = () => {
         {(!viewsData || viewsData.by_loco.length === 0) ? (
           <p style={{ fontStyle: "italic", color: "var(--text-muted)", padding: "1rem 0" }}>No locomotive bookings available for this shift.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div className="loco-summary-list">
             {viewsData.by_loco.map(l => (
               <LocoSummaryCard
                 key={l.loco_number}

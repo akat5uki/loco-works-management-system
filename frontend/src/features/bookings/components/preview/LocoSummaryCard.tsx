@@ -74,7 +74,10 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
   const staffList = Array.from(uniqueStaffMap.values());
 
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg)", marginBottom: "1rem", overflow: "hidden" }}>
+    <div 
+      className={`loco-summary-card ${isLocoExpanded ? "expanded" : "collapsed"}`}
+      style={{ border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg)", overflow: "hidden" }}
+    >
       
       {/* Collapsible Header */}
       <div 
