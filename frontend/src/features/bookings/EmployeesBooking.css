@@ -1702,8 +1702,49 @@
     }
 
     .tree-node-children {
-        margin-left: 8px !important;
-        padding-left: 8px !important;
+        margin-left: 6px !important;
+        padding-left: 6px !important;
+        border-left: 1px dashed var(--border) !important;
+    }
+
+    .tree-node-toggle, .tree-node-icon, .leaf-spacer {
+        width: 14px !important;
+        height: 14px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .tree-node-toggle svg, .tree-node-icon svg {
+        width: 12px !important;
+        height: 12px !important;
+    }
+
+    .tree-node-row {
+        padding: 0.35rem 0.4rem !important;
+        gap: 0.3rem !important;
+    }
+
+    .job-task-label {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.25rem !important;
+    }
+
+    .job-task-label > div {
+        width: 100% !important;
+        word-break: break-word !important;
+    }
+
+    .job-task-label > span {
+        align-self: flex-start !important;
+        margin-top: 0.15rem !important;
+        font-size: 0.7rem !important;
+        padding: 0.05rem 0.3rem !important;
+        white-space: nowrap !important;
+    }
+
+    .staff-desig-tag {
+        font-size: 0.55rem !important;
+        padding: 0.01rem 0.2rem !important;
     }
 }
 

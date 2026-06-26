@@ -83,7 +83,7 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
                   <span className="tree-node-icon">
                     <ClipboardList size={14} style={{ color: "var(--accent)" }} />
                   </span>
-                  <div className="tree-node-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div className="tree-node-label job-task-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem" }}>
                     <div>
                       <strong>Job {j.job_id}:</strong> {j.job_description}
                       {jobRem.remarks && (
@@ -119,7 +119,7 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
                             <span className="tree-node-icon leaf-icon">
                               <CheckSquare size={12} style={{ color: taskRem.completed ? "#10b981" : "var(--text-muted)" }} />
                             </span>
-                            <div className="tree-node-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
+                            <div className="tree-node-label job-task-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
                               <div>
                                 {t.task_description}
                                 {taskRem.remarks && (
