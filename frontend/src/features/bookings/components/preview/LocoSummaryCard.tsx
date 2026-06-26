@@ -1,5 +1,5 @@
 import React from "react";
-import { Train, ChevronDown, ChevronRight, Users, User } from "lucide-react";
+import { Train, ChevronRight, Users, User } from "lucide-react";
 import LocoSummaryJobs from "./LocoSummaryJobs";
 
 interface StaffInfo {
@@ -82,8 +82,8 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
         onClick={() => toggleNode(locoNum, false)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontWeight: "bold", fontSize: "1.2rem", color: "var(--accent)" }}>
-          <span className="no-print" style={{ display: "flex", alignItems: "center" }}>
-            {isLocoExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          <span className={`no-print tree-node-toggle-chevron ${isLocoExpanded ? "expanded" : ""}`} style={{ display: "flex", alignItems: "center" }}>
+            <ChevronRight size={20} />
           </span>
           <Train size={20} /> Loco #{locoNum}
         </div>
@@ -110,18 +110,15 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
 
       {/* Collapsible Content */}
       <div 
-        className="loco-summary-content print-visible-block"
-        style={{ 
-          display: isLocoExpanded ? "block" : "none" 
-        }} 
+        className={`loco-summary-content print-visible-block ${isLocoExpanded ? "expanded" : "collapsed"}`}
       >
         <div className="tree-container">
           
           {/* Node: Supervisors */}
           <div className="tree-node">
             <div className="tree-node-row" onClick={() => toggleNode(supsKey, true)}>
-              <span className="tree-node-toggle">
-                {isSupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              <span className={`tree-node-toggle tree-node-toggle-chevron ${isSupsExpanded ? "expanded" : ""}`}>
+                <ChevronRight size={16} />
               </span>
               <span className="tree-node-icon">
                 <Users size={16} />
@@ -135,8 +132,7 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
             </div>
 
             <div 
-              className="tree-node-content tree-node-children print-visible-block"
-              style={{ display: isSupsExpanded ? "flex" : "none" }}
+              className={`tree-node-content tree-node-children print-visible-block ${isSupsExpanded ? "expanded" : "collapsed"}`}
             >
               {loco.supervisors.length === 0 ? (
                 <div className="tree-node leaf">
@@ -177,8 +173,8 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
           {/* Node: Staffs */}
           <div className="tree-node" style={{ marginTop: "0.5rem" }}>
             <div className="tree-node-row" onClick={() => toggleNode(staffsKey, true)}>
-              <span className="tree-node-toggle">
-                {isStaffsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              <span className={`tree-node-toggle tree-node-toggle-chevron ${isStaffsExpanded ? "expanded" : ""}`}>
+                <ChevronRight size={16} />
               </span>
               <span className="tree-node-icon">
                 <Users size={16} />
@@ -192,8 +188,7 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
             </div>
 
             <div 
-              className="tree-node-content tree-node-children print-visible-block"
-              style={{ display: isStaffsExpanded ? "flex" : "none" }}
+              className={`tree-node-content tree-node-children print-visible-block ${isStaffsExpanded ? "expanded" : "collapsed"}`}
             >
               {staffList.length === 0 ? (
                 <div className="tree-node leaf">

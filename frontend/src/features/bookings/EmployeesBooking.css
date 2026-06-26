@@ -1754,5 +1754,64 @@
     }
 }
 
+/* Chevron rotation micro-animation */
+.tree-node-toggle-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tree-node-toggle-chevron.expanded {
+    transform: rotate(90deg);
+}
+
+/* Smooth expansion transitions for container elements */
+.loco-summary-content {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-out;
+}
+
+.loco-summary-content.expanded {
+    max-height: 2500px;
+    opacity: 1;
+}
+
+.tree-node-children {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-out;
+}
+
+.tree-node-children.expanded {
+    max-height: 1200px;
+    opacity: 1;
+}
+
+/* Ensure display flex works correctly when expanded */
+.tree-node-children.expanded {
+    display: flex;
+}
+
+/* Print layout overrides to keep everything expanded and visible */
+@media print {
+    .loco-summary-content {
+        max-height: none !important;
+        opacity: 1 !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+    
+    .tree-node-children {
+        max-height: none !important;
+        opacity: 1 !important;
+        overflow: visible !important;
+        display: flex !important;
+    }
+}
+
 
 

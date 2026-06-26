@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, ChevronRight, ClipboardList, CheckSquare } from "lucide-react";
+import { ChevronRight, ClipboardList, CheckSquare } from "lucide-react";
 
 interface TaskInfo {
   task_id: number;
@@ -37,8 +37,8 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
   return (
     <div className="tree-node" style={{ marginTop: "0.5rem" }}>
       <div className="tree-node-row" onClick={() => toggleNode(opsKey, true)}>
-        <span className="tree-node-toggle">
-          {isOpsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className={`tree-node-toggle tree-node-toggle-chevron ${isOpsExpanded ? "expanded" : ""}`}>
+          <ChevronRight size={16} />
         </span>
         <span className="tree-node-icon">
           <ClipboardList size={16} />
@@ -52,8 +52,7 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
       </div>
 
       <div
-        className="tree-node-content tree-node-children print-visible-block"
-        style={{ display: isOpsExpanded ? "flex" : "none" }}
+        className={`tree-node-content tree-node-children print-visible-block ${isOpsExpanded ? "expanded" : "collapsed"}`}
       >
         {jobs.length === 0 ? (
           <div className="tree-node leaf">
@@ -73,9 +72,9 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
             return (
               <div key={j.job_id} className="tree-node">
                 <div className="tree-node-row" onClick={() => toggleNode(jobKey, true)}>
-                  <span className="tree-node-toggle">
+                  <span className={`tree-node-toggle ${j.tasks.length > 0 ? "tree-node-toggle-chevron" : ""} ${isJobExpanded ? "expanded" : ""}`}>
                     {j.tasks.length > 0 ? (
-                      isJobExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+                      <ChevronRight size={14} />
                     ) : (
                       <span className="leaf-spacer"></span>
                     )}
@@ -107,8 +106,7 @@ const LocoSummaryJobs: React.FC<LocoSummaryJobsProps> = ({
 
                 {j.tasks.length > 0 && (
                   <div
-                    className="tree-node-content tree-node-children print-visible-block"
-                    style={{ display: isJobExpanded ? "flex" : "none" }}
+                    className={`tree-node-content tree-node-children print-visible-block ${isJobExpanded ? "expanded" : "collapsed"}`}
                   >
                     {j.tasks.map(t => {
                       const taskRem = remarksStateForLoco?.tasks[t.task_id] || { completed: false, remarks: "" };
