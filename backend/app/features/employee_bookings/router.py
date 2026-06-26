@@ -595,6 +595,12 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
 
     # ── Compiled View 1: BY LOCO ──
     by_loco_dict = {}
+    for loco_str in loco_assigned_items.keys():
+        by_loco_dict[loco_str] = {
+            "loco_number": loco_str,
+            "status": loco_status_dict.get(loco_str, "incomplete"),
+            "supervisors": {},
+        }
     for r in rows:
         loco = decode_loco_number(r.loco_number)
         sup_ticket = r.supervisor_ticket_number
