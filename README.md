@@ -230,3 +230,23 @@ LWMS was built utilizing pair programming workflows under **Google Antigravity**
 * **Specialized Subagents**: Spawning isolated `Research` and `Self` agents to handle massive file audits, compile checks, and code refactor operations.
 * **Pillow Image Draw**: Utilized to compile a customized `.ico` favicon dynamically.
 * **Vite + SWC**: Standard toolchain for React compilation.
+
+---
+
+## 7. Recent Enhancements & UX Optimizations
+
+To improve performance, accessibility, and visual presentation on both desktop and mobile viewports, the following front-end updates were implemented:
+
+### Shift Summary & Preview Page Refinements
+* **Employee Segregation & Sorting**: Available and Unavailable employee lists are now segregated clearly by Designation and Category, and sorted numerically by ticket number, allowing managers to quickly audit personnel resource allocations.
+* **Job Remarks Tree Nesting**: Job remarks have been moved from an inline style on the parent job row to a nested child leaf node (aligned with sub-tasks) inside the locomotive assignment tree. It features an amber-themed `Remarks` badge and `MessageSquare` icon.
+* **Chevron Interactive Hooks**: The expand/collapse tree chevrons automatically activate and become interactive if a job possesses either sub-tasks OR remarks.
+
+### Performance & Responsiveness Enhancements
+* **Memoization & Lag Mitigation**: Key preview components—including `AvailabilitySummary`, `PreviewFilterBar`, and `LocoSummaryCard`—have been wrapped with `React.memo` to mitigate cascading render cycles. High-frequency state arrays and event handlers were stabilized via memoization to eliminate frame lag during tree node toggles.
+* **Mobile Stacking Layouts**: The final locomotive assignment list automatically adapts to screen widths under `768px`. Element tags, job descriptions, and status badges stack vertically to prevent horizontal overflow and text clipping on smartphones.
+* **Smooth Transitions & Clean Spacing**: 
+  * Instant toggles are replaced with smooth cubic-bezier transitions for `max-height`, `opacity`, and `padding`.
+  * Micro-animations for chevron icons are driven by hardware-accelerated CSS `transform` rotations.
+  * Empty whitespace and padding lines below collapsed locomotive cards have been eliminated by dynamically adjusting the list flex-gaps and removing redundant inline bottom margins.
+
