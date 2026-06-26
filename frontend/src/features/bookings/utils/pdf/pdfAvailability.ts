@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { COLORS, MARGIN_LEFT, CONTENT_WIDTH, ensureSpace, drawBadge } from "./pdfStyles";
+import { groupEmployees } from "../employeeGrouper";
 
 interface Employee {
   ticket_number: number;
@@ -40,6 +41,9 @@ export const drawPDFAvailability = (
 ): number => {
   let y = yStart;
 
+  const groupedAvailable = groupEmployees(available);
+  const groupedUnavailable = groupEmployees(unavailable);
+
   // Header Title
   y = ensureSpace(doc, 15, y);
   doc.setFont("helvetica", "bold");
@@ -67,29 +71,46 @@ export const drawPDFAvailability = (
     doc.text("No employees available.", MARGIN_LEFT + 4, y);
     y += 8;
   } else {
-    available.forEach((emp) => {
-      y = ensureSpace(doc, 7, y, (newY) => {
+    groupedAvailable.forEach((group) => {
+      // Ensure space for group sub-header + first row
+      y = ensureSpace(doc, 12, y, (newY) => {
         return drawTableHeader(doc, newY);
       });
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
-
-      // Row Text
-      doc.text(emp.name, MARGIN_LEFT + 4, y);
-      doc.text(emp.ticket_number.toString(), MARGIN_LEFT + 70, y);
-      doc.text(emp.designation_name, MARGIN_LEFT + 105, y);
+      // Group Sub-header Row
+      doc.setFillColor(COLORS.bg[0], COLORS.bg[1], COLORS.bg[2]);
+      doc.rect(MARGIN_LEFT, y - 3.5, CONTENT_WIDTH, 5, "F");
       
-      // Status Badge
-      drawBadge(doc, "Available", MARGIN_LEFT + 155, y, "Available");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+      doc.text(`${group.categoryName.toUpperCase()} — ${group.designationName.toUpperCase()}`, MARGIN_LEFT + 4, y);
+      y += 5.5;
 
-      // Grid line
-      doc.setDrawColor(COLORS.bgSecondary[0], COLORS.bgSecondary[1], COLORS.bgSecondary[2]);
-      doc.setLineWidth(0.1);
-      doc.line(MARGIN_LEFT, y + 2, MARGIN_LEFT + CONTENT_WIDTH, y + 2);
+      group.employees.forEach((emp) => {
+        y = ensureSpace(doc, 7, y, (newY) => {
+          return drawTableHeader(doc, newY);
+        });
 
-      y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+
+        // Row Text
+        doc.text(emp.name, MARGIN_LEFT + 4, y);
+        doc.text(emp.ticket_number.toString(), MARGIN_LEFT + 70, y);
+        doc.text(emp.designation_name, MARGIN_LEFT + 105, y);
+        
+        // Status Badge
+        drawBadge(doc, "Available", MARGIN_LEFT + 155, y, "Available");
+
+        // Grid line
+        doc.setDrawColor(COLORS.bgSecondary[0], COLORS.bgSecondary[1], COLORS.bgSecondary[2]);
+        doc.setLineWidth(0.1);
+        doc.line(MARGIN_LEFT, y + 2, MARGIN_LEFT + CONTENT_WIDTH, y + 2);
+
+        y += 6;
+      });
     });
     y += 4; // Spacing after list
   }
@@ -113,29 +134,46 @@ export const drawPDFAvailability = (
     doc.text("No employees unavailable.", MARGIN_LEFT + 4, y);
     y += 8;
   } else {
-    unavailable.forEach((emp) => {
-      y = ensureSpace(doc, 7, y, (newY) => {
+    groupedUnavailable.forEach((group) => {
+      // Ensure space for group sub-header + first row
+      y = ensureSpace(doc, 12, y, (newY) => {
         return drawTableHeader(doc, newY);
       });
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
-
-      // Row Text
-      doc.text(emp.name, MARGIN_LEFT + 4, y);
-      doc.text(emp.ticket_number.toString(), MARGIN_LEFT + 70, y);
-      doc.text(emp.designation_name, MARGIN_LEFT + 105, y);
+      // Group Sub-header Row
+      doc.setFillColor(COLORS.bg[0], COLORS.bg[1], COLORS.bg[2]);
+      doc.rect(MARGIN_LEFT, y - 3.5, CONTENT_WIDTH, 5, "F");
       
-      // Status Badge
-      drawBadge(doc, "Unavailable", MARGIN_LEFT + 155, y, "Unavailable");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+      doc.text(`${group.categoryName.toUpperCase()} — ${group.designationName.toUpperCase()}`, MARGIN_LEFT + 4, y);
+      y += 5.5;
 
-      // Grid line
-      doc.setDrawColor(COLORS.bgSecondary[0], COLORS.bgSecondary[1], COLORS.bgSecondary[2]);
-      doc.setLineWidth(0.1);
-      doc.line(MARGIN_LEFT, y + 2, MARGIN_LEFT + CONTENT_WIDTH, y + 2);
+      group.employees.forEach((emp) => {
+        y = ensureSpace(doc, 7, y, (newY) => {
+          return drawTableHeader(doc, newY);
+        });
 
-      y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+
+        // Row Text
+        doc.text(emp.name, MARGIN_LEFT + 4, y);
+        doc.text(emp.ticket_number.toString(), MARGIN_LEFT + 70, y);
+        doc.text(emp.designation_name, MARGIN_LEFT + 105, y);
+        
+        // Status Badge
+        drawBadge(doc, "Unavailable", MARGIN_LEFT + 155, y, "Unavailable");
+
+        // Grid line
+        doc.setDrawColor(COLORS.bgSecondary[0], COLORS.bgSecondary[1], COLORS.bgSecondary[2]);
+        doc.setLineWidth(0.1);
+        doc.line(MARGIN_LEFT, y + 2, MARGIN_LEFT + CONTENT_WIDTH, y + 2);
+
+        y += 6;
+      });
     });
     y += 4; // Spacing after list
   }
