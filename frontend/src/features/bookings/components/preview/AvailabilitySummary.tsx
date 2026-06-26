@@ -16,7 +16,7 @@ interface AvailabilitySummaryProps {
   unavailableEmployees: Employee[];
 }
 
-const AvailabilitySummary: React.FC<AvailabilitySummaryProps> = ({
+const AvailabilitySummary: React.FC<AvailabilitySummaryProps> = React.memo(({
   availableEmployees,
   unavailableEmployees,
 }) => {
@@ -112,6 +112,6 @@ const AvailabilitySummary: React.FC<AvailabilitySummaryProps> = ({
       </div>
     </>
   );
-};
+});
 
 export default AvailabilitySummary;

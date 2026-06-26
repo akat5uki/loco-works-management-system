@@ -43,15 +43,17 @@ interface LocoSummaryCardProps {
     jobs: Record<number, { completed: boolean; remarks: string }>;
     tasks: Record<number, { completed: boolean; remarks: string }>;
   };
+  expandedNodes: Record<string, boolean>;
 }
 
-const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
-  loco,
-  jobs,
-  isNodeExpanded,
-  toggleNode,
-  remarksStateForLoco,
-}) => {
+const LocoSummaryCard: React.FC<LocoSummaryCardProps> = React.memo((props) => {
+  const {
+    loco,
+    jobs,
+    isNodeExpanded,
+    toggleNode,
+    remarksStateForLoco,
+  } = props;
   const locoNum = loco.loco_number;
   const locoStatus = loco.status || "incomplete";
   const isLocoExpanded = isNodeExpanded(locoNum, false);
@@ -243,6 +245,30 @@ const LocoSummaryCard: React.FC<LocoSummaryCardProps> = ({
 
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  if (prevProps.loco !== nextProps.loco) return false;
+  if (prevProps.jobs !== nextProps.jobs) return false;
+  if (prevProps.remarksStateForLoco !== nextProps.remarksStateForLoco) return false;
+
+  const locoNum = prevProps.loco.loco_number;
+  const keysToCheck = [
+    locoNum,
+    `${locoNum}-supervisors-group`,
+    `${locoNum}-staffs-group`,
+    `${locoNum}-operations`
+  ];
+  prevProps.jobs.forEach(j => {
+    keysToCheck.push(`${locoNum}-job-${j.job_id}`);
+  });
+
+  for (const key of keysToCheck) {
+    const prevVal = prevProps.expandedNodes[key];
+    const nextVal = nextProps.expandedNodes[key];
+    if (prevVal !== nextVal) {
+      return false;
+    }
+  }
+  return true;
+});
 
 export default LocoSummaryCard;

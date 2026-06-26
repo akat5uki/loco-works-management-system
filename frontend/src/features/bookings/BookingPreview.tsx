@@ -134,16 +134,16 @@ const BookingPreview = () => {
   const [remarksState, setRemarksState] = useState<Record<string, LocoRemarks>>({}); // loco_number -> job_id/task_id remarks
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
-  const isNodeExpanded = (nodeId: string, defaultVal = true) => {
+  const isNodeExpanded = useCallback((nodeId: string, defaultVal = true) => {
     return expandedNodes[nodeId] ?? defaultVal;
-  };
+  }, [expandedNodes]);
 
-  const toggleNode = (nodeId: string, defaultVal = true) => {
+  const toggleNode = useCallback((nodeId: string, defaultVal = true) => {
     setExpandedNodes(prev => ({
       ...prev,
       [nodeId]: !(prev[nodeId] ?? defaultVal)
     }));
-  };
+  }, []);
 
   const expandAll = () => {
     if (!viewsData?.by_loco) return;
@@ -394,6 +394,7 @@ const BookingPreview = () => {
                 isNodeExpanded={isNodeExpanded}
                 toggleNode={toggleNode}
                 remarksStateForLoco={remarksState[l.loco_number]}
+                expandedNodes={expandedNodes}
               />
             ))}
           </div>
