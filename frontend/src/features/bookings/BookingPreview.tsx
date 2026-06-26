@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Train } from "lucide-react";
 import api from "../../shared/services/api";
@@ -117,6 +117,8 @@ const isCurrentOrNextShift = (selDateStr: string, selShift: number): boolean => 
   
   return isCurrent || isNext;
 };
+
+const EMPTY_JOBS: JobInfo[] = [];
 
 const BookingPreview = () => {
   const navigate = useNavigate();
@@ -258,7 +260,7 @@ const BookingPreview = () => {
   }, [currentUser, dateStr, shift, fetchData]);
 
   // Export to Excel (CSV format)
-  const exportToExcel = () => {
+  const exportToExcel = useCallback(() => {
     let csv = "Employee Availability Summary\n";
     csv += "Ticket Number,Name,Designation,Category,Availability Status\n";
     employees.forEach(emp => {
@@ -276,7 +278,7 @@ const BookingPreview = () => {
         const sups = l.supervisors.map(s => s.supervisor_name).join("; ");
         const staff = l.supervisors.flatMap(s => s.staff.map(st => st.staff_name)).join("; ");
         
-        const jobs = allLocoJobs[locoNum] || [];
+        const jobs = allLocoJobs[locoNum] || EMPTY_JOBS;
         if (jobs.length === 0) {
           csv += `"${locoNum}","${locoStatus}","${sups}","${staff}","N/A","No operations booked","Job","N/A",""\n`;
         } else {
@@ -301,9 +303,17 @@ const BookingPreview = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [employees, availableTickets, viewsData, allLocoJobs, remarksState, dateStr, shift]);
 
-  const handlePrint = () => {
+  const availableEmployees = useMemo(() => {
+    return employees.filter(e => availableTickets.has(e.ticket_number));
+  }, [employees, availableTickets]);
+
+  const unavailableEmployees = useMemo(() => {
+    return employees.filter(e => !availableTickets.has(e.ticket_number));
+  }, [employees, availableTickets]);
+
+  const handlePrint = useCallback(() => {
     generateShiftSummaryPDF({
       dateStr,
       shift,
@@ -313,11 +323,7 @@ const BookingPreview = () => {
       allLocoJobs,
       remarksState,
     });
-  };
-
-  // Group availabilities
-  const availableEmployees = employees.filter(e => availableTickets.has(e.ticket_number));
-  const unavailableEmployees = employees.filter(e => !availableTickets.has(e.ticket_number));
+  }, [dateStr, shift, availableEmployees, unavailableEmployees, viewsData, allLocoJobs, remarksState]);
 
   return (
     <div className="employees-booking-workspace print-container">
@@ -390,7 +396,7 @@ const BookingPreview = () => {
               <LocoSummaryCard
                 key={l.loco_number}
                 loco={l}
-                jobs={allLocoJobs[l.loco_number] || []}
+                jobs={allLocoJobs[l.loco_number] || EMPTY_JOBS}
                 isNodeExpanded={isNodeExpanded}
                 toggleNode={toggleNode}
                 remarksStateForLoco={remarksState[l.loco_number]}

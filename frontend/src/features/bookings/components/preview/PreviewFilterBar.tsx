@@ -12,7 +12,7 @@ interface PreviewFilterBarProps {
   isCurrentOrNextShift: boolean;
 }
 
-const PreviewFilterBar: React.FC<PreviewFilterBarProps> = ({
+const PreviewFilterBar: React.FC<PreviewFilterBarProps> = React.memo(({
   dateStr,
   setDateStr,
   shift,
@@ -71,6 +71,6 @@ const PreviewFilterBar: React.FC<PreviewFilterBarProps> = ({
       </div>
     </>
   );
-};
+});
 
 export default PreviewFilterBar;
