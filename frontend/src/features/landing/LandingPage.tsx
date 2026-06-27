@@ -91,7 +91,7 @@ const LandingPage = () => {
                 <Link to="/login" className="nav-link">
                   Login
                 </Link>
-                <Link to="/login" className="btn-primary">
+                <Link to="/register" className="btn-primary">
                   Get Started
                 </Link>
               </>
