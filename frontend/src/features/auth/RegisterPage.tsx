@@ -69,11 +69,22 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      await api.post("/auth/register", {
+      const res = await api.post("/auth/register", {
         ...formData,
         designation_id: parseInt(formData.designation_id),
       });
-      navigate("/login");
+      
+      if (res.data.otp_required) {
+        navigate("/verify-otp", {
+          state: {
+            ticket_number: formData.ticket_number,
+            email: formData.email,
+            action: "registration",
+          },
+        });
+      } else {
+        navigate("/login");
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.detail || "Registration failed.");

@@ -11,6 +11,7 @@ interface AuthFormFieldProps {
   Icon: LucideIcon;
   required?: boolean;
   style?: React.CSSProperties;
+  maxLength?: number;
 }
 
 /**
@@ -27,6 +28,7 @@ const AuthFormField: React.FC<AuthFormFieldProps> = ({
   Icon,
   required = false,
   style,
+  maxLength,
 }) => (
   <div className="input-group">
     <label htmlFor={id}>{label}</label>
@@ -40,6 +42,7 @@ const AuthFormField: React.FC<AuthFormFieldProps> = ({
         onChange={onChange}
         required={required}
         style={style}
+        maxLength={maxLength}
       />
     </div>
   </div>

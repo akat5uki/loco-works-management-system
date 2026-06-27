@@ -213,6 +213,14 @@ services:
     depends_on:
       - nginx
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: loco_mailpit
+    restart: always
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web GUI port
+
 volumes:
   postgres_primary_data:
   postgres_replica_data:
