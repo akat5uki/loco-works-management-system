@@ -105,3 +105,16 @@ class ResetPasswordRequest(BaseModel):
             raise ValueError("Ticket number must contain only digits")
         return int(v)
 
+
+class ResendOTPRequest(BaseModel):
+    ticket_number: str
+    type: str  # "registration" | "login" | "email_registration"
+
+    @field_validator('ticket_number')
+    @classmethod
+    def validate_ticket_number(cls, v: str) -> int:
+        if not v.isdigit():
+            raise ValueError("Ticket number must contain only digits")
+        return int(v)
+
+

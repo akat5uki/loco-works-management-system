@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import axios from "axios";
@@ -12,7 +12,10 @@ import "./Auth.css";
 const VerifyOtpPage = () => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
+  const [resendSuccess, setResendSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,6 +25,17 @@ const VerifyOtpPage = () => {
     email: string;
     action: "registration" | "login" | "email_registration";
   } | null;
+
+  useEffect(() => {
+    if (!state) return;
+    if (timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, state]);
 
   if (!state) {
     // If accessed directly without action state, redirect back to login
@@ -39,6 +53,7 @@ const VerifyOtpPage = () => {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setResendSuccess("");
 
     if (!/^\d{6}$/.test(otp)) {
       setError("Verification code must be exactly 6 digits.");
@@ -73,6 +88,36 @@ const VerifyOtpPage = () => {
     }
   };
 
+  const handleResendOtp = async () => {
+    setError("");
+    setResendSuccess("");
+    setResending(true);
+
+    try {
+      await api.post("/auth/resend-otp", {
+        ticket_number: String(state.ticket_number),
+        type: state.action,
+      });
+      setResendSuccess("Verification code resent successfully!");
+      setTimeLeft(300); // Reset timer to 5 minutes
+      setOtp(""); // Clear previous OTP input
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail || "Failed to resend verification code.");
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
   const getSubtitle = () => {
     switch (state.action) {
       case "registration":
@@ -94,6 +139,23 @@ const VerifyOtpPage = () => {
 
       <form onSubmit={handleVerify} className="auth-form">
         {error && <div className="error-message">{error}</div>}
+        {resendSuccess && (
+          <div 
+            className="success-message" 
+            style={{
+              background: "rgba(16, 185, 129, 0.12)",
+              border: "1px solid #10b981",
+              color: "#10b981",
+              padding: "0.75rem",
+              borderRadius: "0.375rem",
+              marginBottom: "1rem",
+              fontSize: "0.9rem",
+              textAlign: "center"
+            }}
+          >
+            {resendSuccess}
+          </div>
+        )}
 
         <AuthFormField
           id="otp"
@@ -105,6 +167,34 @@ const VerifyOtpPage = () => {
           required
           maxLength={6}
         />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "-0.5rem 0 1.25rem 0", fontSize: "0.875rem" }}>
+          {timeLeft > 0 ? (
+            <span style={{ color: "var(--text-muted)" }}>
+              Code expires in: <strong style={{ color: "var(--accent)" }}>{formatTime(timeLeft)}</strong>
+            </span>
+          ) : (
+            <span style={{ color: "#ef4444", fontWeight: "600" }}>Code expired</span>
+          )}
+
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={timeLeft > 0 || resending}
+            style={{
+              background: "none",
+              border: "none",
+              color: timeLeft > 0 ? "var(--text-muted)" : "var(--accent)",
+              cursor: timeLeft > 0 ? "not-allowed" : "pointer",
+              textDecoration: timeLeft > 0 ? "none" : "underline",
+              padding: 0,
+              fontSize: "0.875rem",
+              fontWeight: timeLeft > 0 ? "normal" : "600"
+            }}
+          >
+            {resending ? "Sending..." : "Resend OTP"}
+          </button>
+        </div>
 
         <button type="submit" className="btn-auth" disabled={loading}>
           {loading ? "Verifying…" : "Confirm Code"}

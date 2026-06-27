@@ -18,7 +18,8 @@ from app.features.auth.schemas import (
     VerifyOTPRequest,
     RegisterEmailRequest,
     ForgotPasswordRequest,
-    ResetPasswordRequest
+    ResetPasswordRequest,
+    ResendOTPRequest
 )
 from app.features.employees.models import Employee
 from app.core.email import send_otp_email
@@ -523,3 +524,73 @@ async def reset_password(
     await redis_client.delete(otp_key)
     
     return {"message": "Password reset completed successfully"}
+
+
+@router.post("/resend-otp")
+async def resend_otp(
+    resend_data: ResendOTPRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    if settings.ENABLE_EMAIL_OTP == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email OTP verification is disabled"
+        )
+        
+    ticket_number = resend_data.ticket_number
+    otp_type = resend_data.type
+    
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    
+    if otp_type == "registration":
+        reg_key = f"temp_reg:{ticket_number}"
+        reg_data_str = await redis_client.get(reg_key)
+        if not reg_data_str:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registration session expired. Please register again."
+            )
+        reg_data = json.loads(reg_data_str)
+        email = reg_data["email"]
+        
+        otp_key = f"otp:reg:{ticket_number}"
+        await redis_client.set(otp_key, otp, ex=300)
+        background_tasks.add_task(send_otp_email, email, otp, "Registration (Resend)")
+        
+    elif otp_type == "login":
+        result = await db.execute(
+            select(Employee).where(Employee.ticket_number == ticket_number)
+        )
+        user = result.scalar_one_or_none()
+        if not user or not user.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid login context for OTP resend"
+            )
+        email = user.email
+        
+        otp_key = f"otp:login:{ticket_number}"
+        await redis_client.set(otp_key, otp, ex=300)
+        background_tasks.add_task(send_otp_email, email, otp, "Login (Resend)")
+        
+    elif otp_type == "email_registration":
+        email_key = f"temp_email:{ticket_number}"
+        email = await redis_client.get(email_key)
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email registration session expired. Please try again."
+            )
+            
+        otp_key = f"otp:email_reg:{ticket_number}"
+        await redis_client.set(otp_key, otp, ex=300)
+        background_tasks.add_task(send_otp_email, email, otp, "Email Registration (Resend)")
+        
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OTP type"
+        )
+        
+    return {"message": "Verification code resent successfully"}

@@ -2,6 +2,8 @@
 
 This guide details the steps required to transition the Loco Works Management System (LWMS) email dispatch system from the local development SMTP server (Mailpit) to a secure production SMTP service (e.g., Amazon SES, SendGrid, Gmail).
 
+Mailpit Service: Added the  mailpit  container service inside docker-compose.yml (port  1025  for SMTP and  8025  for the web UI).
+
 ---
 
 ## 1. Environment Variable Configuration
