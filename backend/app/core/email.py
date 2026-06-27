@@ -109,7 +109,7 @@ async def send_otp_email(to_email: str, otp: str, purpose: str) -> None:
                 <div style="text-align: center;">
                     <div class="otp-box">{otp}</div>
                 </div>
-                <p>This code is valid for <strong>5 minutes</strong>. If you did not request this, you can safely ignore this email.</p>
+                <p>This code is valid for <strong>3 minutes</strong>. If you did not request this, you can safely ignore this email.</p>
             </div>
             <div class="footer">
                 <p>This is an automated system notification. Please do not reply to this email.</p>

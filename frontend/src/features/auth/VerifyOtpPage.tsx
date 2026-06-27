@@ -15,7 +15,7 @@ const VerifyOtpPage = () => {
   const [resendSuccess, setResendSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(180); // 3 minutes in seconds
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +99,7 @@ const VerifyOtpPage = () => {
         type: state.action,
       });
       setResendSuccess("Verification code resent successfully!");
-      setTimeLeft(300); // Reset timer to 5 minutes
+      setTimeLeft(180); // Reset timer to 3 minutes
       setOtp(""); // Clear previous OTP input
     } catch (err) {
       if (axios.isAxiosError(err)) {
