@@ -13,7 +13,6 @@ from app.core.security import create_access_token, get_password_hash, verify_pas
 from app.features.auth.dependencies import CurrentUser
 from app.features.auth.schemas import (
     LoginRequest, 
-    Token, 
     UserRegister,
     VerifyOTPRequest,
     RegisterEmailRequest,
