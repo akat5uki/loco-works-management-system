@@ -57,6 +57,7 @@ const LoginPage = () => {
             ticket_number: ticketNumber,
             email: res.data.email,
             action: "login",
+            expire_seconds: res.data.expire_seconds,
           },
         });
       } else if (res.data.email_required) {

@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "no-reply@locoworks.com"
     SMTP_USE_TLS: bool = False
     SMTP_USE_SSL: bool = False
+    OTP_EXPIRE_SECONDS: int = 180
+    REGISTRATION_SESSION_EXPIRE_SECONDS: int = 180
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"

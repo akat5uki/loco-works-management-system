@@ -45,7 +45,7 @@ const RegisterEmailPage = () => {
 
     setLoading(true);
     try {
-      await api.post("/auth/register-email", {
+      const res = await api.post("/auth/register-email", {
         ticket_number: String(state.ticket_number),
         email,
       });
@@ -56,6 +56,7 @@ const RegisterEmailPage = () => {
           ticket_number: state.ticket_number,
           email,
           action: "email_registration",
+          expire_seconds: res.data.expire_seconds,
         },
       });
     } catch (err) {

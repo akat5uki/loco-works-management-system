@@ -15,8 +15,6 @@ const VerifyOtpPage = () => {
   const [resendSuccess, setResendSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(180); // 3 minutes in seconds
-
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,7 +22,10 @@ const VerifyOtpPage = () => {
     ticket_number: string | number;
     email: string;
     action: "registration" | "login" | "email_registration";
+    expire_seconds?: number;
   } | null;
+
+  const [timeLeft, setTimeLeft] = useState(state?.expire_seconds || 180);
 
   useEffect(() => {
     if (!state) return;
@@ -94,12 +95,12 @@ const VerifyOtpPage = () => {
     setResending(true);
 
     try {
-      await api.post("/auth/resend-otp", {
+      const res = await api.post("/auth/resend-otp", {
         ticket_number: String(state.ticket_number),
         type: state.action,
       });
       setResendSuccess("Verification code resent successfully!");
-      setTimeLeft(180); // Reset timer to 3 minutes
+      setTimeLeft(res.data.expire_seconds || 180);
       setOtp(""); // Clear previous OTP input
     } catch (err) {
       if (axios.isAxiosError(err)) {

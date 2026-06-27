@@ -27,7 +27,7 @@ const ForgotPasswordPage = () => {
 
     setLoading(true);
     try {
-      await api.post("/auth/forgot-password", {
+      const res = await api.post("/auth/forgot-password", {
         ticket_number: ticketNumber,
       });
 
@@ -35,6 +35,7 @@ const ForgotPasswordPage = () => {
       navigate("/reset-password", {
         state: {
           ticket_number: ticketNumber,
+          expire_seconds: res.data.expire_seconds,
         },
       });
     } catch (err) {

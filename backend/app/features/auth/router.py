@@ -68,13 +68,18 @@ async def login(
         otp = f"{secrets.randbelow(900000) + 100000}"
         otp_key = f"otp:login:{user.ticket_number}"
         
-        # Store in Redis for 3 minutes
-        await redis_client.set(otp_key, otp, ex=180)
+        # Store in Redis
+        await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
         
         # Send Email asynchronously
         background_tasks.add_task(send_otp_email, user.email, otp, "Login")
         
-        return {"otp_required": True, "ticket_number": user.ticket_number, "email": user.email}
+        return {
+            "otp_required": True, 
+            "ticket_number": user.ticket_number, 
+            "email": user.email,
+            "expire_seconds": settings.OTP_EXPIRE_SECONDS
+        }
 
     # Standard direct authentication flow (OTP disabled)
     access_token = create_access_token(subject=user.ticket_number)
@@ -182,13 +187,18 @@ async def register(
             "password": get_password_hash(user_data.password)
         }
         
-        await redis_client.set(f"temp_reg:{user_data.ticket_number}", json.dumps(reg_dict), ex=180)
-        await redis_client.set(f"otp:reg:{user_data.ticket_number}", otp, ex=180)
+        await redis_client.set(f"temp_reg:{user_data.ticket_number}", json.dumps(reg_dict), ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
+        await redis_client.set(f"otp:reg:{user_data.ticket_number}", otp, ex=settings.OTP_EXPIRE_SECONDS)
         
         # Send OTP email
         background_tasks.add_task(send_otp_email, user_data.email, otp, "Registration")
         
-        return {"otp_required": True, "ticket_number": user_data.ticket_number, "email": user_data.email}
+        return {
+            "otp_required": True, 
+            "ticket_number": user_data.ticket_number, 
+            "email": user_data.email,
+            "expire_seconds": settings.OTP_EXPIRE_SECONDS
+        }
 
     # Standard registration flow (OTP disabled)
     new_user = Employee(
@@ -246,13 +256,17 @@ async def register_email(
     
     otp = f"{secrets.randbelow(900000) + 100000}"
     
-    await redis_client.set(email_key, email, ex=180)
-    await redis_client.set(otp_key, otp, ex=180)
+    await redis_client.set(email_key, email, ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
+    await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
     
     # Send email
     background_tasks.add_task(send_otp_email, email, otp, "Email Registration")
     
-    return {"message": "Verification code sent to your email", "otp_required": True}
+    return {
+        "message": "Verification code sent to your email", 
+        "otp_required": True,
+        "expire_seconds": settings.OTP_EXPIRE_SECONDS
+    }
 
 
 @router.post("/verify-otp")
@@ -478,11 +492,15 @@ async def forgot_password(
     otp = f"{secrets.randbelow(900000) + 100000}"
     otp_key = f"otp:reset:{ticket_number}"
     
-    await redis_client.set(otp_key, otp, ex=180)
+    await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
     
     background_tasks.add_task(send_otp_email, user.email, otp, "Password Reset")
     
-    return {"message": "Password reset verification code sent to your email", "otp_required": True}
+    return {
+        "message": "Password reset verification code sent to your email", 
+        "otp_required": True,
+        "expire_seconds": settings.OTP_EXPIRE_SECONDS
+    }
 
 
 @router.post("/reset-password")
@@ -555,10 +573,10 @@ async def resend_otp(
         email = reg_data["email"]
         
         # Extend registration session in Redis
-        await redis_client.set(reg_key, reg_data_str, ex=180)
+        await redis_client.set(reg_key, reg_data_str, ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
         
         otp_key = f"otp:reg:{ticket_number}"
-        await redis_client.set(otp_key, otp, ex=180)
+        await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
         background_tasks.add_task(send_otp_email, email, otp, "Registration (Resend)")
         
     elif otp_type == "login":
@@ -574,7 +592,7 @@ async def resend_otp(
         email = user.email
         
         otp_key = f"otp:login:{ticket_number}"
-        await redis_client.set(otp_key, otp, ex=180)
+        await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
         background_tasks.add_task(send_otp_email, email, otp, "Login (Resend)")
         
     elif otp_type == "email_registration":
@@ -587,10 +605,10 @@ async def resend_otp(
             )
             
         # Extend email registration session in Redis
-        await redis_client.set(email_key, email, ex=180)
+        await redis_client.set(email_key, email, ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
             
         otp_key = f"otp:email_reg:{ticket_number}"
-        await redis_client.set(otp_key, otp, ex=180)
+        await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
         background_tasks.add_task(send_otp_email, email, otp, "Email Registration (Resend)")
         
     else:
@@ -599,4 +617,7 @@ async def resend_otp(
             detail="Invalid OTP type"
         )
         
-    return {"message": "Verification code resent successfully"}
+    return {
+        "message": "Verification code resent successfully",
+        "expire_seconds": settings.OTP_EXPIRE_SECONDS
+    }

@@ -80,6 +80,7 @@ const RegisterPage = () => {
             ticket_number: formData.ticket_number,
             email: formData.email,
             action: "registration",
+            expire_seconds: res.data.expire_seconds,
           },
         });
       } else {
