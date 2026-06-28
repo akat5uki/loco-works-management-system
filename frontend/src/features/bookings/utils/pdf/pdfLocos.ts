@@ -101,7 +101,7 @@ export const drawPDFLocoAssignments = (
     doc.text(`Locomotive #${locoNum}`, MARGIN_LEFT + 4, y + 1.5);
 
     // Header Status Badge
-    drawBadge(doc, statusText, MARGIN_LEFT + CONTENT_WIDTH - 30, y + 1.5, statusText);
+    drawBadge(doc, statusText, MARGIN_LEFT + CONTENT_WIDTH - 2, y + 1.5, statusText, true);
 
     y += 10;
 
@@ -182,7 +182,7 @@ export const drawPDFLocoAssignments = (
         doc.text(splitJobDesc, MARGIN_LEFT + 20, y);
 
         // Job Badge
-        drawBadge(doc, jobStatusText, MARGIN_LEFT + CONTENT_WIDTH - 30, y, jobStatusText);
+        drawBadge(doc, jobStatusText, MARGIN_LEFT + CONTENT_WIDTH - 2, y, jobStatusText, true);
 
         const linesOffset = (splitJobDesc.length - 1) * 4;
         y += linesOffset;
@@ -218,7 +218,7 @@ export const drawPDFLocoAssignments = (
           doc.text(splitTaskDesc, MARGIN_LEFT + 20, y);
 
           // Task Badge
-          drawBadge(doc, taskStatusText, MARGIN_LEFT + CONTENT_WIDTH - 30, y, taskStatusText);
+          drawBadge(doc, taskStatusText, MARGIN_LEFT + CONTENT_WIDTH - 2, y, taskStatusText, true);
 
           y += (splitTaskDesc.length - 1) * 4;
 

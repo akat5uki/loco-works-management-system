@@ -102,7 +102,7 @@ export const drawPDFAvailability = (
         doc.text(emp.designation_name, MARGIN_LEFT + 105, y);
         
         // Status Badge
-        drawBadge(doc, "Available", MARGIN_LEFT + 155, y, "Available");
+        drawBadge(doc, "Available", MARGIN_LEFT + CONTENT_WIDTH - 2, y, "Available", true);
 
         // Grid line
         doc.setDrawColor(COLORS.bgSecondary[0], COLORS.bgSecondary[1], COLORS.bgSecondary[2]);
@@ -165,7 +165,7 @@ export const drawPDFAvailability = (
         doc.text(emp.designation_name, MARGIN_LEFT + 105, y);
         
         // Status Badge
-        drawBadge(doc, "Unavailable", MARGIN_LEFT + 155, y, "Unavailable");
+        drawBadge(doc, "Unavailable", MARGIN_LEFT + CONTENT_WIDTH - 2, y, "Unavailable", true);
 
         // Grid line
         doc.setDrawColor(COLORS.bgSecondary[0], COLORS.bgSecondary[1], COLORS.bgSecondary[2]);

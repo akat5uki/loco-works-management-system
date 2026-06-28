@@ -44,7 +44,8 @@ export const drawBadge = (
   text: string,
   x: number,
   y: number,
-  status: "completed" | "in_progress" | "partially_completed" | string
+  status: "completed" | "in_progress" | "partially_completed" | string,
+  alignRight: boolean = false
 ): { width: number; height: number } => {
   let bgColor = [241, 245, 249];
   let textColor = [100, 116, 139];
@@ -71,18 +72,20 @@ export const drawBadge = (
   const badgeWidth = textWidth + 6;
   const badgeHeight = 5;
 
+  const drawX = alignRight ? x - badgeWidth : x;
+
   // Background
   doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
-  doc.rect(x, y - 3.8, badgeWidth, badgeHeight, "F");
+  doc.rect(drawX, y - 3.8, badgeWidth, badgeHeight, "F");
 
   // Border (top/bottom/sides)
   doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
   doc.setLineWidth(0.15);
-  doc.rect(x, y - 3.8, badgeWidth, badgeHeight, "D");
+  doc.rect(drawX, y - 3.8, badgeWidth, badgeHeight, "D");
 
   // Text
   doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-  doc.text(text, x + 3, y - 0.4);
+  doc.text(text, drawX + 3, y - 0.4);
 
   return { width: badgeWidth, height: badgeHeight };
 };

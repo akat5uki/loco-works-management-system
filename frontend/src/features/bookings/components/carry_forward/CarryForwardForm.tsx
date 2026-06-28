@@ -85,6 +85,15 @@ const CarryForwardForm: React.FC<CarryForwardFormProps> = ({
                         ...prev,
                         [job.job_id]: { ...prev[job.job_id], completed: val }
                       }));
+                      if (job.tasks && job.tasks.length > 0) {
+                        setTaskRemarksState(prev => {
+                          const next = { ...prev };
+                          job.tasks.forEach(t => {
+                            next[t.task_id] = { ...next[t.task_id], completed: val };
+                          });
+                          return next;
+                        });
+                      }
                     }}
                   />
                   Completed
@@ -117,10 +126,20 @@ const CarryForwardForm: React.FC<CarryForwardFormProps> = ({
                             checked={taskRemarksState[task.task_id]?.completed ?? false}
                             onChange={e => {
                               const val = e.target.checked;
-                              setTaskRemarksState(prev => ({
-                                ...prev,
-                                [task.task_id]: { ...prev[task.task_id], completed: val }
-                              }));
+                              setTaskRemarksState(prev => {
+                                const nextTaskState = {
+                                  ...prev,
+                                  [task.task_id]: { ...prev[task.task_id], completed: val }
+                                };
+                                if (job.tasks && job.tasks.length > 0) {
+                                  const allCompleted = job.tasks.every(t => nextTaskState[t.task_id]?.completed ?? false);
+                                  setRemarksState(prevJob => ({
+                                    ...prevJob,
+                                    [job.job_id]: { ...prevJob[job.job_id], completed: allCompleted }
+                                  }));
+                                }
+                                return nextTaskState;
+                              });
                             }}
                           />
                           Completed
