@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     API_V1_STR: str
     BACKEND_HOST: str
     BACKEND_PORT: int
+    LOCO_STAGES: str
 
     # Database Configuration
     POSTGRES_USER: str
@@ -46,6 +47,10 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool
     OTP_EXPIRE_SECONDS: int
     REGISTRATION_SESSION_EXPIRE_SECONDS: int
+
+    @property
+    def loco_stages_list(self) -> list[int]:
+        return [int(s.strip()) for s in self.LOCO_STAGES.split(",") if s.strip()]
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"

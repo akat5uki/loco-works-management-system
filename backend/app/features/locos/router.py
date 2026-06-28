@@ -7,6 +7,7 @@ from sqlalchemy import Integer, extract, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import handle_db_error
 from app.core.loco_encoder import LocoNumberStr, encode_loco_number
@@ -145,10 +146,11 @@ async def get_loco_type_counts(db: AsyncSession = Depends(get_db)):
 async def create_loco(
     loco: LocoBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
 ):
-    if loco.stage not in [0, 5, 6, 7, 9]:
+    if loco.stage not in settings.loco_stages_list:
+        valid_stages_str = ", ".join(map(str, settings.loco_stages_list))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid stage. Stage must be one of 0, 5, 6, 7, or 9."
+            detail=f"Invalid stage. Stage must be one of {valid_stages_str}."
         )
     if loco.despatched and loco.stage != 9:
         raise HTTPException(
@@ -234,10 +236,11 @@ async def update_loco(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
-    if loco.stage not in [0, 5, 6, 7, 9]:
+    if loco.stage not in settings.loco_stages_list:
+        valid_stages_str = ", ".join(map(str, settings.loco_stages_list))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid stage. Stage must be one of 0, 5, 6, 7, or 9."
+            detail=f"Invalid stage. Stage must be one of {valid_stages_str}."
         )
     if loco.despatched and loco.stage != 9:
         raise HTTPException(
