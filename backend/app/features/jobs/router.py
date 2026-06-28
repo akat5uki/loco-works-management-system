@@ -8,7 +8,7 @@ from sqlalchemy.future import select
 from app.core.database import get_db
 from app.core.exceptions import handle_db_error
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
-from app.features.jobs.models import Job, Task
+from app.features.jobs.models import Job
 
 router = APIRouter()
 
@@ -35,15 +35,6 @@ class JobRead(JobBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class TaskBase(BaseModel):
-    task_id: int
-    task_description: str
-
-
-class TaskRead(TaskBase):
-    model_config = ConfigDict(from_attributes=True)
-
-
 # Jobs CRUD
 @router.get("/", response_model=List[JobRead])
 async def get_jobs(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
@@ -61,28 +52,6 @@ async def create_job(
         await db.commit()
         await db.refresh(db_job)
         return db_job
-    except Exception as e:
-        await db.rollback()
-        handle_db_error(e)
-
-
-# Tasks CRUD
-@router.get("/tasks", response_model=List[TaskRead])
-async def get_tasks(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Task))
-    return result.scalars().all()
-
-
-@router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
-async def create_task(
-    task: TaskBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
-):
-    db_task = Task(**task.model_dump())
-    db.add(db_task)
-    try:
-        await db.commit()
-        await db.refresh(db_task)
-        return db_task
     except Exception as e:
         await db.rollback()
         handle_db_error(e)
