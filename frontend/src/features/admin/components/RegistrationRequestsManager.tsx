@@ -321,11 +321,13 @@ const RegistrationRequestsManager: React.FC = () => {
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <input
-                    type="number"
-                    min="1"
-                    max="30"
-                    value={additionalDays}
-                    onChange={(e) => setAdditionalDays(parseInt(e.target.value, 10))}
+                    type="text"
+                    inputMode="numeric"
+                    value={additionalDays || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || /^\d+$/.test(val)) setAdditionalDays(val === "" ? 0 : parseInt(val, 10));
+                    }}
                     style={{ width: "90px", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
                   />
                   <button

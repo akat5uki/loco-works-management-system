@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from "react";
-import { UserPlus, Shield, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { UserPlus, Shield, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import api from "../../../shared/services/api";
 
 interface AdminRecord {
@@ -78,6 +78,36 @@ const AdminStaffManager: React.FC = () => {
     }
   };
 
+  /**
+   * Revoke administrator privileges with single row protection
+   */
+  const handleRevokeAdmin = async (admin: AdminRecord) => {
+    if (admins.length <= 1) {
+      alert("Action Prohibited: Cannot delete or revoke administrator privileges when only one administrator exists in the system.");
+      return;
+    }
+    if (admin.is_default) {
+      alert("Action Prohibited: Cannot revoke privileges from the default system administrator account.");
+      return;
+    }
+    if (!window.confirm(`Revoke Administrator privileges for ${admin.name} (#${admin.ticket_number})?`)) return;
+
+    setLoading(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await api.delete(`/admin/admins/${admin.ticket_number}`);
+      setMessage(res.data.message);
+      fetchAdmins();
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosError = err as any;
+      setError(axiosError.response?.data?.detail || "Failed to revoke administrator privileges.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Calculate pagination window
   const totalPages = Math.ceil(admins.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -113,10 +143,14 @@ const AdminStaffManager: React.FC = () => {
           <div style={{ flex: 1, minWidth: "220px" }}>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>Employee Ticket Number</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="e.g. 1001"
               value={newAdminTicket}
-              onChange={(e) => setNewAdminTicket(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) setNewAdminTicket(val);
+              }}
               style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
               required
             />
@@ -143,12 +177,13 @@ const AdminStaffManager: React.FC = () => {
               <th>Account Type</th>
               <th>Password Status</th>
               <th>Granted On</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>Loading administrators...</td>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>Loading administrators...</td>
               </tr>
             ) : (
               paginatedAdmins.map((admin) => (
@@ -172,6 +207,21 @@ const AdminStaffManager: React.FC = () => {
                   </td>
                   <td style={{ fontSize: "0.82rem" }}>
                     {new Date(admin.created_at).toLocaleDateString()}
+                  </td>
+                  <td>
+                    <button
+                      className="icon-btn"
+                      onClick={() => handleRevokeAdmin(admin)}
+                      title={admins.length <= 1 ? "Cannot delete the only administrator in system" : admin.is_default ? "Cannot delete default system administrator" : "Revoke Admin Privileges"}
+                      disabled={admins.length <= 1 || admin.is_default}
+                      style={{
+                        color: (admins.length <= 1 || admin.is_default) ? "var(--text-muted)" : "#ef4444",
+                        opacity: (admins.length <= 1 || admin.is_default) ? 0.35 : 1,
+                        cursor: (admins.length <= 1 || admin.is_default) ? "not-allowed" : "pointer"
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </td>
                 </tr>
               ))

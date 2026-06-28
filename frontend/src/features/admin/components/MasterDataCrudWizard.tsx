@@ -212,6 +212,14 @@ const MasterDataCrudWizard: React.FC = () => {
       confirmMsg = `Delete Job "${item.job_description}" (#${item.job_id})?`;
       deleteUrl = `/jobs/${item.job_id}`;
     } else if (activeTab === "admins") {
+      if (items.length <= 1) {
+        alert("Action Prohibited: Cannot delete or revoke administrator privileges when only one administrator exists in the system.");
+        return;
+      }
+      if (item.is_default) {
+        alert("Action Prohibited: Cannot revoke privileges from the default system administrator account.");
+        return;
+      }
       confirmMsg = `Revoke Administrator privileges for ticket #${item.ticket_number}?`;
       deleteUrl = `/admin/admins/${item.ticket_number}`;
     }
@@ -260,7 +268,7 @@ const MasterDataCrudWizard: React.FC = () => {
           <Briefcase size={16} /> Designations
         </button>
         <button className={`admin-tab-btn ${activeTab === "employees" ? "active" : ""}`} onClick={() => setActiveTab("employees")}>
-          <Users size={16} /> Staff Directory
+          <Users size={16} /> Employees
         </button>
         <button className={`admin-tab-btn ${activeTab === "types" ? "active" : ""}`} onClick={() => setActiveTab("types")}>
           <Layers size={16} /> Loco Types
@@ -332,7 +340,7 @@ const MasterDataCrudWizard: React.FC = () => {
                 <>
                   <div className="form-group">
                     <label>Category ID</label>
-                    <input type="number" value={formData.category_id || ""} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} required disabled={isEditing} />
+                    <input type="text" inputMode="numeric" value={formData.category_id || ""} onChange={(e) => { const val = e.target.value; if (val === "" || /^\d+$/.test(val)) setFormData({ ...formData, category_id: val }); }} required disabled={isEditing} />
                   </div>
                   <div className="form-group">
                     <label>Category Name</label>
@@ -345,7 +353,7 @@ const MasterDataCrudWizard: React.FC = () => {
                 <>
                   <div className="form-group">
                     <label>Designation ID</label>
-                    <input type="number" value={formData.designation_id || ""} onChange={(e) => setFormData({ ...formData, designation_id: e.target.value })} required disabled={isEditing} />
+                    <input type="text" inputMode="numeric" value={formData.designation_id || ""} onChange={(e) => { const val = e.target.value; if (val === "" || /^\d+$/.test(val)) setFormData({ ...formData, designation_id: val }); }} required disabled={isEditing} />
                   </div>
                   <div className="form-group">
                     <label>Designation Name</label>
@@ -367,7 +375,7 @@ const MasterDataCrudWizard: React.FC = () => {
                 <>
                   <div className="form-group">
                     <label>Ticket Number</label>
-                    <input type="number" value={formData.ticket_number || ""} onChange={(e) => setFormData({ ...formData, ticket_number: e.target.value })} required disabled={isEditing} />
+                    <input type="text" inputMode="numeric" value={formData.ticket_number || ""} onChange={(e) => { const val = e.target.value; if (val === "" || /^\d+$/.test(val)) setFormData({ ...formData, ticket_number: val }); }} required disabled={isEditing} />
                   </div>
                   <div className="form-group">
                     <label>Full Name</label>
@@ -398,7 +406,7 @@ const MasterDataCrudWizard: React.FC = () => {
               {activeTab === "admins" && (
                 <div className="form-group">
                   <label>Employee Ticket Number</label>
-                  <input type="number" placeholder="Enter employee ticket #" value={formData.ticket_number || ""} onChange={(e) => setFormData({ ...formData, ticket_number: e.target.value })} required />
+                  <input type="text" inputMode="numeric" placeholder="Enter employee ticket #" value={formData.ticket_number || ""} onChange={(e) => { const val = e.target.value; if (val === "" || /^\d+$/.test(val)) setFormData({ ...formData, ticket_number: val }); }} required />
                 </div>
               )}
 
@@ -481,7 +489,19 @@ const MasterDataCrudWizard: React.FC = () => {
                         {activeTab !== "admins" && (
                           <button className="icon-btn" onClick={() => { setIsEditing(true); setFormData(item); setShowForm(true); }} title="Edit"><Edit3 size={16} /></button>
                         )}
-                        <button className="icon-btn" onClick={() => handleDelete(item)} title="Delete" style={{ color: "#ef4444" }}><Trash2 size={16} /></button>
+                        <button
+                          className="icon-btn"
+                          onClick={() => handleDelete(item)}
+                          title={activeTab === "admins" && items.length <= 1 ? "Cannot delete the only administrator in system" : item.is_default ? "Cannot delete default system administrator" : "Delete"}
+                          disabled={activeTab === "admins" && (items.length <= 1 || item.is_default)}
+                          style={{
+                            color: (activeTab === "admins" && (items.length <= 1 || item.is_default)) ? "var(--text-muted)" : "#ef4444",
+                            opacity: (activeTab === "admins" && (items.length <= 1 || item.is_default)) ? 0.35 : 1,
+                            cursor: (activeTab === "admins" && (items.length <= 1 || item.is_default)) ? "not-allowed" : "pointer"
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>

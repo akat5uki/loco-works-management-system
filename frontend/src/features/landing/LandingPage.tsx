@@ -54,17 +54,28 @@ const LandingPage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      // 1. Fetch Production Stats
       try {
-        const [statsRes, typeCountsRes, empStatsRes] = await Promise.all([
-          api.get("/locos/stats/production"),
-          api.get("/locos/type-counts"),
-          api.get("/employees/stats"),
-        ]);
-        setStats(statsRes.data);
-        setTypeCounts(typeCountsRes.data);
-        setEmpStats(empStatsRes.data);
-      } catch (error) {
-        console.error("Error fetching landing data", error);
+        const res = await api.get("/locos/stats/production");
+        setStats(res.data);
+      } catch (err) {
+        console.error("Error fetching production stats", err);
+      }
+
+      // 2. Fetch Locomotive Type Counts
+      try {
+        const res = await api.get("/locos/type-counts");
+        setTypeCounts(res.data);
+      } catch (err) {
+        console.error("Error fetching type counts", err);
+      }
+
+      // 3. Fetch Active Employee Stats
+      try {
+        const res = await api.get("/employees/stats");
+        setEmpStats(res.data);
+      } catch (err) {
+        console.error("Error fetching employee stats", err);
       }
     };
     fetchData();

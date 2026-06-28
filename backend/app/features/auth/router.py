@@ -23,22 +23,27 @@ from app.features.auth.schemas import (
 )
 from datetime import datetime, timedelta, timezone
 from app.features.employees.models import Employee
-from app.features.admin.models import RegistrationRequest
+from app.features.admin.models import LocoAdmin, RegistrationRequest
 from app.core.email import send_otp_email, send_registration_notification_email
 
 router = APIRouter()
 
 
 @router.get("/me")
-async def get_me(current_user: CurrentUser):
+async def get_me(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    # get_current_user only passes session_type="employee" JWTs, so this is always an employee session
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
+    admin_info = admin_res.scalar_one_or_none()
     return {
         "ticket_number": current_user.ticket_number,
         "name": current_user.name,
         "designation_id": current_user.designation_id,
         "designation_name": current_user.designation.designation_name if current_user.designation else None,
         "category_name": current_user.designation.category.category_name if current_user.designation and current_user.designation.category else None,
-        "is_supervisor": current_user.designation
-        and current_user.designation.category_id == 1,
+        "is_supervisor": current_user.designation and current_user.designation.category_id == 1,
+        "is_admin": admin_info is not None,
+        "employee_portal_enabled": admin_info.employee_portal_enabled if admin_info else None,
+        "session_type": "employee",
         "email": current_user.email,
     }
 
@@ -50,6 +55,13 @@ async def login(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
+    # Prevent Default System Administrator account from logging in via Employees Login Portal
+    if login_data.ticket_number == settings.DEFAULT_ADMIN_TICKET:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The Default System Administrator account cannot sign in via the Employees Login Portal. Please access the Administrative Portal.",
+        )
+
     result = await db.execute(
         select(Employee).where(Employee.ticket_number == login_data.ticket_number)
     )
@@ -77,6 +89,16 @@ async def login(
             detail="Incorrect ticket number or password",
         )
 
+    # Security: Block administrator accounts without employee portal access from Employees Login Portal.
+    # Admins with employee_portal_enabled=True may log in here (they have a real employee password set).
+    admin_check = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == user.ticket_number))
+    admin_record = admin_check.scalar_one_or_none()
+    if admin_record and not admin_record.employee_portal_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator accounts must sign in via the Admin portal, not the Employees Login Portal.",
+        )
+
     # If Email OTP is enabled, handle OTP routing
     if settings.ENABLE_EMAIL_OTP == 1:
         # Graceful check for users without an email registered
@@ -101,10 +123,14 @@ async def login(
         }
 
     # Standard direct authentication flow (OTP disabled)
-    access_token = create_access_token(subject=user.ticket_number)
+    access_token = create_access_token(
+        subject=user.ticket_number,
+        nonce=user.nonce,
+        session_type="employee",
+    )
 
-    # Store session in Redis
-    session_key = f"session:{user.ticket_number}"
+    # Store session in Redis under employee-scoped key
+    session_key = f"session:{user.ticket_number}:employee"
     await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
 
     # Dual-Cookie Auth Shield
@@ -144,8 +170,10 @@ async def logout(request: Request, response: Response):
                 token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
             ticket_number_raw = payload.get("sub")
+            session_type = payload.get("session_type", "employee")
             if ticket_number_raw:
-                session_key = f"session:{ticket_number_raw}"
+                # Delete the correct scoped session key
+                session_key = f"session:{ticket_number_raw}:{session_type}"
                 await redis_client.delete(session_key)
         except Exception:
             pass
@@ -418,10 +446,14 @@ async def verify_otp(
                 detail="User not found"
             )
             
-        access_token = create_access_token(subject=user.ticket_number)
+        access_token = create_access_token(
+            subject=user.ticket_number,
+            nonce=user.nonce,
+            session_type="employee",
+        )
         
-        # Store session in Redis
-        session_key = f"session:{user.ticket_number}"
+        # Store session in Redis under employee-scoped key
+        session_key = f"session:{user.ticket_number}:employee"
         await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
         
         # Set cookies
@@ -494,8 +526,12 @@ async def verify_otp(
         await db.commit()
         
         # Complete login
-        access_token = create_access_token(subject=user.ticket_number)
-        session_key = f"session:{user.ticket_number}"
+        access_token = create_access_token(
+            subject=user.ticket_number,
+            nonce=user.nonce,
+            session_type="employee",
+        )
+        session_key = f"session:{user.ticket_number}:employee"
         await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
         
         response.set_cookie(

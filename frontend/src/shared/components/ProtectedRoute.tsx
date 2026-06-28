@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   requireSupervisor?: boolean;
 }
 
-type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "admin_session";
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireSupervisor = false }) => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
@@ -20,8 +20,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireSuperv
       .get("/auth/me")
       .then((res) => {
         if (!cancelled) {
-          setAuthStatus("authenticated");
-          setIsSupervisor(res.data.is_supervisor);
+          // Server-enforced: /auth/me only succeeds for session_type="employee" JWTs.
+          // If somehow an admin JWT reaches here and passes, double-check session_type.
+          if (res.data?.session_type === "admin") {
+            setAuthStatus("admin_session");
+          } else {
+            setAuthStatus("authenticated");
+            setIsSupervisor(res.data.is_supervisor);
+          }
         }
       })
       .catch(() => {
@@ -39,6 +45,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireSuperv
 
   if (authStatus === "unauthenticated") {
     return <Navigate to="/session-expired" state={{ from: location }} replace />;
+  }
+
+  if (authStatus === "admin_session") {
+    // Admin sessions must use the admin portal — redirect to admin login
+    return <Navigate to="/admin/login" replace />;
   }
 
   if (requireSupervisor && !isSupervisor) {

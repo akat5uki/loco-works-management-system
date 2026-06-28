@@ -46,10 +46,16 @@ const AdminLoginPage: React.FC = () => {
 
   return (
     <div className="admin-auth-workspace">
-      <header className="workspace-header">
-        <button className="back-btn" onClick={() => navigate("/login")}>
-          <ArrowLeft size={18} /> Staff Login Portal
-        </button>
+      <header className="admin-auth-header">
+        <div className="admin-header-brand">
+          <div className="admin-header-logo">
+            <img src="/favicon.svg" alt="LWMS Logo" style={{ width: "28px", height: "28px" }} />
+            <span>LWMS Admin</span>
+          </div>
+          <button className="admin-back-btn" onClick={() => navigate("/login", { state: { skipRedirect: true } })}>
+            <ArrowLeft size={16} /> Employees Login Portal
+          </button>
+        </div>
         <ThemeToggle />
       </header>
 
@@ -74,10 +80,14 @@ const AdminLoginPage: React.FC = () => {
               <label htmlFor="ticketNumber">Admin Ticket Number</label>
               <input
                 id="ticketNumber"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="e.g. 9999"
                 value={ticketNumber}
-                onChange={(e) => setTicketNumber(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || /^\d+$/.test(val)) setTicketNumber(val);
+                }}
                 required
               />
             </div>
@@ -106,6 +116,9 @@ const AdminLoginPage: React.FC = () => {
           onSuccess={() => {
             setShowPasswordModal(false);
             navigate("/admin/dashboard");
+          }}
+          onCancel={() => {
+            setShowPasswordModal(false);
           }}
         />
       )}

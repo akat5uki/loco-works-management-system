@@ -29,7 +29,8 @@ async def get_current_user(
     """
     Dependency to get the current authenticated user.
     Supports Bearer token in Authorization header and session cookies.
-    Also validates session against Redis.
+    Validates session against Redis, nonce against employees table, and
+    enforces that only employee-scoped JWTs (session_type='employee') are accepted.
     """
 
     # 1. Try to get token from Authorization header (provided by oauth2_scheme)
@@ -61,8 +62,16 @@ async def get_current_user(
             )
         ticket_number = int(ticket_number_raw)
 
+        # Server-side session type enforcement: only employee JWTs allowed here
+        session_type = payload.get("session_type", "employee")
+        if session_type != "employee":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin sessions cannot access employee resources. Please use the Employees Login Portal.",
+            )
+
         # Validate against Redis session
-        session_key = f"session:{ticket_number}"
+        session_key = f"session:{ticket_number}:employee"
         stored_token = await redis_client.get(session_key)
         if not stored_token or stored_token != final_token:
             raise HTTPException(
@@ -115,6 +124,14 @@ async def get_current_user(
             detail="User not found",
         )
 
+    # Nonce validation: employee JWT nonce must match employees.nonce
+    token_nonce = payload.get("nonce", "")
+    if not token_nonce or token_nonce != user.nonce:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is no longer valid. Please log in again.",
+        )
+
     # Set PG audit context session variable
     await db.execute(
         text("SELECT set_config('app.current_user_id', :user_id, true)"),
@@ -134,23 +151,118 @@ def require_supervisor(current_user: Annotated[Employee, Depends(get_current_use
 
 
 async def require_admin(
-    current_user: Annotated[Employee, Depends(get_current_user)],
+    request: Request,
+    token: Annotated[Optional[str], Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
 ) -> Employee:
-    result = await db.execute(
-        select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number)
+    """
+    Admin dependency. Validates admin-scoped JWT (session_type='admin'),
+    checks nonce against loco_admin.nonce, and enforces setup completion.
+    Admin JWTs are issued exclusively by /admin/login — completely separate
+    from employee JWTs issued by /auth/login.
+    """
+    final_token = token
+    if not final_token:
+        final_token = request.cookies.get("session_id_strict")
+    if not final_token:
+        final_token = request.cookies.get("session_id_embed")
+
+    if not final_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        payload = jwt.decode(
+            final_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        ticket_number_raw = payload.get("sub")
+        if ticket_number_raw is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+        ticket_number = int(ticket_number_raw)
+
+        # Server-side session type enforcement: only admin JWTs allowed here
+        session_type = payload.get("session_type", "employee")
+        if session_type != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Employee sessions cannot access admin resources. Please use the Admin portal.",
+            )
+
+        # Validate against Redis admin session
+        session_key = f"session:{ticket_number}:admin"
+        stored_token = await redis_client.get(session_key)
+        if not stored_token or stored_token != final_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin session expired or invalid",
+            )
+
+        # Extend admin session lifetime (Sliding Expiration)
+        await redis_client.expire(session_key, settings.SESSION_EXPIRE_SECONDS)
+
+    except (JWTError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+    # Fetch loco_admin record and validate nonce
+    admin_res = await db.execute(
+        select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number)
     )
-    admin_record = result.scalar_one_or_none()
+    admin_record = admin_res.scalar_one_or_none()
     if not admin_record:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions. Administrative access required.",
         )
-    return current_user
+
+    # Nonce validation: admin JWT nonce must match loco_admin.nonce
+    token_nonce = payload.get("nonce", "")
+    if not token_nonce or token_nonce != admin_record.nonce:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin session is no longer valid. Please log in again.",
+        )
+
+    # Security Guard: If default admin or mandatory setup pending, block access to operational endpoints
+    if admin_record.must_change_password or admin_record.is_default:
+        path = request.url.path
+        if not (path.endswith("/admin/change-password") or path.endswith("/auth/logout")):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Mandatory initial administrator setup required before accessing dashboard.",
+            )
+
+    # Fetch and return the employee record for current admin (for compatibility)
+    result = await db.execute(
+        select(Employee)
+        .options(joinedload(Employee.designation).joinedload(Designation.category))
+        .where(Employee.ticket_number == ticket_number)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin employee record not found",
+        )
+
+    # Set PG audit context session variable
+    await db.execute(
+        text("SELECT set_config('app.current_user_id', :user_id, true)"),
+        {"user_id": str(user.ticket_number)}
+    )
+
+    return user
 
 
 # Type alias for cleaner dependency injection
 CurrentUser = Annotated[Employee, Depends(get_current_user)]
 SupervisorUser = Annotated[Employee, Depends(require_supervisor)]
 AdminUser = Annotated[Employee, Depends(require_admin)]
-

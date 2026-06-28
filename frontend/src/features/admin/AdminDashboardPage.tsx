@@ -1,17 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Users, Layers, ShieldCheck, UserPlus, LogOut } from "lucide-react";
+import { ShieldAlert, Users, Layers, ShieldCheck, UserPlus, LogOut, UserCog } from "lucide-react";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import RegistrationRequestsManager from "./components/RegistrationRequestsManager";
 import MasterDataCrudWizard from "./components/MasterDataCrudWizard";
 import AuditLogsViewer from "./components/AuditLogsViewer";
 import AdminStaffManager from "./components/AdminStaffManager";
+import AdminSetEmployeePasswordModal from "./AdminSetEmployeePasswordModal";
 import api from "../../shared/services/api";
 import "./AdminDashboard.css";
 
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<"requests" | "crud" | "audit" | "admins">("requests");
+  const [employeePortalEnabled, setEmployeePortalEnabled] = useState<boolean | null>(null);
+  const [showSetEmployeePasswordModal, setShowSetEmployeePasswordModal] = useState(false);
+
+  // Fetch admin's employee portal status on mount
+  useEffect(() => {
+    api.get("/auth/me")
+      .then((res) => {
+        // employee_portal_enabled is null for non-admins; boolean for admins
+        if (typeof res.data?.employee_portal_enabled === "boolean") {
+          setEmployeePortalEnabled(res.data.employee_portal_enabled);
+        }
+      })
+      .catch(() => {
+        // Silently ignore — non-critical fetch
+      });
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -20,6 +37,11 @@ const AdminDashboardPage: React.FC = () => {
       console.error(e);
     }
     navigate("/admin/login");
+  };
+
+  const handleEmployeePasswordSuccess = () => {
+    setShowSetEmployeePasswordModal(false);
+    setEmployeePortalEnabled(true);
   };
 
   return (
@@ -39,6 +61,29 @@ const AdminDashboardPage: React.FC = () => {
 
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <ThemeToggle />
+
+            {/* One-time: Show "Enable Employee Portal Access" only when not yet enabled */}
+            {employeePortalEnabled === false && (
+              <button
+                id="btn-enable-employee-portal"
+                onClick={() => setShowSetEmployeePasswordModal(true)}
+                className="pagination-btn"
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.82rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  borderRadius: "6px",
+                  border: "1px solid var(--primary-color)",
+                  color: "var(--primary-color)",
+                }}
+                title="Enable access to the Employees Login Portal with a separate password"
+              >
+                <UserCog size={15} /> Enable Employee Portal Access
+              </button>
+            )}
+
             <button
               onClick={handleLogout}
               className="action-btn-danger"
@@ -85,6 +130,14 @@ const AdminDashboardPage: React.FC = () => {
         {activeView === "audit" && <AuditLogsViewer />}
         {activeView === "admins" && <AdminStaffManager />}
       </main>
+
+      {/* One-time Employee Portal Password Setup Modal */}
+      {showSetEmployeePasswordModal && (
+        <AdminSetEmployeePasswordModal
+          onSuccess={handleEmployeePasswordSuccess}
+          onClose={() => setShowSetEmployeePasswordModal(false)}
+        />
+      )}
     </div>
   );
 };

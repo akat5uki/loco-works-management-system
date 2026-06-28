@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
@@ -15,8 +16,11 @@ class LocoAdmin(Base):
     ticket_number: Mapped[int] = mapped_column(
         Integer, ForeignKey("employees.ticket_number"), primary_key=True
     )
+    password: Mapped[str] = mapped_column(String, nullable=False)
+    nonce: Mapped[str] = mapped_column(String, nullable=False, default=lambda: secrets.token_hex(16))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    employee_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

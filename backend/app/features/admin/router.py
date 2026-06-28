@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
-from sqlalchemy import String, cast, or_, text
+from sqlalchemy import String, cast, func, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
@@ -18,6 +18,7 @@ from app.features.admin.schemas import (
     AddAdminRequest,
     AdminChangePasswordRequest,
     AdminLoginRequest,
+    AdminSetEmployeePasswordRequest,
     ExtendValidityRequest,
     LocoAdminRead,
     RegistrationActionRequest,
@@ -31,35 +32,38 @@ router = APIRouter()
 
 async def seed_default_admin_if_needed(db: AsyncSession):
     """
-    Ensure a default system administrator account exists upon application startup.
-    Uses environment variables defined in .env (DEFAULT_ADMIN_TICKET, DEFAULT_ADMIN_EMAIL, etc.)
+    Ensure a default system administrator account exists ONLY on clean initial deployment
+    when no administrator accounts exist in the loco_admin table.
     """
-    result = await db.execute(select(LocoAdmin))
-    admin = result.scalar_one_or_none()
-    if not admin:
-        default_ticket = settings.DEFAULT_ADMIN_TICKET
-        # Check if employee record exists for default administrator ticket
-        emp_res = await db.execute(select(Employee).where(Employee.ticket_number == default_ticket))
-        emp = emp_res.scalar_one_or_none()
-        if not emp:
-            emp = Employee(
-                ticket_number=default_ticket,
-                name="System Administrator",
-                designation_id=1,  # Default Senior Section Engineer (SSE) designation
-                email=settings.DEFAULT_ADMIN_EMAIL,
-                password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-                nonce=secrets.token_hex(16),
-            )
-            db.add(emp)
-            await db.flush()
-        
-        loco_admin = LocoAdmin(
+    admin_res = await db.execute(select(LocoAdmin))
+    if admin_res.first() is not None:
+        return
+
+    default_ticket = settings.DEFAULT_ADMIN_TICKET
+    emp_res = await db.execute(select(Employee).where(Employee.ticket_number == default_ticket))
+    emp = emp_res.scalar_one_or_none()
+    if not emp:
+        emp = Employee(
             ticket_number=default_ticket,
-            is_default=True,
-            must_change_password=True,
+            name="System Administrator",
+            designation_id=1,  # Default Senior Section Engineer (SSE) designation
+            email=settings.DEFAULT_ADMIN_EMAIL,
+            password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
+            nonce=secrets.token_hex(16),
         )
-        db.add(loco_admin)
-        await db.commit()
+        db.add(emp)
+        await db.flush()
+    
+    loco_admin = LocoAdmin(
+        ticket_number=default_ticket,
+        password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
+        nonce=secrets.token_hex(16),
+        is_default=True,
+        must_change_password=True,
+        employee_portal_enabled=False,
+    )
+    db.add(loco_admin)
+    await db.commit()
 
 
 @router.post("/login")
@@ -70,17 +74,8 @@ async def admin_login(
 ):
     await seed_default_admin_if_needed(db)
 
-    # 1. Check employee credentials
-    result = await db.execute(select(Employee).where(Employee.ticket_number == login_data.ticket_number))
-    user = result.scalar_one_or_none()
-    if not user or not verify_password(login_data.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect admin ticket number or password",
-        )
-
-    # 2. Verify admin privilege
-    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == user.ticket_number))
+    # 1. Verify admin privilege and dedicated admin password from loco_admin table
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == login_data.ticket_number))
     admin_info = admin_res.scalar_one_or_none()
     if not admin_info:
         raise HTTPException(
@@ -88,8 +83,18 @@ async def admin_login(
             detail="Access denied. Account does not have Administrative privileges.",
         )
 
-    access_token = create_access_token(subject=user.ticket_number)
-    session_key = f"session:{user.ticket_number}"
+    if not verify_password(login_data.password, admin_info.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect admin ticket number or password",
+        )
+
+    access_token = create_access_token(
+        subject=admin_info.ticket_number,
+        nonce=admin_info.nonce,
+        session_type="admin",
+    )
+    session_key = f"session:{admin_info.ticket_number}:admin"
     await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
 
     response.set_cookie(
@@ -121,20 +126,168 @@ async def admin_login(
 async def admin_change_password(
     data: AdminChangePasswordRequest,
     current_user: AdminUser,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ):
-    if not verify_password(data.current_password, current_user.password):
-        raise HTTPException(status_code=400, detail="Current password incorrect")
-
-    current_user.password = get_password_hash(data.new_password)
-    
+    """
+    Handles administrator password update or first-time account migration.
+    When logging in with the default admin account, creates a new admin account with the user's ticket number
+    and new password, and immediately deletes the default admin account completely.
+    """
     admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
     admin_info = admin_res.scalar_one_or_none()
-    if admin_info:
-        admin_info.must_change_password = False
+    if not admin_info:
+        raise HTTPException(status_code=403, detail="Admin account not found")
+
+    if not verify_password(data.current_password, admin_info.password):
+        raise HTTPException(status_code=400, detail="Current password incorrect")
+
+    # Check if this is the default admin initial setup migration workflow
+    if admin_info.is_default:
+        new_ticket = data.new_ticket_number
+        if not new_ticket or new_ticket == settings.DEFAULT_ADMIN_TICKET:
+            raise HTTPException(status_code=400, detail="Please enter your new personal employee ticket number")
+        # 1. Fetch employee record for new ticket number; determine if pre-existing
+        emp_res = await db.execute(select(Employee).where(Employee.ticket_number == new_ticket))
+        new_emp = emp_res.scalar_one_or_none()
+        # employee_portal_enabled=True only if the employee already existed before admin setup
+        employee_portal_enabled = new_emp is not None
+
+        if not new_emp:
+            name_val = data.name.strip() if data.name and data.name.strip() else f"Administrator #{new_ticket}"
+            email_val = data.email.strip() if data.email and data.email.strip() else f"admin_{new_ticket}@locoworks.com"
+            # Security: Employee password is intentionally set to a random unusable value for new employees.
+            # Admins authenticate exclusively through the Admin portal (loco_admin.password).
+            # They may later set a separate employee password via /admin/set-employee-password (one-time).
+            new_emp = Employee(
+                ticket_number=new_ticket,
+                name=name_val,
+                designation_id=1,  # Default Senior Section Engineer / Admin designation
+                email=email_val,
+                password=get_password_hash(secrets.token_hex(32)),
+                nonce=secrets.token_hex(16),
+            )
+            db.add(new_emp)
+            await db.flush()
+        else:
+            if data.name and data.name.strip():
+                new_emp.name = data.name.strip()
+            if data.email and data.email.strip():
+                new_emp.email = data.email.strip()
+            await db.flush()
+
+        # 2. Add new admin record with dedicated admin password and fresh nonce
+        new_loco_admin = LocoAdmin(
+            ticket_number=new_ticket,
+            password=get_password_hash(data.new_password),
+            nonce=secrets.token_hex(16),
+            is_default=False,
+            must_change_password=False,
+            employee_portal_enabled=employee_portal_enabled,
+        )
+        db.add(new_loco_admin)
+        await db.flush()
+
+        # 3. Completely delete default admin record from loco_admin and employees tables
+        await db.delete(admin_info)
+        default_emp_res = await db.execute(select(Employee).where(Employee.ticket_number == settings.DEFAULT_ADMIN_TICKET))
+        default_emp = default_emp_res.scalar_one_or_none()
+        if default_emp:
+            await db.delete(default_emp)
+
+        await db.commit()
+
+        # 4. Issue new JWT access token and session cookies for newly created admin account
+        access_token = create_access_token(
+            subject=new_ticket,
+            nonce=new_loco_admin.nonce,
+            session_type="admin",
+        )
+        session_key = f"session:{new_ticket}:admin"
+        await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
+
+        # Remove old default admin session
+        await redis_client.delete(f"session:{settings.DEFAULT_ADMIN_TICKET}:admin")
+
+        response.set_cookie(
+            key="session_id_strict",
+            value=access_token,
+            httponly=True,
+            secure=settings.COOKIE_SECURE_STRICT,
+            samesite="strict",
+            max_age=settings.SESSION_EXPIRE_SECONDS,
+        )
+        response.set_cookie(
+            key="session_id_embed",
+            value=access_token,
+            httponly=True,
+            secure=settings.COOKIE_SECURE_EMBED,
+            samesite="none",
+            max_age=settings.SESSION_EXPIRE_SECONDS,
+        )
+
+        return {
+            "message": f"Administrator account #{new_ticket} created successfully. Default admin account removed.",
+            "access_token": access_token,
+            "new_ticket_number": new_ticket,
+        }
+
+    # Regular password change for non-default admins: update LocoAdmin.password
+    admin_info.password = get_password_hash(data.new_password)
+    # Rotate nonce to invalidate all existing admin sessions on password change
+    admin_info.nonce = secrets.token_hex(16)
+    admin_info.must_change_password = False
 
     await db.commit()
-    return {"message": "Password changed successfully"}
+    return {"message": "Admin password changed successfully"}
+
+
+@router.post("/set-employee-password")
+async def admin_set_employee_password(
+    data: AdminSetEmployeePasswordRequest,
+    current_user: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    One-time setup: allows an admin whose employee record was auto-created during setup
+    (employee_portal_enabled=False) to set a separate Employee Portal password.
+    Once set, this endpoint cannot be used again.
+    """
+    # Fetch admin record
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
+    admin_info = admin_res.scalar_one_or_none()
+    if not admin_info:
+        raise HTTPException(status_code=403, detail="Admin account not found")
+
+    # One-time only: reject if already enabled
+    if admin_info.employee_portal_enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Employee portal access is already enabled. This is a one-time setup."
+        )
+
+    # Confirm admin identity via admin portal password
+    if not verify_password(data.admin_password, admin_info.password):
+        raise HTTPException(status_code=400, detail="Admin password is incorrect")
+
+    # Validate password confirmation
+    if data.new_employee_password != data.confirm_employee_password:
+        raise HTTPException(status_code=400, detail="Employee passwords do not match")
+
+    # Update employees.password and rotate employees.nonce
+    emp_res = await db.execute(select(Employee).where(Employee.ticket_number == current_user.ticket_number))
+    emp = emp_res.scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee record not found")
+
+    emp.password = get_password_hash(data.new_employee_password)
+    emp.nonce = secrets.token_hex(16)  # Rotate nonce to keep employee sessions fresh
+
+    # Mark as enabled — one-time flag
+    admin_info.employee_portal_enabled = True
+
+    await db.commit()
+    return {"message": "Employee portal access enabled. You can now log in via the Employees Login Portal."}
 
 
 @router.get("/registration-requests", response_model=List[RegistrationRequestRead])
@@ -334,8 +487,9 @@ async def add_admin(
 
     new_admin = LocoAdmin(
         ticket_number=data.ticket_number,
+        password=emp.password,
         is_default=False,
-        must_change_password=False,
+        must_change_password=True,
     )
     db.add(new_admin)
     await db.commit()
@@ -553,11 +707,23 @@ async def admin_update_employee(ticket_number: int, payload: dict, current_user:
 
 @router.delete("/master-data/employees/{ticket_number}")
 async def admin_delete_employee(ticket_number: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Delete an employee record."""
+    """Delete an employee record. Ensures last administrator account is protected."""
     res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
     emp = res.scalar_one_or_none()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Check if employee is an administrator and protect last admin record
+    adm_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number))
+    if adm_res.scalar_one_or_none():
+        count_res = await db.execute(select(func.count(LocoAdmin.ticket_number)))
+        total_admins = count_res.scalar() or 0
+        if total_admins <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete employee when they are the only administrator in the loco_admin table."
+            )
+
     await db.delete(emp)
     await db.commit()
     return {"message": "Employee record deleted successfully"}
@@ -565,15 +731,31 @@ async def admin_delete_employee(ticket_number: int, current_user: AdminUser, db:
 
 @router.delete("/admins/{ticket_number}")
 async def admin_remove_admin(ticket_number: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Revoke Administrator privileges from an account."""
+    """Revoke Administrator privileges. Prevents deletion if only one administrator exists."""
     res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number))
     adm = res.scalar_one_or_none()
     if not adm:
         raise HTTPException(status_code=404, detail="Admin record not found")
-    if adm.is_default:
-        raise HTTPException(status_code=400, detail="Cannot revoke privileges from the default system administrator")
+
+    # Enforce rule: Do not allow deletion in loco_admin table if there is only one row
+    count_res = await db.execute(select(func.count(LocoAdmin.ticket_number)))
+    total_admins = count_res.scalar() or 0
+    if total_admins <= 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete administrator account when only one row exists in loco_admin table."
+        )
+
+    is_def = adm.is_default
     await db.delete(adm)
+    if is_def:
+        emp_res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
+        def_emp = emp_res.scalar_one_or_none()
+        if def_emp:
+            await db.delete(def_emp)
+
     await db.commit()
     return {"message": f"Administrator privileges revoked for ticket #{ticket_number}"}
+
 
 

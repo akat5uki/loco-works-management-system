@@ -203,28 +203,28 @@ const AuditLogsViewer: React.FC = () => {
       {/* Audit Log Inspection Modal */}
       {selectedLog && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="modal-content" style={{ maxWidth: "650px" }}>
+          <div className="modal-content" style={{ maxWidth: "850px", width: "92%", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
             <div className="modal-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "1rem" }}>
               <h2>Audit Log Payload Inspection #{selectedLog.id}</h2>
               <button className="icon-btn" onClick={() => setSelectedLog(null)}>✕</button>
             </div>
 
-            <div className="modal-body" style={{ padding: "1.25rem 0" }}>
+            <div className="modal-body" style={{ padding: "1.25rem 0", overflowY: "auto", flex: 1 }}>
               <div style={{ marginBottom: "1rem" }}>
-                <p><strong>Table:</strong> {selectedLog.table_name} | <strong>Operation:</strong> {selectedLog.operation} | <strong>Record:</strong> {selectedLog.record_pk}</p>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Changed by Staff Ticket #{selectedLog.changed_by} on {new Date(selectedLog.changed_at).toLocaleString()}</p>
+                <p><strong>Table:</strong> <code style={{ background: "var(--bg-secondary)", padding: "0.2rem 0.4rem", borderRadius: "4px" }}>{selectedLog.table_name}</code> | <strong>Operation:</strong> {selectedLog.operation} | <strong>Record PK:</strong> {selectedLog.record_pk}</p>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Changed by Staff Ticket #{selectedLog.changed_by} on {new Date(selectedLog.changed_at).toLocaleString()}</p>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.25rem" }}>
+                <div style={{ minWidth: 0 }}>
                   <h4 style={{ marginBottom: "0.5rem", color: "#ef4444" }}>Previous State (Old Data)</h4>
-                  <pre style={{ background: "var(--bg-secondary)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.75rem", overflowX: "auto", maxHeight: "250px" }}>
+                  <pre style={{ background: "var(--bg-secondary)", padding: "0.85rem", borderRadius: "6px", fontSize: "0.78rem", overflowX: "auto", overflowY: "auto", maxHeight: "360px", whiteSpace: "pre", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}>
                     {JSON.stringify(selectedLog.old_data, null, 2)}
                   </pre>
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <h4 style={{ marginBottom: "0.5rem", color: "#10b981" }}>New State (New Data)</h4>
-                  <pre style={{ background: "var(--bg-secondary)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.75rem", overflowX: "auto", maxHeight: "250px" }}>
+                  <pre style={{ background: "var(--bg-secondary)", padding: "0.85rem", borderRadius: "6px", fontSize: "0.78rem", overflowX: "auto", overflowY: "auto", maxHeight: "360px", whiteSpace: "pre", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}>
                     {JSON.stringify(selectedLog.new_data, null, 2)}
                   </pre>
                 </div>

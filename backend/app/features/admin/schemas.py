@@ -11,6 +11,15 @@ class AdminLoginRequest(BaseModel):
 class AdminChangePasswordRequest(BaseModel):
     current_password: str = Field(..., description="Current password")
     new_password: str = Field(..., description="New password")
+    new_ticket_number: Optional[int] = Field(None, description="New admin employee ticket number for account migration")
+    name: Optional[str] = Field(None, description="Full name if employee record needs creation")
+    email: Optional[str] = Field(None, description="Email address if employee record needs creation")
+
+
+class AdminSetEmployeePasswordRequest(BaseModel):
+    admin_password: str = Field(..., description="Current Admin portal password (identity confirmation)")
+    new_employee_password: str = Field(..., min_length=8, description="New Employee portal password (min 8 chars)")
+    confirm_employee_password: str = Field(..., description="Confirm new employee portal password")
 
 
 class RegistrationActionRequest(BaseModel):
