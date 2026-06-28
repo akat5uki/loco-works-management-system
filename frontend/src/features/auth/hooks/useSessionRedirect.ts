@@ -1,22 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../../shared/services/api";
 
 /**
  * Checks whether a valid employee session cookie already exists.
  * If a valid employee session exists, redirects to /dashboard immediately.
- * Does NOT auto-redirect if skipRedirect state is true.
  */
 export function useSessionRedirect() {
-  const location = useLocation();
-  const shouldSkip = (location.state as { skipRedirect?: boolean } | null)?.skipRedirect;
-  const [checking, setChecking] = useState(() => !shouldSkip);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (shouldSkip) {
-      return;
-    }
     let cancelled = false;
 
     api
@@ -37,7 +31,7 @@ export function useSessionRedirect() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, shouldSkip]);
+  }, [navigate]);
 
   return { checking };
 }

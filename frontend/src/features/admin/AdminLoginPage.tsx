@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ShieldAlert, KeyRound, ArrowLeft, Lock } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -8,21 +8,16 @@ import "./AdminDashboard.css";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const shouldSkip = (location.state as { skipRedirect?: boolean } | null)?.skipRedirect;
 
   const [ticketNumber, setTicketNumber] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(() => !shouldSkip);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Auto-redirect if already authenticated as Admin
   useEffect(() => {
-    if (shouldSkip) {
-      return;
-    }
     let cancelled = false;
 
     api
@@ -43,7 +38,7 @@ const AdminLoginPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [navigate, shouldSkip]);
+  }, [navigate]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +82,7 @@ const AdminLoginPage: React.FC = () => {
             <img src="/favicon.svg" alt="LWMS Logo" style={{ width: "28px", height: "28px" }} />
             <span>LWMS Admin</span>
           </div>
-          <button className="admin-back-btn" onClick={() => navigate("/login", { state: { skipRedirect: true } })}>
+          <button className="admin-back-btn" onClick={() => navigate("/login")}>
             <ArrowLeft size={16} /> Employees Login Portal
           </button>
         </div>
