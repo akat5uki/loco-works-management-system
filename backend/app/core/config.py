@@ -4,10 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Application General Configuration
-    PROJECT_NAME: str = "Loco Works Management System"
-    API_V1_STR: str = "/api/v1"
-    BACKEND_HOST: str = "0.0.0.0"
-    BACKEND_PORT: int = 8000
+    PROJECT_NAME: str
+    API_V1_STR: str
+    BACKEND_HOST: str
+    BACKEND_PORT: int
 
     # Database Configuration
     POSTGRES_USER: str
@@ -15,37 +15,37 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     DATABASE_PRIMARY_URL: str
     DATABASE_REPLICA_URL: str
-    DB_POOL_SIZE: int = 20
-    DB_MAX_OVERFLOW: int = 10
-    DB_ECHO: bool = False
+    DB_POOL_SIZE: int
+    DB_MAX_OVERFLOW: int
+    DB_ECHO: bool
 
     # Redis Configuration
     REDIS_SENTINELS: Optional[str] = None
-    REDIS_MASTER_SET: str = "mymaster"
+    REDIS_MASTER_SET: str
     REDIS_PASSWORD: str
-    REDIS_URL: str = "redis://redis:6379/0"
-    REDIS_SOCKET_TIMEOUT: float = 10.0
+    REDIS_URL: str
+    REDIS_SOCKET_TIMEOUT: float
 
     # Security & Session Configuration
     SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    SESSION_EXPIRE_SECONDS: int = 1800
-    COOKIE_SECURE_STRICT: bool = False
-    COOKIE_SECURE_EMBED: bool = True
-    WRITE_WINDOW_LAG_SECONDS: int = 2
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    SESSION_EXPIRE_SECONDS: int
+    COOKIE_SECURE_STRICT: bool
+    COOKIE_SECURE_EMBED: bool
+    WRITE_WINDOW_LAG_SECONDS: int
 
     # Email OTP Verification Config
-    ENABLE_EMAIL_OTP: int = 0
-    SMTP_HOST: str = "mailpit"
-    SMTP_PORT: int = 1025
-    SMTP_USERNAME: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = "no-reply@locoworks.com"
-    SMTP_USE_TLS: bool = False
-    SMTP_USE_SSL: bool = False
-    OTP_EXPIRE_SECONDS: int = 180
-    REGISTRATION_SESSION_EXPIRE_SECONDS: int = 180
+    ENABLE_EMAIL_OTP: int
+    SMTP_HOST: str
+    SMTP_PORT: int
+    SMTP_USERNAME: str
+    SMTP_PASSWORD: str
+    SMTP_FROM_EMAIL: str
+    SMTP_USE_TLS: bool
+    SMTP_USE_SSL: bool
+    OTP_EXPIRE_SECONDS: int
+    REGISTRATION_SESSION_EXPIRE_SECONDS: int
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"
