@@ -157,6 +157,15 @@ const LoginPage = () => {
         linkText="Register here"
         linkTo="/register"
       />
+
+      <div style={{ marginTop: "1.25rem", textAlign: "center", paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>
+        <span
+          onClick={() => navigate("/admin/login")}
+          style={{ fontSize: "0.85rem", color: "var(--primary-color)", cursor: "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+        >
+          🔒 Switch to Administrator Portal
+        </span>
+      </div>
     </AuthCard>
   );
 };

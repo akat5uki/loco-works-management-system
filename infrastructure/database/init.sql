@@ -24,6 +24,29 @@ CREATE TABLE "public"."employees" (
     PRIMARY KEY ("ticket_number")
 );
 
+CREATE TABLE "public"."loco_admin" (
+    "ticket_number" int NOT NULL,
+    "is_default" boolean NOT NULL DEFAULT false,
+    "must_change_password" boolean NOT NULL DEFAULT false,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY ("ticket_number")
+);
+
+CREATE TABLE "public"."registration_requests" (
+    "request_id" SERIAL NOT NULL,
+    "reg_code" varchar(12) NOT NULL UNIQUE,
+    "ticket_number" int NOT NULL,
+    "name" varchar NOT NULL,
+    "designation_id" int NOT NULL,
+    "email" varchar NOT NULL,
+    "password_hash" varchar NOT NULL,
+    "status" varchar NOT NULL DEFAULT 'PENDING',
+    "remarks" text,
+    "valid_until" timestamptz NOT NULL,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY ("request_id")
+);
+
 CREATE TABLE "public"."jobs" (
     "job_id" int NOT NULL,
     "job_description" varchar NOT NULL,
@@ -151,6 +174,8 @@ ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_job_id_job
 
 ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_loco_number_loco_loco_number" FOREIGN KEY("loco_number") REFERENCES "public"."loco"("loco_number");
 ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_ticket_number_employees_ticket_number" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
+ALTER TABLE "public"."loco_admin" ADD CONSTRAINT "fk_loco_admin_ticket_number_employees" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number") ON DELETE CASCADE;
+ALTER TABLE "public"."registration_requests" ADD CONSTRAINT "fk_registration_requests_designation" FOREIGN KEY("designation_id") REFERENCES "public"."designation"("designation_id");
 
 -- Global Audit Trigger Function
 CREATE OR REPLACE FUNCTION public.process_audit_log()
@@ -235,4 +260,6 @@ CREATE TRIGGER trg_audit_employee_availability AFTER INSERT OR UPDATE OR DELETE 
 CREATE TRIGGER trg_audit_employee_bookings AFTER INSERT OR UPDATE OR DELETE ON public.employee_bookings FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('booking_id');
 CREATE TRIGGER trg_audit_employee_notifications AFTER INSERT OR UPDATE OR DELETE ON public.employee_notifications FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('notification_id');
 CREATE TRIGGER trg_audit_loco_booking_remarks AFTER INSERT OR UPDATE OR DELETE ON public.loco_booking_remarks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('remarks_id');
+CREATE TRIGGER trg_audit_loco_admin AFTER INSERT OR UPDATE OR DELETE ON public.loco_admin FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number');
+CREATE TRIGGER trg_audit_registration_requests AFTER INSERT OR UPDATE OR DELETE ON public.registration_requests FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('request_id');
 

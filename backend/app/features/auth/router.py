@@ -4,6 +4,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, BackgroundTasks
 from jose import jwt
 from app.core.config import settings
+from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -20,8 +21,10 @@ from app.features.auth.schemas import (
     ResetPasswordRequest,
     ResendOTPRequest
 )
+from datetime import datetime, timedelta, timezone
 from app.features.employees.models import Employee
-from app.core.email import send_otp_email
+from app.features.admin.models import RegistrationRequest
+from app.core.email import send_otp_email, send_registration_notification_email
 
 router = APIRouter()
 
@@ -51,6 +54,23 @@ async def login(
         select(Employee).where(Employee.ticket_number == login_data.ticket_number)
     )
     user = result.scalar_one_or_none()
+    if not user:
+        reg_res = await db.execute(
+            select(RegistrationRequest).where(RegistrationRequest.ticket_number == login_data.ticket_number).order_by(RegistrationRequest.created_at.desc())
+        )
+        pending_req = reg_res.scalars().first()
+        if pending_req:
+            if pending_req.status == "PENDING":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Your registration request (Code: {pending_req.reg_code}) is pending Admin verification. Please present your verification code to Admin."
+                )
+            elif pending_req.status == "REJECTED":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Your registration request was rejected by Admin. Reason: {pending_req.remarks or 'N/A'}"
+                )
+
     if not user or not verify_password(login_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -147,38 +167,63 @@ async def logout(request: Request, response: Response):
     return {"message": "Logged out successfully"}
 
 
+async def generate_unique_reg_code(db: AsyncSession) -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    while True:
+        code = "".join(secrets.choice(alphabet) for _ in range(12))
+        res = await db.execute(select(RegistrationRequest).where(RegistrationRequest.reg_code == code))
+        if not res.scalar_one_or_none():
+            return code
+
+
 @router.post("/register")
 async def register(
     user_data: UserRegister,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    # Check if user already exists
+    # Check if user already exists in employees table
     result = await db.execute(
         select(Employee).where(Employee.ticket_number == user_data.ticket_number)
     )
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User already registered",
+            detail="User already registered and active",
         )
 
-    # Check if email is already registered
+    # Check if email is already registered in employees table
     email_result = await db.execute(
         select(Employee).where(Employee.email == user_data.email)
     )
     if email_result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail="Email address is already active",
         )
+
+    # Check if a pending registration request already exists for this ticket or email
+    pending_check = await db.execute(
+        select(RegistrationRequest).where(
+            or_(
+                RegistrationRequest.ticket_number == user_data.ticket_number,
+                RegistrationRequest.email == user_data.email
+            ),
+            RegistrationRequest.status == "PENDING"
+        )
+    )
+    existing_req = pending_check.scalars().first()
+    if existing_req:
+        return {
+            "registration_submitted": True,
+            "reg_code": existing_req.reg_code,
+            "valid_until": existing_req.valid_until.isoformat(),
+            "message": "A registration request is already pending verification."
+        }
 
     # If Email OTP is enabled, store registration payload in Redis and send OTP
     if settings.ENABLE_EMAIL_OTP == 1:
-        # Generate 6-digit OTP
         otp = f"{secrets.randbelow(900000) + 100000}"
-        
-        # Save temp registration data
         reg_dict = {
             "name": user_data.name,
             "designation_id": user_data.designation_id,
@@ -189,7 +234,6 @@ async def register(
         await redis_client.set(f"temp_reg:{user_data.ticket_number}", json.dumps(reg_dict), ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
         await redis_client.set(f"otp:reg:{user_data.ticket_number}", otp, ex=settings.OTP_EXPIRE_SECONDS)
         
-        # Send OTP email
         background_tasks.add_task(send_otp_email, user_data.email, otp, "Registration")
         
         return {
@@ -199,18 +243,38 @@ async def register(
             "expire_seconds": settings.OTP_EXPIRE_SECONDS
         }
 
-    # Standard registration flow (OTP disabled)
-    new_user = Employee(
+    # Standard registration flow (OTP disabled) -> Create RegistrationRequest
+    reg_code = await generate_unique_reg_code(db)
+    valid_until = datetime.now(timezone.utc) + timedelta(days=7)
+
+    reg_req = RegistrationRequest(
+        reg_code=reg_code,
         ticket_number=user_data.ticket_number,
         name=user_data.name,
         designation_id=user_data.designation_id,
         email=user_data.email,
-        password=get_password_hash(user_data.password),
-        nonce=secrets.token_hex(16),
+        password_hash=get_password_hash(user_data.password),
+        status="PENDING",
+        valid_until=valid_until,
     )
-    db.add(new_user)
+    db.add(reg_req)
     await db.commit()
-    return {"message": "User registered successfully"}
+
+    background_tasks.add_task(
+        send_registration_notification_email,
+        user_data.email,
+        user_data.name,
+        "SUBMITTED (Pending Verification)",
+        f"Your registration request has been submitted successfully. Please present your 12-character verification code ({reg_code}) to the Administrator within 7 days for verification.",
+        reg_code
+    )
+
+    return {
+        "registration_submitted": True,
+        "reg_code": reg_code,
+        "valid_until": valid_until.isoformat(),
+        "message": "Registration submitted successfully. Pending Admin approval."
+    }
 
 
 @router.post("/register-email")
@@ -305,25 +369,35 @@ async def verify_otp(
         if result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already registered",
+                detail="User already registered and active",
             )
             
-        new_user = Employee(
+        reg_code = await generate_unique_reg_code(db)
+        valid_until = datetime.now(timezone.utc) + timedelta(days=7)
+
+        reg_req = RegistrationRequest(
+            reg_code=reg_code,
             ticket_number=ticket_number,
             name=reg_data["name"],
             designation_id=reg_data["designation_id"],
             email=reg_data["email"],
-            password=reg_data["password"],
-            nonce=secrets.token_hex(16),
+            password_hash=reg_data["password"],
+            status="PENDING",
+            valid_until=valid_until,
         )
-        db.add(new_user)
+        db.add(reg_req)
         await db.commit()
         
         # Clean up Redis
         await redis_client.delete(otp_key)
         await redis_client.delete(reg_key)
         
-        return {"message": "Email verified and registration completed successfully"}
+        return {
+            "registration_submitted": True,
+            "reg_code": reg_code,
+            "valid_until": valid_until.isoformat(),
+            "message": "Email verified and registration request submitted successfully. Pending Admin approval."
+        }
 
     elif otp_type == "login":
         otp_key = f"otp:login:{ticket_number}"

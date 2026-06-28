@@ -11,3 +11,5 @@ from app.features.employee_bookings.models import (  # noqa
     EmployeeNotification,
     LocoBookingRemarks,
 )
+from app.features.admin.models import LocoAdmin, RegistrationRequest  # noqa
+

@@ -12,6 +12,8 @@ import CaptchaField from "./components/CaptchaField";
 import AuthFooter from "./components/AuthFooter";
 import "./Auth.css";
 
+import RegistrationSlipModal from "./components/RegistrationSlipModal";
+
 interface Designation {
   designation_id: number;
   designation_name: string;
@@ -28,6 +30,7 @@ const RegisterPage = () => {
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slipData, setSlipData] = useState<{ reg_code: string; valid_until: string } | null>(null);
 
   const navigate = useNavigate();
   const { captcha, setCaptcha, captchaCode, refreshCaptcha, validate } =
@@ -82,6 +85,11 @@ const RegisterPage = () => {
             action: "registration",
             expire_seconds: res.data.expire_seconds,
           },
+        });
+      } else if (res.data.registration_submitted) {
+        setSlipData({
+          reg_code: res.data.reg_code,
+          valid_until: res.data.valid_until,
         });
       } else {
         navigate("/login");
@@ -176,6 +184,20 @@ const RegisterPage = () => {
         linkText="Sign in"
         linkTo="/login"
       />
+
+      {slipData && (
+        <RegistrationSlipModal
+          regCode={slipData.reg_code}
+          ticketNumber={parseInt(formData.ticket_number, 10)}
+          name={formData.name}
+          email={formData.email}
+          validUntil={slipData.valid_until}
+          onClose={() => {
+            setSlipData(null);
+            navigate("/login");
+          }}
+        />
+      )}
     </AuthCard>
   );
 };

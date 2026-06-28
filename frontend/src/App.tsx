@@ -19,6 +19,8 @@ import EmployeeAvailability from "./features/bookings/EmployeeAvailability";
 import BookingPreview from "./features/bookings/BookingPreview";
 import JobCarryForwardPage from "./features/bookings/JobCarryForwardPage";
 import MasterDataPage from "./features/crud/MasterDataPage";
+import AdminLoginPage from "./features/admin/AdminLoginPage";
+import AdminDashboardPage from "./features/admin/AdminDashboardPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 import CookieConsent from "./shared/components/CookieConsent";
 
@@ -34,6 +36,15 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/session-expired" element={<SessionExpiredPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard"
           element={

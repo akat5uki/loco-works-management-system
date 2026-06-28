@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.redis import redis_client
+from app.features.admin.models import LocoAdmin
 from app.features.employees.models import Employee, Designation
 
 # OAuth2 scheme for the Authorization header
@@ -132,6 +133,24 @@ def require_supervisor(current_user: Annotated[Employee, Depends(get_current_use
     return current_user
 
 
+async def require_admin(
+    current_user: Annotated[Employee, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> Employee:
+    result = await db.execute(
+        select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number)
+    )
+    admin_record = result.scalar_one_or_none()
+    if not admin_record:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions. Administrative access required.",
+        )
+    return current_user
+
+
 # Type alias for cleaner dependency injection
 CurrentUser = Annotated[Employee, Depends(get_current_user)]
 SupervisorUser = Annotated[Employee, Depends(require_supervisor)]
+AdminUser = Annotated[Employee, Depends(require_admin)]
+

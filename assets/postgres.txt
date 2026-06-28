@@ -40,6 +40,31 @@ CREATE TABLE "public"."employees" (
     PRIMARY KEY ("ticket_number")
 );
 
+-- Administrative Accounts & System Access Permissions
+CREATE TABLE "public"."loco_admin" (
+    "ticket_number" int NOT NULL,
+    "is_default" boolean NOT NULL DEFAULT false,
+    "must_change_password" boolean NOT NULL DEFAULT false,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY ("ticket_number")
+);
+
+-- Staging & Verification for Employee Registration Approval Workflow
+CREATE TABLE "public"."registration_requests" (
+    "request_id" serial NOT NULL,
+    "reg_code" varchar(12) NOT NULL UNIQUE,
+    "ticket_number" int NOT NULL,
+    "name" varchar NOT NULL,
+    "designation_id" int NOT NULL,
+    "email" varchar NOT NULL,
+    "password_hash" varchar NOT NULL,
+    "status" varchar NOT NULL DEFAULT 'PENDING',
+    "remarks" text,
+    "valid_until" timestamptz NOT NULL,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY ("request_id")
+);
+
 -- Daily Staff Availability Status (Present, Leave, Shift-Off, Sick)
 CREATE TABLE "public"."employee_availability" (
     "availability_id" serial NOT NULL,

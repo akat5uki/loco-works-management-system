@@ -1,6 +1,7 @@
 import smtplib
 import ssl
 import asyncio
+from typing import Optional
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
@@ -131,3 +132,94 @@ async def send_otp_email(to_email: str, otp: str, purpose: str) -> None:
         logger.error(f"Failed to send OTP email to {to_email}: {e}")
         # Re-raise so calling router can handle or return failure
         raise e
+
+
+async def send_registration_notification_email(
+    to_email: str,
+    name: str,
+    status_title: str,
+    message_body: str,
+    reg_code: Optional[str] = None
+) -> None:
+    """
+    Sends registration workflow updates (Pending, Approved, Rejected, Remarks) to employees.
+    """
+    subject = f"Loco Works System - Registration Request {status_title}"
+    code_html = f'<div class="otp-box">{reg_code}</div>' if reg_code else ''
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            .email-container {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                background-color: #ffffff;
+            }}
+            .header {{
+                background-color: #1e3a8a;
+                color: #ffffff;
+                padding: 15px;
+                text-align: center;
+                border-radius: 6px 6px 0 0;
+            }}
+            .content {{
+                padding: 20px;
+                color: #333333;
+                line-height: 1.6;
+            }}
+            .otp-box {{
+                display: inline-block;
+                margin: 15px 0;
+                padding: 12px 25px;
+                font-size: 22px;
+                font-weight: bold;
+                letter-spacing: 3px;
+                color: #1e3a8a;
+                background-color: #f3f4f6;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                text-align: center;
+            }}
+            .footer {{
+                margin-top: 20px;
+                font-size: 12px;
+                color: #6b7280;
+                text-align: center;
+                border-top: 1px solid #e5e7eb;
+                padding-top: 15px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="email-container">
+            <div class="header">
+                <h2>Loco Works Management System</h2>
+            </div>
+            <div class="content">
+                <p>Hello <strong>{name}</strong>,</p>
+                <p>Status Update: <strong>{status_title}</strong></p>
+                <div style="text-align: center;">
+                    {code_html}
+                </div>
+                <p>{message_body}</p>
+            </div>
+            <div class="footer">
+                <p>This is an automated system notification. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    try:
+        await asyncio.to_thread(_send_email_sync, to_email, subject, html_content)
+        logger.info(f"Successfully dispatched registration notification to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send registration notification to {to_email}: {e}")
+

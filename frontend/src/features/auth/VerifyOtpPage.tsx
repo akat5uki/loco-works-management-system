@@ -7,6 +7,7 @@ import AuthCard from "./components/AuthCard";
 import AuthHeader from "./components/AuthHeader";
 import AuthFormField from "./components/AuthFormField";
 import AuthFooter from "./components/AuthFooter";
+import RegistrationSlipModal from "./components/RegistrationSlipModal";
 import "./Auth.css";
 
 const VerifyOtpPage = () => {
@@ -15,6 +16,7 @@ const VerifyOtpPage = () => {
   const [resendSuccess, setResendSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [slipData, setSlipData] = useState<{ reg_code: string; valid_until: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -63,16 +65,16 @@ const VerifyOtpPage = () => {
 
     setLoading(true);
     try {
-      await api.post("/auth/verify-otp", {
+      const res = await api.post("/auth/verify-otp", {
         ticket_number: String(state.ticket_number),
         otp,
         type: state.action,
       });
 
-      if (state.action === "registration") {
-        // Redirect to login with success message
-        navigate("/login", {
-          state: { successMessage: "Account verified and registered successfully! You can now sign in." },
+      if (state.action === "registration" && res.data.registration_submitted) {
+        setSlipData({
+          reg_code: res.data.reg_code,
+          valid_until: res.data.valid_until,
         });
       } else {
         // Successful login / email registration -> navigate to dashboard
@@ -207,6 +209,20 @@ const VerifyOtpPage = () => {
         linkText="Start over"
         linkTo={state.action === "registration" ? "/register" : "/login"}
       />
+
+      {slipData && state && (
+        <RegistrationSlipModal
+          regCode={slipData.reg_code}
+          ticketNumber={typeof state.ticket_number === "number" ? state.ticket_number : parseInt(state.ticket_number, 10)}
+          name="Employee"
+          email={state.email}
+          validUntil={slipData.valid_until}
+          onClose={() => {
+            setSlipData(null);
+            navigate("/login");
+          }}
+        />
+      )}
     </AuthCard>
   );
 };

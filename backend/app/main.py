@@ -15,6 +15,7 @@ from app.features.realtime.router import redis_stream_listener, chat_pubsub_list
 from app.features.realtime.router import router as realtime_router
 from app.features.chat.router import router as chat_router
 from app.features.employee_bookings.router import router as employee_bookings_router
+from app.features.admin.router import router as admin_router, seed_default_admin_if_needed
 
 
 @asynccontextmanager
@@ -22,8 +23,12 @@ async def lifespan(app: FastAPI):
     # Ensure all tables are created on startup (including any newly defined feature tables)
     from app.core.base import Base
     from app.core.database import primary_engine
+    from sqlalchemy.ext.asyncio import AsyncSession
     async with primary_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncSession(primary_engine) as session:
+        await seed_default_admin_if_needed(session)
 
     # Start background listeners
     stream_task = asyncio.create_task(redis_stream_listener())
@@ -97,6 +102,10 @@ app.include_router(
 app.include_router(
     chat_router, prefix=f"{settings.API_V1_STR}/chat", tags=["chat"]
 )
+app.include_router(
+    admin_router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"]
+)
+
 
 
 @app.get(f"{settings.API_V1_STR}/")
