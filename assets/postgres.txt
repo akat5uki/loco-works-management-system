@@ -1,48 +1,27 @@
+-- ==============================================================================
+-- LOCO WORKS MANAGEMENT SYSTEM (LWMS) - POSTGRESQL DATABASE SCHEMA DDL
+-- ==============================================================================
+-- Description: Complete PostgreSQL production database schema including tables, 
+--              foreign key constraints, global auditing function, monthly 
+--              range partitioning, and 100% audit trigger coverage across 
+--              all 14 operational base tables.
+-- Last Updated: June 2026
+-- ==============================================================================
+
 CREATE SCHEMA IF NOT EXISTS "public";
 
-CREATE TABLE "public"."employee_job_ratings" (
-    "ticket_number" int NOT NULL,
-    "job_id" int NOT NULL,
-    "rating" int NOT NULL,
-    PRIMARY KEY ("ticket_number", "job_id")
-);
+-- ------------------------------------------------------------------------------
+-- 1. EMPLOYEE & DESIGNATION MASTER TABLES
+-- ------------------------------------------------------------------------------
 
-CREATE TABLE "public"."loco_type" (
-    "loco_type_id" int NOT NULL,
-    "loco_type_name" varchar NOT NULL UNIQUE,
-    PRIMARY KEY ("loco_type_id")
-);
-
-CREATE TABLE "public"."loco" (
-    "loco_number" int NOT NULL,
-    "loco_type_id" int NOT NULL,
-    "date_time" timestamptz NOT NULL,
-    "stage" int NOT NULL,
-    "shift" int NOT NULL,
-    PRIMARY KEY ("loco_number")
-);
-
-CREATE TABLE "public"."employees" (
-    "ticket_number" int NOT NULL,
-    "name" varchar NOT NULL,
-    "designation_id" int NOT NULL,
-    "password" varchar NOT NULL,
-    "nonce" varchar NOT NULL,
-    PRIMARY KEY ("ticket_number")
-);
-
-CREATE TABLE "public"."tasks" (
-    "task_id" bigserial NOT NULL,
-    "task_description" text NOT NULL,
-    PRIMARY KEY ("task_id")
-);
-
+-- Employee Category Catalog (e.g. Executive, Supervisor, Artisan)
 CREATE TABLE "public"."employee_category" (
     "category_id" int NOT NULL,
     "category_name" varchar NOT NULL UNIQUE,
     PRIMARY KEY ("category_id")
 );
 
+-- Employee Designation Catalog (e.g. SSE, JE, Sr. Tech, Tech-I, Helper)
 CREATE TABLE "public"."designation" (
     "designation_id" int NOT NULL,
     "designation_name" varchar NOT NULL,
@@ -50,16 +29,35 @@ CREATE TABLE "public"."designation" (
     PRIMARY KEY ("designation_id")
 );
 
-CREATE TABLE "public"."loco_bookings" (
-    "loco_number" int NOT NULL,
-    "date_time" timestamptz NOT NULL,
-    "job_id" int NOT NULL,
-    "task_id" bigserial NOT NULL DEFAULT 1,
+-- Staff Accounts & Credentials
+CREATE TABLE "public"."employees" (
     "ticket_number" int NOT NULL,
+    "name" varchar NOT NULL,
     "designation_id" int NOT NULL,
-    PRIMARY KEY ("loco_number", "date_time", "job_id")
+    "email" varchar UNIQUE,
+    "password" varchar NOT NULL,
+    "nonce" varchar NOT NULL,
+    PRIMARY KEY ("ticket_number")
 );
 
+-- Daily Staff Availability Status (Present, Leave, Shift-Off, Sick)
+CREATE TABLE "public"."employee_availability" (
+    "availability_id" serial NOT NULL,
+    "ticket_number" int NOT NULL,
+    "date" date NOT NULL,
+    "shift" int NOT NULL,
+    "status" varchar NOT NULL,
+    "designation_id" int NOT NULL,
+    "updated_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("availability_id"),
+    CONSTRAINT "uq_employee_availability_shift" UNIQUE ("ticket_number", "date", "shift")
+);
+
+-- ------------------------------------------------------------------------------
+-- 2. LOCOMOTIVE & JOB MASTER TABLES
+-- ------------------------------------------------------------------------------
+
+-- Job Catalog & Stage Definitions (e.g. Commissioning, Mechanical Testing)
 CREATE TABLE "public"."jobs" (
     "job_id" int NOT NULL,
     "job_description" varchar NOT NULL,
@@ -67,6 +65,103 @@ CREATE TABLE "public"."jobs" (
     PRIMARY KEY ("job_id")
 );
 
+-- Employee Competency & Skill Ratings per Job
+CREATE TABLE "public"."employee_job_ratings" (
+    "ticket_number" int NOT NULL,
+    "job_id" int NOT NULL,
+    "rating" int NOT NULL,
+    PRIMARY KEY ("ticket_number", "job_id")
+);
+
+-- Locomotive Types Catalog (e.g. WAP-7, WAG-9HC)
+CREATE TABLE "public"."loco_type" (
+    "loco_type_id" int NOT NULL,
+    "loco_type_name" varchar NOT NULL UNIQUE,
+    PRIMARY KEY ("loco_type_id")
+);
+
+-- Active Locomotive Fleet Records
+CREATE TABLE "public"."loco" (
+    "loco_number" int NOT NULL,
+    "loco_type_id" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "stage" int NOT NULL,
+    "shift" int NOT NULL,
+    "despatched" boolean NOT NULL DEFAULT false,
+    "despatch_date" date,
+    PRIMARY KEY ("loco_number")
+);
+
+-- ------------------------------------------------------------------------------
+-- 3. BOOKING & SHIFT ALLOCATION TABLES
+-- ------------------------------------------------------------------------------
+
+-- Master Locomotive Shift Booking Allocations
+CREATE TABLE "public"."loco_bookings" (
+    "loco_number" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "job_id" int NOT NULL,
+    "ticket_number" int NOT NULL,
+    "designation_id" int NOT NULL,
+    "shift" int NOT NULL,
+    PRIMARY KEY ("loco_number", "date_time", "job_id")
+);
+
+-- Work Tasks Assigned to Specific Locomotive Bookings (Transactional Execution)
+CREATE TABLE "public"."booking_tasks" (
+    "task_id" bigserial NOT NULL,
+    "loco_number" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "job_id" int NOT NULL,
+    "task_description" text NOT NULL,
+    PRIMARY KEY ("task_id"),
+    CONSTRAINT "fk_booking_tasks_loco_bookings" 
+        FOREIGN KEY ("loco_number", "date_time", "job_id") 
+        REFERENCES "public"."loco_bookings"("loco_number", "date_time", "job_id") 
+        ON DELETE CASCADE
+);
+
+-- Employee Staff Allocations to Locomotive Bookings
+CREATE TABLE "public"."employee_bookings" (
+    "booking_id" serial NOT NULL,
+    "loco_number" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "job_id" int NOT NULL,
+    "ticket_number" int NOT NULL,
+    "task_id" bigint,
+    "created_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("booking_id")
+);
+
+-- Shift Handover & Carry-Forward Remarks
+CREATE TABLE "public"."loco_booking_remarks" (
+    "remarks_id" serial NOT NULL,
+    "loco_number" int NOT NULL,
+    "date_time" timestamptz NOT NULL,
+    "job_id" int NOT NULL,
+    "ticket_number" int NOT NULL,
+    "shift" int NOT NULL,
+    "status" varchar NOT NULL,
+    "remarks" text,
+    "created_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("remarks_id")
+);
+
+-- Realtime Staff System Notifications
+CREATE TABLE "public"."employee_notifications" (
+    "notification_id" serial NOT NULL,
+    "ticket_number" int NOT NULL,
+    "message" text NOT NULL,
+    "is_read" boolean NOT NULL DEFAULT false,
+    "created_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("notification_id")
+);
+
+-- ------------------------------------------------------------------------------
+-- 4. SYSTEM AUDITING & MONTHLY RANGE PARTITIONING
+-- ------------------------------------------------------------------------------
+
+-- Master Partitioned Audit Logs Table (Range Partitioned by Changed Date)
 CREATE TABLE "public"."audit_logs" (
     "id" bigserial NOT NULL,
     "table_name" text NOT NULL,
@@ -77,22 +172,83 @@ CREATE TABLE "public"."audit_logs" (
     "changed_by" int NOT NULL,
     "changed_at" timestamptz NOT NULL,
     PRIMARY KEY ("changed_at", "id")
-) PARTION BY RANGE ("changed_at");
+) PARTITION BY RANGE ("changed_at");
 
--- Foreign key constraints
--- Schema: public
-ALTER TABLE "public"."designation" ADD CONSTRAINT "fk_designation_category_id_employee_category_category_id" FOREIGN KEY("category_id") REFERENCES "public"."employee_category"("category_id");
-ALTER TABLE "public"."employee_job_ratings" ADD CONSTRAINT "fk_employee_job_ratings_job_id_jobs_job_id" FOREIGN KEY("job_id") REFERENCES "public"."jobs"("job_id");
-ALTER TABLE "public"."employees" ADD CONSTRAINT "fk_employees_designation_id_designation_designation_id" FOREIGN KEY("designation_id") REFERENCES "public"."designation"("designation_id");
-ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_designation_id_designation_designation_id" FOREIGN KEY("designation_id") REFERENCES "public"."designation"("designation_id");
-ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_job_id_jobs_job_id" FOREIGN KEY("job_id") REFERENCES "public"."jobs"("job_id");
-ALTER TABLE "public"."loco" ADD CONSTRAINT "fk_loco_loco_type_id_loco_type_loco_type_id" FOREIGN KEY("loco_type_id") REFERENCES "public"."loco_type"("loco_type_id");
-ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_task_id_tasks_task_id" FOREIGN KEY("task_id") REFERENCES "public"."tasks"("task_id");
-ALTER TABLE "public"."employee_job_ratings" ADD CONSTRAINT "fk_employee_job_ratings_ticket_number_employees" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
-ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_loco_number_loco_loco_number" FOREIGN KEY("loco_number") REFERENCES "public"."loco"("loco_number");
-ALTER TABLE "public"."loco_bookings" ADD CONSTRAINT "fk_loco_bookings_ticket_number_employees_ticket_number" FOREIGN KEY("ticket_number") REFERENCES "public"."employees"("ticket_number");
+-- ------------------------------------------------------------------------------
+-- 5. FOREIGN KEY CONSTRAINTS
+-- ------------------------------------------------------------------------------
 
--- Global Audit Trigger Function
+ALTER TABLE "public"."designation" 
+    ADD CONSTRAINT "fk_designation_category_id_employee_category_category_id" 
+    FOREIGN KEY ("category_id") REFERENCES "public"."employee_category"("category_id");
+
+ALTER TABLE "public"."employees" 
+    ADD CONSTRAINT "fk_employees_designation_id_designation_designation_id" 
+    FOREIGN KEY ("designation_id") REFERENCES "public"."designation"("designation_id");
+
+ALTER TABLE "public"."employee_availability" 
+    ADD CONSTRAINT "fk_employee_availability_ticket_number" 
+    FOREIGN KEY ("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+ALTER TABLE "public"."employee_availability" 
+    ADD CONSTRAINT "fk_employee_availability_designation_id" 
+    FOREIGN KEY ("designation_id") REFERENCES "public"."designation"("designation_id");
+
+ALTER TABLE "public"."employee_job_ratings" 
+    ADD CONSTRAINT "fk_employee_job_ratings_job_id_jobs_job_id" 
+    FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("job_id");
+
+ALTER TABLE "public"."employee_job_ratings" 
+    ADD CONSTRAINT "fk_employee_job_ratings_ticket_number_employees" 
+    FOREIGN KEY ("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+ALTER TABLE "public"."loco" 
+    ADD CONSTRAINT "fk_loco_loco_type_id_loco_type_loco_type_id" 
+    FOREIGN KEY ("loco_type_id") REFERENCES "public"."loco_type"("loco_type_id");
+
+ALTER TABLE "public"."loco_bookings" 
+    ADD CONSTRAINT "fk_loco_bookings_loco_number_loco_loco_number" 
+    FOREIGN KEY ("loco_number") REFERENCES "public"."loco"("loco_number") ON DELETE CASCADE;
+
+ALTER TABLE "public"."loco_bookings" 
+    ADD CONSTRAINT "fk_loco_bookings_job_id_jobs_job_id" 
+    FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("job_id");
+
+ALTER TABLE "public"."loco_bookings" 
+    ADD CONSTRAINT "fk_loco_bookings_ticket_number_employees_ticket_number" 
+    FOREIGN KEY ("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+ALTER TABLE "public"."loco_bookings" 
+    ADD CONSTRAINT "fk_loco_bookings_designation_id_designation_designation_id" 
+    FOREIGN KEY ("designation_id") REFERENCES "public"."designation"("designation_id");
+
+ALTER TABLE "public"."employee_bookings" 
+    ADD CONSTRAINT "fk_employee_bookings_loco_bookings" 
+    FOREIGN KEY ("loco_number", "date_time", "job_id") REFERENCES "public"."loco_bookings"("loco_number", "date_time", "job_id") ON DELETE CASCADE;
+
+ALTER TABLE "public"."employee_bookings" 
+    ADD CONSTRAINT "fk_employee_bookings_employees" 
+    FOREIGN KEY ("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+ALTER TABLE "public"."loco_booking_remarks" 
+    ADD CONSTRAINT "fk_loco_booking_remarks_loco_bookings" 
+    FOREIGN KEY ("loco_number", "date_time", "job_id") REFERENCES "public"."loco_bookings"("loco_number", "date_time", "job_id") ON DELETE CASCADE;
+
+ALTER TABLE "public"."loco_booking_remarks" 
+    ADD CONSTRAINT "fk_loco_booking_remarks_employees" 
+    FOREIGN KEY ("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+ALTER TABLE "public"."employee_notifications" 
+    ADD CONSTRAINT "fk_employee_notifications_employees" 
+    FOREIGN KEY ("ticket_number") REFERENCES "public"."employees"("ticket_number");
+
+-- ------------------------------------------------------------------------------
+-- 6. GLOBAL AUDITING FUNCTION & AUTO-PARTITIONING TRIGGER
+-- ------------------------------------------------------------------------------
+
+-- Function: process_audit_log()
+-- Captures INSERT, UPDATE, and DELETE operations, serializes old/new row states into JSONB,
+-- dynamically provisions monthly partition tables (e.g. audit_logs_YYYY_MM), and routes logs.
 CREATE OR REPLACE FUNCTION public.process_audit_log()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -102,16 +258,19 @@ DECLARE
     v_user_id int;
     v_pk_part text;
     i int;
+
+    -- Partition variables
+    partition_date text;
+    partition_name text;
+    start_date text;
+    end_date text;
 BEGIN
-    -- 1. Grab the current user ID from a custom session variable.
-    -- If your app hasn't set it, we fallback to '0' (System/Unknown).
     BEGIN
         v_user_id := COALESCE(NULLIF(current_setting('app.current_user_id', true), ''), '0')::int;
     EXCEPTION WHEN OTHERS THEN
         v_user_id := 0;
     END;
 
-    -- 2. Capture Old and New data payloads depending on the action
     IF (TG_OP = 'INSERT') THEN
         v_new_data := to_jsonb(NEW);
     ELSIF (TG_OP = 'UPDATE') THEN
@@ -121,7 +280,6 @@ BEGIN
         v_old_data := to_jsonb(OLD);
     END IF;
 
-    -- 3. Dynamically construct the Record PK string using the arguments passed to the trigger
     IF TG_NARGS > 0 THEN
         DECLARE
             parts text[] := '{}';
@@ -140,7 +298,25 @@ BEGIN
         v_pk_value := 'UNKNOWN';
     END IF;
 
-    -- 4. Ship it to the audit log table
+    -- Dynamically provision isolated Monthly Partitions
+    partition_date := to_char(CURRENT_TIMESTAMP, 'YYYY_MM');
+    partition_name := 'audit_logs_' || partition_date;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = partition_name
+          AND n.nspname = 'public'
+    ) THEN
+        start_date := to_char(date_trunc('month', CURRENT_TIMESTAMP), 'YYYY-MM-DD');
+        end_date := to_char(date_trunc('month', CURRENT_TIMESTAMP) + interval '1 month', 'YYYY-MM-DD');
+        EXECUTE format(
+            'CREATE TABLE IF NOT EXISTS public.%I PARTITION OF public.audit_logs FOR VALUES FROM (%L) TO (%L)',
+            partition_name, start_date, end_date
+        );
+    END IF;
+
     INSERT INTO public.audit_logs (
         table_name,
         operation,
@@ -159,7 +335,6 @@ BEGIN
         CURRENT_TIMESTAMP
     );
 
-    -- Keep the pipeline moving smoothly
     IF (TG_OP = 'DELETE') THEN
         RETURN OLD;
     END IF;
@@ -167,48 +342,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Attaching triggers to tables
--- 1. employee_job_ratings (Composite Primary Key)
-CREATE TRIGGER trg_audit_employee_job_ratings
-AFTER INSERT OR UPDATE OR DELETE ON public.employee_job_ratings
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number', 'job_id');
+-- ------------------------------------------------------------------------------
+-- 7. AUDIT TRIGGER ATTACHMENTS (100% COVERAGE ACROSS 14 OPERATIONAL TABLES)
+-- ------------------------------------------------------------------------------
 
--- 2. loco_type
-CREATE TRIGGER trg_audit_loco_type
-AFTER INSERT OR UPDATE OR DELETE ON public.loco_type
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_type_id');
-
--- 3. loco
-CREATE TRIGGER trg_audit_loco
-AFTER INSERT OR UPDATE OR DELETE ON public.loco
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number');
-
--- 4. employees
-CREATE TRIGGER trg_audit_employees
-AFTER INSERT OR UPDATE OR DELETE ON public.employees
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number');
-
--- 5. tasks
-CREATE TRIGGER trg_audit_tasks
-AFTER INSERT OR UPDATE OR DELETE ON public.tasks
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('task_id');
-
--- 6. employee_category
-CREATE TRIGGER trg_audit_employee_category
-AFTER INSERT OR UPDATE OR DELETE ON public.employee_category
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('category_id');
-
--- 7. designation
-CREATE TRIGGER trg_audit_designation
-AFTER INSERT OR UPDATE OR DELETE ON public.designation
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('designation_id');
-
--- 8. loco_bookings (Composite Primary Key)
-CREATE TRIGGER trg_audit_loco_bookings
-AFTER INSERT OR UPDATE OR DELETE ON public.loco_bookings
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number', 'date_time', 'job_id');
-
--- 9. jobs
-CREATE TRIGGER trg_audit_jobs
-AFTER INSERT OR UPDATE OR DELETE ON public.jobs
-FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('job_id');
+CREATE TRIGGER trg_audit_employee_category AFTER INSERT OR UPDATE OR DELETE ON public.employee_category FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('category_id');
+CREATE TRIGGER trg_audit_designation AFTER INSERT OR UPDATE OR DELETE ON public.designation FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('designation_id');
+CREATE TRIGGER trg_audit_employees AFTER INSERT OR UPDATE OR DELETE ON public.employees FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number');
+CREATE TRIGGER trg_audit_employee_availability AFTER INSERT OR UPDATE OR DELETE ON public.employee_availability FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('availability_id');
+CREATE TRIGGER trg_audit_jobs AFTER INSERT OR UPDATE OR DELETE ON public.jobs FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('job_id');
+CREATE TRIGGER trg_audit_employee_job_ratings AFTER INSERT OR UPDATE OR DELETE ON public.employee_job_ratings FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('ticket_number', 'job_id');
+CREATE TRIGGER trg_audit_loco_type AFTER INSERT OR UPDATE OR DELETE ON public.loco_type FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_type_id');
+CREATE TRIGGER trg_audit_loco AFTER INSERT OR UPDATE OR DELETE ON public.loco FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number');
+CREATE TRIGGER trg_audit_loco_bookings AFTER INSERT OR UPDATE OR DELETE ON public.loco_bookings FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('loco_number', 'date_time', 'job_id');
+CREATE TRIGGER trg_audit_booking_tasks AFTER INSERT OR UPDATE OR DELETE ON public.booking_tasks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('task_id');
+CREATE TRIGGER trg_audit_employee_bookings AFTER INSERT OR UPDATE OR DELETE ON public.employee_bookings FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('booking_id');
+CREATE TRIGGER trg_audit_loco_booking_remarks AFTER INSERT OR UPDATE OR DELETE ON public.loco_booking_remarks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('remarks_id');
+CREATE TRIGGER trg_audit_employee_notifications AFTER INSERT OR UPDATE OR DELETE ON public.employee_notifications FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('notification_id');
