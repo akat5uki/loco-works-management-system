@@ -70,24 +70,24 @@ async def get_current_user(
             )
 
         # Extend session lifetime on activity (Sliding Expiration)
-        await redis_client.expire(session_key, 1800)
+        await redis_client.expire(session_key, settings.SESSION_EXPIRE_SECONDS)
 
         # Extend browser cookies' lifetime (Sliding Expiration)
         response.set_cookie(
             key="session_id_strict",
             value=final_token,
             httponly=True,
-            secure=True,
+            secure=settings.COOKIE_SECURE,
             samesite="strict",
-            max_age=1800,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         response.set_cookie(
             key="session_id_embed",
             value=final_token,
             httponly=True,
-            secure=True,
+            secure=settings.COOKIE_SECURE,
             samesite="none",
-            max_age=1800,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         # Add 'Partitioned' attribute for CHIPS support
         for i, (header_name, header_value) in enumerate(response.raw_headers):

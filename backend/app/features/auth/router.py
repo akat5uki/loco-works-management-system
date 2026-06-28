@@ -85,24 +85,24 @@ async def login(
 
     # Store session in Redis
     session_key = f"session:{user.ticket_number}"
-    await redis_client.set(session_key, access_token, ex=1800)  # 30 mins
+    await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
 
     # Dual-Cookie Auth Shield
     response.set_cookie(
         key="session_id_strict",
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=settings.COOKIE_SECURE,
         samesite="strict",
-        max_age=1800,  # 30 mins
+        max_age=settings.SESSION_EXPIRE_SECONDS,
     )
     response.set_cookie(
         key="session_id_embed",
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=settings.COOKIE_SECURE,
         samesite="none",
-        max_age=1800,
+        max_age=settings.SESSION_EXPIRE_SECONDS,
     )
 
     # Manually add 'Partitioned' attribute for CHIPS support
@@ -348,24 +348,24 @@ async def verify_otp(
         
         # Store session in Redis
         session_key = f"session:{user.ticket_number}"
-        await redis_client.set(session_key, access_token, ex=1800)
+        await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
         
         # Set cookies
         response.set_cookie(
             key="session_id_strict",
             value=access_token,
             httponly=True,
-            secure=True,
+            secure=settings.COOKIE_SECURE,
             samesite="strict",
-            max_age=1800,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         response.set_cookie(
             key="session_id_embed",
             value=access_token,
             httponly=True,
-            secure=True,
+            secure=settings.COOKIE_SECURE,
             samesite="none",
-            max_age=1800,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         for i, (header_name, header_value) in enumerate(response.raw_headers):
             if header_name == b"set-cookie" and b"session_id_embed" in header_value:
@@ -422,23 +422,23 @@ async def verify_otp(
         # Complete login
         access_token = create_access_token(subject=user.ticket_number)
         session_key = f"session:{user.ticket_number}"
-        await redis_client.set(session_key, access_token, ex=1800)
+        await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
         
         response.set_cookie(
             key="session_id_strict",
             value=access_token,
             httponly=True,
-            secure=True,
+            secure=settings.COOKIE_SECURE,
             samesite="strict",
-            max_age=1800,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         response.set_cookie(
             key="session_id_embed",
             value=access_token,
             httponly=True,
-            secure=True,
+            secure=settings.COOKIE_SECURE,
             samesite="none",
-            max_age=1800,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         for i, (header_name, header_value) in enumerate(response.raw_headers):
             if header_name == b"set-cookie" and b"session_id_embed" in header_value:

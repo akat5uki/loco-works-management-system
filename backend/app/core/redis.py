@@ -15,11 +15,11 @@ if settings.REDIS_SENTINELS:
         settings.REDIS_MASTER_SET,
         password=settings.REDIS_PASSWORD,
         decode_responses=True,
-        socket_timeout=10.0,
+        socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
     )
 else:
     redis_client: Redis = Redis.from_url(
         settings.REDIS_URL,
         decode_responses=True,
-        socket_timeout=10.0,
+        socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
     )

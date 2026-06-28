@@ -60,10 +60,10 @@ async def db_routing_middleware(request: Request, call_next):
             response.set_cookie(
                 key="write_window_lag",
                 value="1",
-                max_age=2,
+                max_age=settings.WRITE_WINDOW_LAG_SECONDS,
                 httponly=True,
                 samesite="lax",
-                secure=False,  # Set True if HTTPS
+                secure=settings.COOKIE_SECURE,
             )
         elif has_lag_cookie and not is_mutating:
             # Read request consumed the lag cookie → delete it immediately
@@ -112,4 +112,4 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.BACKEND_HOST, port=settings.BACKEND_PORT)
