@@ -164,9 +164,9 @@ async def require_admin(
     """
     final_token = token
     if not final_token:
-        final_token = request.cookies.get("session_id_strict")
+        final_token = request.cookies.get("admin_session_id_strict")
     if not final_token:
-        final_token = request.cookies.get("session_id_embed")
+        final_token = request.cookies.get("admin_session_id_embed")
 
     if not final_token:
         raise HTTPException(

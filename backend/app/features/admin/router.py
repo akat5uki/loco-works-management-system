@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import String, cast, func, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -137,7 +137,7 @@ async def admin_login(
     await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
 
     response.set_cookie(
-        key="session_id_strict",
+        key="admin_session_id_strict",
         value=access_token,
         httponly=True,
         secure=settings.COOKIE_SECURE_STRICT,
@@ -145,13 +145,18 @@ async def admin_login(
         max_age=settings.SESSION_EXPIRE_SECONDS,
     )
     response.set_cookie(
-        key="session_id_embed",
+        key="admin_session_id_embed",
         value=access_token,
         httponly=True,
         secure=settings.COOKIE_SECURE_EMBED,
         samesite="none",
         max_age=settings.SESSION_EXPIRE_SECONDS,
     )
+
+    for i, (header_name, header_value) in enumerate(response.raw_headers):
+        if header_name == b"set-cookie" and b"admin_session_id_embed" in header_value:
+            if b"Partitioned" not in header_value:
+                response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
 
     return {
         "access_token": access_token,
@@ -261,7 +266,7 @@ async def admin_change_password(
         await redis_client.delete(f"session:{settings.DEFAULT_ADMIN_TICKET}:admin")
 
         response.set_cookie(
-            key="session_id_strict",
+            key="admin_session_id_strict",
             value=access_token,
             httponly=True,
             secure=settings.COOKIE_SECURE_STRICT,
@@ -269,13 +274,18 @@ async def admin_change_password(
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
         response.set_cookie(
-            key="session_id_embed",
+            key="admin_session_id_embed",
             value=access_token,
             httponly=True,
             secure=settings.COOKIE_SECURE_EMBED,
             samesite="none",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
+
+        for i, (header_name, header_value) in enumerate(response.raw_headers):
+            if header_name == b"set-cookie" and b"admin_session_id_embed" in header_value:
+                if b"Partitioned" not in header_value:
+                    response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
 
         return {
             "message": f"Administrator account #{new_ticket} created successfully. Default admin account removed.",
@@ -291,6 +301,37 @@ async def admin_change_password(
 
     await db.commit()
     return {"message": "Admin password changed successfully"}
+
+
+@router.post("/logout")
+async def admin_logout(request: Request, response: Response):
+    token = request.cookies.get("admin_session_id_strict") or request.cookies.get("admin_session_id_embed")
+    if token:
+        try:
+            from jose import jwt
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
+            ticket_number_raw = payload.get("sub")
+            if ticket_number_raw:
+                session_key = f"session:{ticket_number_raw}:admin"
+                await redis_client.delete(session_key)
+        except Exception:
+            pass
+
+    response.delete_cookie(
+        key="admin_session_id_strict", path="/", httponly=True, secure=True, samesite="strict"
+    )
+    response.delete_cookie(
+        key="admin_session_id_embed", path="/", httponly=True, secure=True, samesite="none"
+    )
+
+    for i, (header_name, header_value) in enumerate(response.raw_headers):
+        if header_name == b"set-cookie" and b"admin_session_id_embed" in header_value:
+            if b"Partitioned" not in header_value:
+                response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
+
+    return {"message": "Admin logged out successfully"}
 
 
 @router.post("/set-employee-password")

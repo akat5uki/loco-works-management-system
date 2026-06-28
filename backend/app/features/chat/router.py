@@ -43,16 +43,19 @@ async def _authenticate_ws(websocket: WebSocket) -> dict | None:
     token = (
         websocket.cookies.get("session_id_strict")
         or websocket.cookies.get("session_id_embed")
+        or websocket.cookies.get("admin_session_id_strict")
+        or websocket.cookies.get("admin_session_id_embed")
     )
     if not token:
         return None
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         ticket_number_raw = payload.get("sub")
+        session_type = payload.get("session_type", "employee")
         if not ticket_number_raw:
             return None
         # Validate against Redis session store
-        session_key = f"session:{ticket_number_raw}"
+        session_key = f"session:{ticket_number_raw}:{session_type}"
         stored_token = await redis_client.get(session_key)
         if not stored_token or stored_token != token:
             return None

@@ -32,7 +32,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post("/admin/logout");
     } catch (e) {
       console.error(e);
     }

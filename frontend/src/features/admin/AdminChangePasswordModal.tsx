@@ -28,7 +28,7 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
 
   const handleCancel = async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post("/admin/logout");
     } catch {
       // Ignore logout errors on cancel
     }
