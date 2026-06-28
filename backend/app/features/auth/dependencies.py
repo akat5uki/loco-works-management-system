@@ -1,3 +1,4 @@
+import json
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, Response, status
@@ -217,6 +218,30 @@ async def require_admin(
         select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number)
     )
     admin_record = admin_res.scalar_one_or_none()
+    user = None
+
+    if not admin_record and ticket_number == settings.DEFAULT_ADMIN_TICKET:
+        raw_redis_info = await redis_client.get("default_admin:info")
+        if raw_redis_info:
+            redis_data = json.loads(raw_redis_info)
+            token_nonce = payload.get("nonce", "")
+            if token_nonce and token_nonce == redis_data.get("nonce"):
+                admin_record = LocoAdmin(
+                    ticket_number=settings.DEFAULT_ADMIN_TICKET,
+                    password=redis_data["password_hash"],
+                    nonce=redis_data["nonce"],
+                    is_default=True,
+                    must_change_password=True,
+                    employee_portal_enabled=False,
+                )
+                user = Employee(
+                    ticket_number=settings.DEFAULT_ADMIN_TICKET,
+                    name="System Administrator",
+                    email=settings.DEFAULT_ADMIN_EMAIL,
+                    designation_id=1,
+                    nonce=redis_data["nonce"],
+                )
+
     if not admin_record:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -240,24 +265,24 @@ async def require_admin(
                 detail="Mandatory initial administrator setup required before accessing dashboard.",
             )
 
-    # Fetch and return the employee record for current admin (for compatibility)
-    result = await db.execute(
-        select(Employee)
-        .options(joinedload(Employee.designation).joinedload(Designation.category))
-        .where(Employee.ticket_number == ticket_number)
-    )
-    user = result.scalar_one_or_none()
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin employee record not found",
+        # Fetch and return the employee record for current admin (for compatibility)
+        result = await db.execute(
+            select(Employee)
+            .options(joinedload(Employee.designation).joinedload(Designation.category))
+            .where(Employee.ticket_number == ticket_number)
         )
-
-    # Set PG audit context session variable
-    await db.execute(
-        text("SELECT set_config('app.current_user_id', :user_id, true)"),
-        {"user_id": str(user.ticket_number)}
-    )
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin employee record not found",
+            )
+        # Set PG audit context session variable
+        await db.execute(
+            text("SELECT set_config('app.current_user_id', :user_id, true)"),
+            {"user_id": str(user.ticket_number)}
+        )
 
     return user
 

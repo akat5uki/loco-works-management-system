@@ -1,3 +1,4 @@
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
@@ -32,38 +33,26 @@ router = APIRouter()
 
 async def seed_default_admin_if_needed(db: AsyncSession):
     """
-    Ensure a default system administrator account exists ONLY on clean initial deployment
-    when no administrator accounts exist in the loco_admin table.
+    Ensure a default system administrator account exists in Redis ONLY on clean initial deployment
+    when no administrator accounts exist in the loco_admin table in PostgreSQL.
+    No records are created in employees or loco_admin tables in PostgreSQL.
     """
     admin_res = await db.execute(select(LocoAdmin))
     if admin_res.first() is not None:
+        await redis_client.delete("default_admin:info")
         return
 
-    default_ticket = settings.DEFAULT_ADMIN_TICKET
-    emp_res = await db.execute(select(Employee).where(Employee.ticket_number == default_ticket))
-    emp = emp_res.scalar_one_or_none()
-    if not emp:
-        emp = Employee(
-            ticket_number=default_ticket,
-            name="System Administrator",
-            designation_id=1,  # Default Senior Section Engineer (SSE) designation
-            email=settings.DEFAULT_ADMIN_EMAIL,
-            password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-            nonce=secrets.token_hex(16),
-        )
-        db.add(emp)
-        await db.flush()
-    
-    loco_admin = LocoAdmin(
-        ticket_number=default_ticket,
-        password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-        nonce=secrets.token_hex(16),
-        is_default=True,
-        must_change_password=True,
-        employee_portal_enabled=False,
-    )
-    db.add(loco_admin)
-    await db.commit()
+    redis_info = await redis_client.get("default_admin:info")
+    if not redis_info:
+        default_ticket = settings.DEFAULT_ADMIN_TICKET
+        info = {
+            "ticket_number": default_ticket,
+            "password_hash": get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
+            "nonce": secrets.token_hex(16),
+            "is_default": True,
+            "must_change_password": True,
+        }
+        await redis_client.set("default_admin:info", json.dumps(info))
 
 
 @router.post("/login")
@@ -74,27 +63,56 @@ async def admin_login(
 ):
     await seed_default_admin_if_needed(db)
 
-    # 1. Verify admin privilege and dedicated admin password from loco_admin table
-    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == login_data.ticket_number))
-    admin_info = admin_res.scalar_one_or_none()
-    if not admin_info:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Account does not have Administrative privileges.",
-        )
+    is_temp_default = False
+    admin_ticket = login_data.ticket_number
+    admin_nonce = ""
+    must_change_password = False
+    is_default_admin = False
 
-    if not verify_password(login_data.password, admin_info.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect admin ticket number or password",
-        )
+    if login_data.ticket_number == settings.DEFAULT_ADMIN_TICKET:
+        admin_res_check = await db.execute(select(LocoAdmin))
+        if admin_res_check.first() is None:
+            raw_redis_info = await redis_client.get("default_admin:info")
+            if raw_redis_info:
+                redis_data = json.loads(raw_redis_info)
+                if verify_password(login_data.password, redis_data["password_hash"]):
+                    is_temp_default = True
+                    admin_ticket = redis_data["ticket_number"]
+                    admin_nonce = redis_data["nonce"]
+                    must_change_password = True
+                    is_default_admin = True
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Incorrect admin ticket number or password",
+                    )
+
+    if not is_temp_default:
+        # 1. Verify admin privilege and dedicated admin password from loco_admin table
+        admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == login_data.ticket_number))
+        admin_info = admin_res.scalar_one_or_none()
+        if not admin_info:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Account does not have Administrative privileges.",
+            )
+
+        if not verify_password(login_data.password, admin_info.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect admin ticket number or password",
+            )
+        admin_ticket = admin_info.ticket_number
+        admin_nonce = admin_info.nonce
+        must_change_password = admin_info.must_change_password
+        is_default_admin = admin_info.is_default
 
     access_token = create_access_token(
-        subject=admin_info.ticket_number,
-        nonce=admin_info.nonce,
+        subject=admin_ticket,
+        nonce=admin_nonce,
         session_type="admin",
     )
-    session_key = f"session:{admin_info.ticket_number}:admin"
+    session_key = f"session:{admin_ticket}:admin"
     await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
 
     response.set_cookie(
@@ -117,8 +135,8 @@ async def admin_login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "must_change_password": admin_info.must_change_password,
-        "is_default_admin": admin_info.is_default,
+        "must_change_password": must_change_password,
+        "is_default_admin": is_default_admin,
     }
 
 
@@ -136,14 +154,24 @@ async def admin_change_password(
     """
     admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
     admin_info = admin_res.scalar_one_or_none()
-    if not admin_info:
-        raise HTTPException(status_code=403, detail="Admin account not found")
+    is_default_flow = False
 
-    if not verify_password(data.current_password, admin_info.password):
-        raise HTTPException(status_code=400, detail="Current password incorrect")
+    if not admin_info and current_user.ticket_number == settings.DEFAULT_ADMIN_TICKET:
+        raw_redis_info = await redis_client.get("default_admin:info")
+        if raw_redis_info:
+            redis_data = json.loads(raw_redis_info)
+            if verify_password(data.current_password, redis_data["password_hash"]):
+                is_default_flow = True
+
+    if not is_default_flow:
+        if not admin_info:
+            raise HTTPException(status_code=403, detail="Admin account not found")
+        if not verify_password(data.current_password, admin_info.password):
+            raise HTTPException(status_code=400, detail="Current password incorrect")
+        is_default_flow = admin_info.is_default
 
     # Check if this is the default admin initial setup migration workflow
-    if admin_info.is_default:
+    if is_default_flow:
         new_ticket = data.new_ticket_number
         if not new_ticket or new_ticket == settings.DEFAULT_ADMIN_TICKET:
             raise HTTPException(status_code=400, detail="Please enter your new personal employee ticket number")
@@ -188,12 +216,14 @@ async def admin_change_password(
         db.add(new_loco_admin)
         await db.flush()
 
-        # 3. Completely delete default admin record from loco_admin and employees tables
-        await db.delete(admin_info)
-        default_emp_res = await db.execute(select(Employee).where(Employee.ticket_number == settings.DEFAULT_ADMIN_TICKET))
-        default_emp = default_emp_res.scalar_one_or_none()
-        if default_emp:
-            await db.delete(default_emp)
+        # 3. Delete temporary default admin info and old legacy records if any
+        await redis_client.delete("default_admin:info")
+        if admin_info:
+            await db.delete(admin_info)
+            default_emp_res = await db.execute(select(Employee).where(Employee.ticket_number == settings.DEFAULT_ADMIN_TICKET))
+            default_emp = default_emp_res.scalar_one_or_none()
+            if default_emp:
+                await db.delete(default_emp)
 
         await db.commit()
 
