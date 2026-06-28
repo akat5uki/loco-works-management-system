@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import { Link } from "react-router-dom";
 import {
   BarChart,
@@ -7,6 +6,7 @@ import {
   Users,
   ChevronRight,
   LayoutDashboard,
+  ShieldAlert,
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -38,15 +38,27 @@ const LandingPage = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [typeCounts, setTypeCounts] = useState<LocoTypeCount[]>([]);
   const [empStats, setEmpStats] = useState<EmployeeStats | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasEmployeeSession, setHasEmployeeSession] = useState(false);
+  const [hasAdminSession, setHasAdminSession] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        await api.get("/auth/me");
-        setIsAuthenticated(true);
+        const res = await api.get("/auth/me");
+        if (res.data?.session_type === "employee" || res.data?.ticket_number) {
+          setHasEmployeeSession(true);
+        }
       } catch {
-        setIsAuthenticated(false);
+        setHasEmployeeSession(false);
+      }
+
+      try {
+        const res = await api.get("/admin/me");
+        if (res.data?.session_type === "admin" || res.data?.is_admin) {
+          setHasAdminSession(true);
+        }
+      } catch {
+        setHasAdminSession(false);
       }
     };
     checkAuth();
@@ -92,15 +104,24 @@ const LandingPage = () => {
               LWMS
             </h1>
           </div>
-          <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            {isAuthenticated ? (
-              <Link to="/dashboard" className="btn-primary">
-                Go to Dashboard
+          <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            {hasEmployeeSession && (
+              <Link to="/dashboard" className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <LayoutDashboard size={16} /> Employee Dashboard
               </Link>
-            ) : (
+            )}
+            {hasAdminSession && (
+              <Link to="/admin/dashboard" className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.4rem", backgroundColor: "#6366f1", borderColor: "#6366f1" }}>
+                <ShieldAlert size={16} /> Admin Dashboard
+              </Link>
+            )}
+            {!hasEmployeeSession && !hasAdminSession && (
               <>
-                <Link to="/login" className="nav-link">
-                  Login
+                <Link to="/login" className="nav-link" style={{ fontSize: "0.875rem", fontWeight: "600" }}>
+                  Employee Login
+                </Link>
+                <Link to="/admin/login" className="nav-link" style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6366f1" }}>
+                  Admin Login
                 </Link>
                 <Link to="/register" className="btn-primary">
                   Get Started
@@ -237,7 +258,7 @@ const LandingPage = () => {
               ))}
               {typeCounts.length > 7 && (
                 <li style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", paddingLeft: "1.5rem" }}>
-                  & {typeCounts.length - 7} more types...
+                  &amp; {typeCounts.length - 7} more types...
                 </li>
               )}
               {typeCounts.length === 0 && (
@@ -316,19 +337,37 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Quick Links */}
+        {/* Quick Access Portals */}
         <div className="quick-links">
-          <h3 className="quick-links-title">Quick Access</h3>
-          <div className="link-grid">
-            <Link to={isAuthenticated ? "/dashboard" : "/login"} className="link-tile">
-              <LayoutDashboard
-                size={24}
-                style={{ marginBottom: "0.5rem", color: "#9ca3af" }}
-              />
-              <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>
-                Dashboard
-              </span>
-            </Link>
+          <h3 className="quick-links-title">Quick Access Portals</h3>
+          <div className="link-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
+            {hasEmployeeSession ? (
+              <Link to="/dashboard" className="link-tile" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.25rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--bg-card)", textDecoration: "none" }}>
+                <LayoutDashboard size={28} style={{ marginBottom: "0.5rem", color: "var(--primary-color)" }} />
+                <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-h)" }}>Employee Dashboard</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Access operational workspace</span>
+              </Link>
+            ) : (
+              <Link to="/login" className="link-tile" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.25rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--bg-card)", textDecoration: "none" }}>
+                <Users size={28} style={{ marginBottom: "0.5rem", color: "var(--primary-color)" }} />
+                <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-h)" }}>Employee Login</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Staff &amp; Supervisors sign in</span>
+              </Link>
+            )}
+
+            {hasAdminSession ? (
+              <Link to="/admin/dashboard" className="link-tile" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.25rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--bg-card)", textDecoration: "none" }}>
+                <ShieldAlert size={28} style={{ marginBottom: "0.5rem", color: "#6366f1" }} />
+                <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-h)" }}>Admin Dashboard</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>System control &amp; management</span>
+              </Link>
+            ) : (
+              <Link to="/admin/login" className="link-tile" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.25rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--bg-card)", textDecoration: "none" }}>
+                <ShieldAlert size={28} style={{ marginBottom: "0.5rem", color: "#6366f1" }} />
+                <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-h)" }}>Admin Login</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>System administrators sign in</span>
+              </Link>
+            )}
           </div>
         </div>
       </main>
