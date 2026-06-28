@@ -1,5 +1,13 @@
+/**
+ * ==============================================================================
+ * AUDIT LOGS VIEWER
+ * Read-only compliance interface for querying PostgreSQL audit trails.
+ * Includes JSON payload inspection, table filters, operation filters, and pagination.
+ * ==============================================================================
+ */
+
 import React, { useEffect, useState, useCallback } from "react";
-import { ShieldCheck, Filter, Eye, Lock } from "lucide-react";
+import { ShieldCheck, Filter, Eye, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../../../shared/services/api";
 
 interface AuditLog {
@@ -20,11 +28,18 @@ const AuditLogsViewer: React.FC = () => {
   const [operationFilter, setOperationFilter] = useState("ALL");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+
+  /**
+   * Fetch audit records from the backend read-only audit endpoint
+   */
   const fetchAuditLogs = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get("/admin/audit-logs", {
-        params: { table_name: tableFilter, operation: operationFilter, limit: 150 },
+        params: { table_name: tableFilter, operation: operationFilter, limit: 300 },
       });
       setLogs(res.data);
     } catch (err) {
@@ -38,6 +53,11 @@ const AuditLogsViewer: React.FC = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAuditLogs();
   }, [fetchAuditLogs]);
+
+  // Calculate pagination window
+  const totalPages = Math.ceil(logs.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLogs = logs.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="view-content-card">
@@ -63,7 +83,7 @@ const AuditLogsViewer: React.FC = () => {
           <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>Table:</label>
           <select
             value={tableFilter}
-            onChange={(e) => setTableFilter(e.target.value)}
+            onChange={(e) => { setTableFilter(e.target.value); setCurrentPage(1); }}
             style={{ padding: "0.5rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
           >
             <option value="ALL">All Tables</option>
@@ -80,7 +100,7 @@ const AuditLogsViewer: React.FC = () => {
           <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>Operation:</label>
           <select
             value={operationFilter}
-            onChange={(e) => setOperationFilter(e.target.value)}
+            onChange={(e) => { setOperationFilter(e.target.value); setCurrentPage(1); }}
             style={{ padding: "0.5rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
           >
             <option value="ALL">All Operations</option>
@@ -110,12 +130,12 @@ const AuditLogsViewer: React.FC = () => {
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>Loading audit logs...</td>
               </tr>
-            ) : logs.length === 0 ? (
+            ) : paginatedLogs.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No audit log entries recorded.</td>
               </tr>
             ) : (
-              logs.map((log) => (
+              paginatedLogs.map((log) => (
                 <tr key={log.id}>
                   <td>#{log.id}</td>
                   <td style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>
@@ -150,6 +170,34 @@ const AuditLogsViewer: React.FC = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="pagination-bar">
+        <div className="pagination-info">
+          Showing {logs.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, logs.length)} of {logs.length} entries
+        </div>
+
+        <div className="pagination-controls">
+          <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginRight: "0.5rem" }}>Per Page:</label>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => { setItemsPerPage(parseInt(e.target.value, 10)); setCurrentPage(1); }}
+            style={{ padding: "0.3rem 0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+          >
+            <option value={15}>15</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+          </select>
+
+          <button className="pagination-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}>
+            <ChevronLeft size={16} /> Prev
+          </button>
+          <span className="pagination-page-indicator">Page {currentPage} of {totalPages}</span>
+          <button className="pagination-btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}>
+            Next <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Audit Log Inspection Modal */}

@@ -1,5 +1,13 @@
+/**
+ * ==============================================================================
+ * ADMIN STAFF MANAGER
+ * Administrative personnel privileges directory and promotion interface.
+ * Includes admin listings, promotion controls, pagination, and comments.
+ * ==============================================================================
+ */
+
 import React, { useEffect, useState, useCallback } from "react";
-import { UserPlus, Shield, CheckCircle, AlertCircle } from "lucide-react";
+import { UserPlus, Shield, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../../../shared/services/api";
 
 interface AdminRecord {
@@ -19,6 +27,13 @@ const AdminStaffManager: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  /**
+   * Fetch system administrators list
+   */
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
     try {
@@ -36,6 +51,9 @@ const AdminStaffManager: React.FC = () => {
     fetchAdmins();
   }, [fetchAdmins]);
 
+  /**
+   * Promote staff ticket to Administrator role
+   */
   const handleGrantAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminTicket) return;
@@ -60,6 +78,11 @@ const AdminStaffManager: React.FC = () => {
     }
   };
 
+  // Calculate pagination window
+  const totalPages = Math.ceil(admins.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAdmins = admins.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="view-content-card">
       <div style={{ marginBottom: "1.5rem" }}>
@@ -70,7 +93,7 @@ const AdminStaffManager: React.FC = () => {
       </div>
 
       {message && (
-        <div style={{ padding: "0.75rem 1rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", borderRadius: "6px", fontSize: "0.85rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ padding: "0.75rem 1rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", borderRadius: "6px", fontSize: "0.85rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
           <CheckCircle size={16} /> {message}
         </div>
       )}
@@ -128,7 +151,7 @@ const AdminStaffManager: React.FC = () => {
                 <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>Loading administrators...</td>
               </tr>
             ) : (
-              admins.map((admin) => (
+              paginatedAdmins.map((admin) => (
                 <tr key={admin.ticket_number}>
                   <td><strong>#{admin.ticket_number}</strong></td>
                   <td>{admin.name}</td>
@@ -155,6 +178,34 @@ const AdminStaffManager: React.FC = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="pagination-bar">
+        <div className="pagination-info">
+          Showing {admins.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, admins.length)} of {admins.length} administrators
+        </div>
+
+        <div className="pagination-controls">
+          <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginRight: "0.5rem" }}>Per Page:</label>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => { setItemsPerPage(parseInt(e.target.value, 10)); setCurrentPage(1); }}
+            style={{ padding: "0.3rem 0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+
+          <button className="pagination-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}>
+            <ChevronLeft size={16} /> Prev
+          </button>
+          <span className="pagination-page-indicator">Page {currentPage} of {totalPages}</span>
+          <button className="pagination-btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}>
+            Next <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

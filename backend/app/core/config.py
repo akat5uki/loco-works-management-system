@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     OTP_EXPIRE_SECONDS: int
     REGISTRATION_SESSION_EXPIRE_SECONDS: int
 
+    # Administrator Personnel & Registration Staging Configuration
+    DEFAULT_ADMIN_TICKET: int = 9999
+    DEFAULT_ADMIN_EMAIL: str = "admin@locoworks.local"
+    DEFAULT_ADMIN_PASSWORD: str = "AdminPassword123!"
+    REGISTRATION_VALIDITY_DAYS: int = 7
+
     @property
     def loco_stages_list(self) -> list[int]:
         return [int(s.strip()) for s in self.LOCO_STAGES.split(",") if s.strip()]

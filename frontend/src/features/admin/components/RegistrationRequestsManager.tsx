@@ -1,5 +1,13 @@
+/**
+ * ==============================================================================
+ * REGISTRATION REQUESTS MANAGER
+ * Admin verification dashboard for employee 12-character registration verification codes.
+ * Supports searching, filtering, status processing, validity extension, and pagination.
+ * ==============================================================================
+ */
+
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, Filter, Check, X, Clock, Calendar } from "lucide-react";
+import { Search, Filter, Check, X, Clock, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../../../shared/services/api";
 
 interface RegistrationRequest {
@@ -29,6 +37,13 @@ const RegistrationRequestsManager: React.FC = () => {
   const [additionalDays, setAdditionalDays] = useState(7);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  /**
+   * Fetch registration verification requests from API
+   */
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
@@ -48,6 +63,9 @@ const RegistrationRequestsManager: React.FC = () => {
     fetchRequests();
   }, [fetchRequests]);
 
+  /**
+   * Handle Admin Action (Approve, Reject, or Mark Pending)
+   */
   const handleAction = async (action: "APPROVE" | "REJECT" | "PENDING") => {
     if (!selectedReq) return;
     if (action === "REJECT" && !actionRemarks.trim()) {
@@ -74,6 +92,9 @@ const RegistrationRequestsManager: React.FC = () => {
     }
   };
 
+  /**
+   * Extend validity window by requested additional days
+   */
   const handleExtendValidity = async () => {
     if (!selectedReq) return;
     setActionLoading(true);
@@ -93,18 +114,23 @@ const RegistrationRequestsManager: React.FC = () => {
     }
   };
 
+  // Calculate pagination window
+  const totalPages = Math.ceil(requests.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRequests = requests.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="view-content-card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
-          <h2>Employee Registration Requests</h2>
+          <h2>Employee Registration Verification Requests</h2>
           <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
             Verify employee 12-character registration codes and take approval actions.
           </p>
         </div>
 
         {message && (
-          <div style={{ padding: "0.5rem 1rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", borderRadius: "6px", fontSize: "0.85rem" }}>
+          <div style={{ padding: "0.5rem 1rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", borderRadius: "6px", fontSize: "0.85rem", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
             {message}
           </div>
         )}
@@ -118,7 +144,7 @@ const RegistrationRequestsManager: React.FC = () => {
             type="text"
             placeholder="Search by 12-char code, ticket, name, email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
             style={{ width: "100%", paddingLeft: "2.2rem", padding: "0.6rem 0.6rem 0.6rem 2.2rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
           />
         </div>
@@ -127,7 +153,7 @@ const RegistrationRequestsManager: React.FC = () => {
           <Filter size={16} color="var(--text-muted)" />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             style={{ padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
           >
             <option value="ALL">All Statuses</option>
@@ -149,7 +175,7 @@ const RegistrationRequestsManager: React.FC = () => {
               <th>Employee Name</th>
               <th>Designation</th>
               <th>Status</th>
-              <th>Validity Unit</th>
+              <th>Validity Window</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -158,15 +184,15 @@ const RegistrationRequestsManager: React.FC = () => {
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>Loading registration requests...</td>
               </tr>
-            ) : requests.length === 0 ? (
+            ) : paginatedRequests.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No registration requests found.</td>
               </tr>
             ) : (
-              requests.map((req) => (
+              paginatedRequests.map((req) => (
                 <tr key={req.request_id}>
                   <td>
-                    <strong style={{ fontFamily: "monospace", letterSpacing: "1px", color: "var(--primary-color)" }}>
+                    <strong style={{ fontFamily: "monospace", letterSpacing: "1px", color: "var(--primary-color)", fontSize: "1rem" }}>
                       {req.reg_code}
                     </strong>
                   </td>
@@ -201,7 +227,35 @@ const RegistrationRequestsManager: React.FC = () => {
         </table>
       </div>
 
-      {/* Action Modal */}
+      {/* Pagination Controls */}
+      <div className="pagination-bar">
+        <div className="pagination-info">
+          Showing {requests.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, requests.length)} of {requests.length} requests
+        </div>
+
+        <div className="pagination-controls">
+          <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginRight: "0.5rem" }}>Per Page:</label>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => { setItemsPerPage(parseInt(e.target.value, 10)); setCurrentPage(1); }}
+            style={{ padding: "0.3rem 0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+
+          <button className="pagination-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}>
+            <ChevronLeft size={16} /> Prev
+          </button>
+          <span className="pagination-page-indicator">Page {currentPage} of {totalPages}</span>
+          <button className="pagination-btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}>
+            Next <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Action Review Modal */}
       {selectedReq && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: "550px" }}>
@@ -211,7 +265,7 @@ const RegistrationRequestsManager: React.FC = () => {
             </div>
 
             <div className="modal-body" style={{ padding: "1.25rem 0" }}>
-              <div style={{ background: "var(--bg-secondary)", padding: "1rem", borderRadius: "8px", marginBottom: "1.25rem" }}>
+              <div style={{ background: "var(--bg-secondary)", padding: "1rem", borderRadius: "8px", marginBottom: "1.25rem", border: "1px solid var(--border-color)" }}>
                 <p><strong>Verification Code:</strong> <span style={{ fontFamily: "monospace", fontSize: "1.1rem", color: "var(--primary-color)", fontWeight: 700 }}>{selectedReq.reg_code}</span></p>
                 <p><strong>Employee:</strong> {selectedReq.name} (Ticket #{selectedReq.ticket_number})</p>
                 <p><strong>Email:</strong> {selectedReq.email}</p>

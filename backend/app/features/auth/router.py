@@ -243,9 +243,9 @@ async def register(
             "expire_seconds": settings.OTP_EXPIRE_SECONDS
         }
 
-    # Standard registration flow (OTP disabled) -> Create RegistrationRequest
+    # Standard registration flow (OTP disabled) -> Create RegistrationRequest with validity configured in .env
     reg_code = await generate_unique_reg_code(db)
-    valid_until = datetime.now(timezone.utc) + timedelta(days=7)
+    valid_until = datetime.now(timezone.utc) + timedelta(days=settings.REGISTRATION_VALIDITY_DAYS)
 
     reg_req = RegistrationRequest(
         reg_code=reg_code,
@@ -373,7 +373,7 @@ async def verify_otp(
             )
             
         reg_code = await generate_unique_reg_code(db)
-        valid_until = datetime.now(timezone.utc) + timedelta(days=7)
+        valid_until = datetime.now(timezone.utc) + timedelta(days=settings.REGISTRATION_VALIDITY_DAYS)
 
         reg_req = RegistrationRequest(
             reg_code=reg_code,

@@ -24,27 +24,30 @@ from app.features.admin.schemas import (
     RegistrationRequestRead,
 )
 from app.features.auth.dependencies import AdminUser
-from app.features.employees.models import Designation, Employee
+from app.features.employees.models import Designation, Employee, EmployeeCategory
 
 router = APIRouter()
 
 
 async def seed_default_admin_if_needed(db: AsyncSession):
-    """Ensure a default admin account exists in employees and loco_admin tables."""
+    """
+    Ensure a default system administrator account exists upon application startup.
+    Uses environment variables defined in .env (DEFAULT_ADMIN_TICKET, DEFAULT_ADMIN_EMAIL, etc.)
+    """
     result = await db.execute(select(LocoAdmin))
     admin = result.scalar_one_or_none()
     if not admin:
-        default_ticket = 9999
-        # Check if employee 9999 exists
+        default_ticket = settings.DEFAULT_ADMIN_TICKET
+        # Check if employee record exists for default administrator ticket
         emp_res = await db.execute(select(Employee).where(Employee.ticket_number == default_ticket))
         emp = emp_res.scalar_one_or_none()
         if not emp:
             emp = Employee(
                 ticket_number=default_ticket,
                 name="System Administrator",
-                designation_id=1,  # SSE Supervisor
-                email="admin@locoworks.local",
-                password=get_password_hash("AdminPassword123!"),
+                designation_id=1,  # Default Senior Section Engineer (SSE) designation
+                email=settings.DEFAULT_ADMIN_EMAIL,
+                password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
                 nonce=secrets.token_hex(16),
             )
             db.add(emp)
@@ -376,4 +379,201 @@ async def get_audit_logs(
         }
         for r in rows
     ]
+
+
+# ==============================================================================
+# MASTER DATA ADMINISTRATION WIZARD CRUD ENDPOINTS
+# Allows system administrators full CRUD access across all operational tables.
+# ==============================================================================
+
+@router.get("/master-data/categories")
+async def admin_get_categories(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Retrieve all employee categories for admin wizard management."""
+    res = await db.execute(select(EmployeeCategory).order_by(EmployeeCategory.category_id.asc()))
+    return res.scalars().all()
+
+
+@router.post("/master-data/categories")
+async def admin_create_category(payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Create a new employee category."""
+    category_id = int(payload.get("category_id"))
+    category_name = str(payload.get("category_name", "")).strip()
+    if not category_name:
+        raise HTTPException(status_code=400, detail="Category name is required")
+    
+    cat = EmployeeCategory(category_id=category_id, category_name=category_name)
+    db.add(cat)
+    await db.commit()
+    return {"message": "Employee category created successfully", "category_id": category_id}
+
+
+@router.put("/master-data/categories/{category_id}")
+async def admin_update_category(category_id: int, payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Update an existing employee category."""
+    res = await db.execute(select(EmployeeCategory).where(EmployeeCategory.category_id == category_id))
+    cat = res.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    if "category_name" in payload:
+        cat.category_name = str(payload["category_name"]).strip()
+    await db.commit()
+    return {"message": "Employee category updated successfully"}
+
+
+@router.delete("/master-data/categories/{category_id}")
+async def admin_delete_category(category_id: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Delete an employee category."""
+    res = await db.execute(select(EmployeeCategory).where(EmployeeCategory.category_id == category_id))
+    cat = res.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    await db.delete(cat)
+    await db.commit()
+    return {"message": "Employee category deleted successfully"}
+
+
+@router.get("/master-data/designations")
+async def admin_get_designations(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Retrieve all designations for admin wizard management."""
+    res = await db.execute(select(Designation).order_by(Designation.designation_id.asc()))
+    return res.scalars().all()
+
+
+@router.post("/master-data/designations")
+async def admin_create_designation(payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Create a new designation."""
+    designation_id = int(payload.get("designation_id"))
+    designation_name = str(payload.get("designation_name", "")).strip()
+    category_id = int(payload.get("category_id"))
+    
+    desig = Designation(designation_id=designation_id, designation_name=designation_name, category_id=category_id)
+    db.add(desig)
+    await db.commit()
+    return {"message": "Designation created successfully", "designation_id": designation_id}
+
+
+@router.put("/master-data/designations/{designation_id}")
+async def admin_update_designation(designation_id: int, payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Update an existing designation."""
+    res = await db.execute(select(Designation).where(Designation.designation_id == designation_id))
+    desig = res.scalar_one_or_none()
+    if not desig:
+        raise HTTPException(status_code=404, detail="Designation not found")
+    
+    if "designation_name" in payload:
+        desig.designation_name = str(payload["designation_name"]).strip()
+    if "category_id" in payload:
+        desig.category_id = int(payload["category_id"])
+    await db.commit()
+    return {"message": "Designation updated successfully"}
+
+
+@router.delete("/master-data/designations/{designation_id}")
+async def admin_delete_designation(designation_id: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Delete a designation."""
+    res = await db.execute(select(Designation).where(Designation.designation_id == designation_id))
+    desig = res.scalar_one_or_none()
+    if not desig:
+        raise HTTPException(status_code=404, detail="Designation not found")
+    await db.delete(desig)
+    await db.commit()
+    return {"message": "Designation deleted successfully"}
+
+
+@router.get("/master-data/employees")
+async def admin_get_employees(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Retrieve all employees in staff directory."""
+    res = await db.execute(
+        select(Employee, Designation, EmployeeCategory)
+        .join(Designation, Employee.designation_id == Designation.designation_id)
+        .join(EmployeeCategory, Designation.category_id == EmployeeCategory.category_id)
+        .order_by(Employee.ticket_number.asc())
+    )
+    rows = res.all()
+    return [
+        {
+            "ticket_number": r[0].ticket_number,
+            "name": r[0].name,
+            "designation_id": r[0].designation_id,
+            "designation_name": r[1].designation_name,
+            "category_id": r[1].category_id,
+            "category_name": r[2].category_name,
+            "email": r[0].email,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/master-data/employees")
+async def admin_create_employee(payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Create a new active employee directly."""
+    ticket_number = int(payload.get("ticket_number"))
+    name = str(payload.get("name", "")).strip()
+    designation_id = int(payload.get("designation_id"))
+    email = str(payload.get("email", "")).strip()
+    password = str(payload.get("password", "abcd")).strip()
+
+    emp_check = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
+    if emp_check.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Employee ticket number already exists")
+
+    new_emp = Employee(
+        ticket_number=ticket_number,
+        name=name,
+        designation_id=designation_id,
+        email=email,
+        password=get_password_hash(password),
+        nonce=secrets.token_hex(16),
+    )
+    db.add(new_emp)
+    await db.commit()
+    return {"message": "Employee record created successfully", "ticket_number": ticket_number}
+
+
+@router.put("/master-data/employees/{ticket_number}")
+async def admin_update_employee(ticket_number: int, payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Update an existing employee record."""
+    res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
+    emp = res.scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    if "name" in payload:
+        emp.name = str(payload["name"]).strip()
+    if "designation_id" in payload:
+        emp.designation_id = int(payload["designation_id"])
+    if "email" in payload:
+        emp.email = str(payload["email"]).strip()
+    if "password" in payload and payload["password"]:
+        emp.password = get_password_hash(str(payload["password"]))
+    await db.commit()
+    return {"message": "Employee record updated successfully"}
+
+
+@router.delete("/master-data/employees/{ticket_number}")
+async def admin_delete_employee(ticket_number: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Delete an employee record."""
+    res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
+    emp = res.scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.delete(emp)
+    await db.commit()
+    return {"message": "Employee record deleted successfully"}
+
+
+@router.delete("/admins/{ticket_number}")
+async def admin_remove_admin(ticket_number: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """Revoke Administrator privileges from an account."""
+    res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number))
+    adm = res.scalar_one_or_none()
+    if not adm:
+        raise HTTPException(status_code=404, detail="Admin record not found")
+    if adm.is_default:
+        raise HTTPException(status_code=400, detail="Cannot revoke privileges from the default system administrator")
+    await db.delete(adm)
+    await db.commit()
+    return {"message": f"Administrator privileges revoked for ticket #{ticket_number}"}
+
 
