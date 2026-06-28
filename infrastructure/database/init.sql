@@ -235,5 +235,4 @@ CREATE TRIGGER trg_audit_employee_availability AFTER INSERT OR UPDATE OR DELETE 
 CREATE TRIGGER trg_audit_employee_bookings AFTER INSERT OR UPDATE OR DELETE ON public.employee_bookings FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('booking_id');
 CREATE TRIGGER trg_audit_employee_notifications AFTER INSERT OR UPDATE OR DELETE ON public.employee_notifications FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('notification_id');
 CREATE TRIGGER trg_audit_loco_booking_remarks AFTER INSERT OR UPDATE OR DELETE ON public.loco_booking_remarks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('remarks_id');
-CREATE TRIGGER trg_audit_tasks AFTER INSERT OR UPDATE OR DELETE ON public.tasks FOR EACH ROW EXECUTE FUNCTION public.process_audit_log('task_id');
 
