@@ -92,7 +92,7 @@ async def login(
         key="session_id_strict",
         value=access_token,
         httponly=True,
-        secure=settings.COOKIE_SECURE,
+        secure=settings.COOKIE_SECURE_STRICT,
         samesite="strict",
         max_age=settings.SESSION_EXPIRE_SECONDS,
     )
@@ -100,7 +100,7 @@ async def login(
         key="session_id_embed",
         value=access_token,
         httponly=True,
-        secure=settings.COOKIE_SECURE,
+        secure=settings.COOKIE_SECURE_EMBED,
         samesite="none",
         max_age=settings.SESSION_EXPIRE_SECONDS,
     )
@@ -355,7 +355,7 @@ async def verify_otp(
             key="session_id_strict",
             value=access_token,
             httponly=True,
-            secure=settings.COOKIE_SECURE,
+            secure=settings.COOKIE_SECURE_STRICT,
             samesite="strict",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
@@ -363,7 +363,7 @@ async def verify_otp(
             key="session_id_embed",
             value=access_token,
             httponly=True,
-            secure=settings.COOKIE_SECURE,
+            secure=settings.COOKIE_SECURE_EMBED,
             samesite="none",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
@@ -428,7 +428,7 @@ async def verify_otp(
             key="session_id_strict",
             value=access_token,
             httponly=True,
-            secure=settings.COOKIE_SECURE,
+            secure=settings.COOKIE_SECURE_STRICT,
             samesite="strict",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
@@ -436,7 +436,7 @@ async def verify_otp(
             key="session_id_embed",
             value=access_token,
             httponly=True,
-            secure=settings.COOKIE_SECURE,
+            secure=settings.COOKIE_SECURE_EMBED,
             samesite="none",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )

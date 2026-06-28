@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     SESSION_EXPIRE_SECONDS: int = 1800
-    COOKIE_SECURE: bool = False
+    COOKIE_SECURE_STRICT: bool = False
+    COOKIE_SECURE_EMBED: bool = True
     WRITE_WINDOW_LAG_SECONDS: int = 2
 
     # Email OTP Verification Config

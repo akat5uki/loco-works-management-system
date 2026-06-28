@@ -63,7 +63,7 @@ async def db_routing_middleware(request: Request, call_next):
                 max_age=settings.WRITE_WINDOW_LAG_SECONDS,
                 httponly=True,
                 samesite="lax",
-                secure=settings.COOKIE_SECURE,
+                secure=settings.COOKIE_SECURE_STRICT,
             )
         elif has_lag_cookie and not is_mutating:
             # Read request consumed the lag cookie → delete it immediately

@@ -77,7 +77,7 @@ async def get_current_user(
             key="session_id_strict",
             value=final_token,
             httponly=True,
-            secure=settings.COOKIE_SECURE,
+            secure=settings.COOKIE_SECURE_STRICT,
             samesite="strict",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
@@ -85,7 +85,7 @@ async def get_current_user(
             key="session_id_embed",
             value=final_token,
             httponly=True,
-            secure=settings.COOKIE_SECURE,
+            secure=settings.COOKIE_SECURE_EMBED,
             samesite="none",
             max_age=settings.SESSION_EXPIRE_SECONDS,
         )
