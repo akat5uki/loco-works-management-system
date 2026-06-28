@@ -20,11 +20,10 @@ const AdminLoginPage: React.FC = () => {
 
   // Auto-redirect if already authenticated as Admin
   useEffect(() => {
-    let cancelled = false;
     if (shouldSkip) {
-      setCheckingSession(false);
       return;
     }
+    let cancelled = false;
 
     api
       .get("/admin/me")
