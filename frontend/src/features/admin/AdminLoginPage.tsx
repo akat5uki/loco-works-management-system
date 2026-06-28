@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ShieldAlert, KeyRound, ArrowLeft, Lock } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -8,11 +8,43 @@ import "./AdminDashboard.css";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const shouldSkip = (location.state as { skipRedirect?: boolean } | null)?.skipRedirect;
+
   const [ticketNumber, setTicketNumber] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(() => !shouldSkip);
   const [error, setError] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  // Auto-redirect if already authenticated as Admin
+  useEffect(() => {
+    let cancelled = false;
+    if (shouldSkip) {
+      setCheckingSession(false);
+      return;
+    }
+
+    api
+      .get("/admin/me")
+      .then((res) => {
+        if (!cancelled) {
+          if (res.data?.session_type === "admin") {
+            navigate("/admin/dashboard", { replace: true });
+          } else {
+            setCheckingSession(false);
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCheckingSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, shouldSkip]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +75,10 @@ const AdminLoginPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return null; // Avoid UI flash while checking session
+  }
 
   return (
     <div className="admin-auth-workspace">
