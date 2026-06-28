@@ -55,6 +55,27 @@ async def seed_default_admin_if_needed(db: AsyncSession):
         await redis_client.set("default_admin:info", json.dumps(info))
 
 
+@router.get("/me")
+async def get_admin_me(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
+    admin_info = admin_res.scalar_one_or_none()
+
+    is_default = admin_info.is_default if admin_info else True
+    must_change = admin_info.must_change_password if admin_info else True
+    portal_enabled = admin_info.employee_portal_enabled if admin_info else False
+
+    return {
+        "ticket_number": current_user.ticket_number,
+        "name": current_user.name,
+        "email": current_user.email,
+        "is_admin": True,
+        "is_default": is_default,
+        "must_change_password": must_change,
+        "employee_portal_enabled": portal_enabled,
+        "session_type": "admin",
+    }
+
+
 @router.post("/login")
 async def admin_login(
     login_data: AdminLoginRequest,

@@ -22,6 +22,7 @@ import MasterDataPage from "./features/crud/MasterDataPage";
 import AdminLoginPage from "./features/admin/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/AdminDashboardPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
+import ProtectedAdminRoute from "./shared/components/ProtectedAdminRoute";
 import CookieConsent from "./shared/components/CookieConsent";
 
 function App() {
@@ -40,9 +41,9 @@ function App() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedAdminRoute>
               <AdminDashboardPage />
-            </ProtectedRoute>
+            </ProtectedAdminRoute>
           }
         />
         <Route

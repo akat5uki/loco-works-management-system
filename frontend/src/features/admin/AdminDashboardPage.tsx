@@ -18,7 +18,7 @@ const AdminDashboardPage: React.FC = () => {
 
   // Fetch admin's employee portal status on mount
   useEffect(() => {
-    api.get("/auth/me")
+    api.get("/admin/me")
       .then((res) => {
         // employee_portal_enabled is null for non-admins; boolean for admins
         if (typeof res.data?.employee_portal_enabled === "boolean") {
