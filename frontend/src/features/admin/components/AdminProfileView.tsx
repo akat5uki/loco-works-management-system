@@ -41,19 +41,23 @@ const AdminProfileView: React.FC<AdminProfileViewProps> = ({ onEnablePortalClick
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdSuccess, setPwdSuccess] = useState<string | null>(null);
 
-  const fetchProfile = async () => {
-    try {
-      const res = await api.get("/admin/me");
-      setProfile(res.data);
-    } catch (err) {
-      console.error("Failed to load admin profile", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchProfile();
+    let cancelled = false;
+    api
+      .get("/admin/me")
+      .then((res) => {
+        if (!cancelled) setProfile(res.data);
+      })
+      .catch((err) => {
+        console.error("Failed to load admin profile", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
