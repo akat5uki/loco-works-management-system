@@ -206,33 +206,20 @@ const RegisterPage = () => {
 
         {/* Live Password Strength Requirements */}
         {formData.password.length > 0 && (
-          <div
-            style={{
-              padding: "0.6rem 0.8rem",
-              borderRadius: "6px",
-              background: "var(--bg-secondary, rgba(255, 255, 255, 0.05))",
-              border: "1px solid var(--border-color, rgba(255, 255, 255, 0.1))",
-              fontSize: "0.78rem",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "0.35rem 0.75rem",
-              marginTop: "-0.5rem",
-              marginBottom: "0.5rem",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: pwdRules.length ? "#16a34a" : "var(--text-muted)" }}>
+          <div className="pwd-checklist">
+            <div className="pwd-checklist-item" style={{ color: pwdRules.length ? "#16a34a" : "var(--text-muted)" }}>
               {pwdRules.length ? <CheckCircle2 size={13} /> : <XCircle size={13} />} Length &gt; 8 chars
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: pwdRules.upper ? "#16a34a" : "var(--text-muted)" }}>
+            <div className="pwd-checklist-item" style={{ color: pwdRules.upper ? "#16a34a" : "var(--text-muted)" }}>
               {pwdRules.upper ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Uppercase (A-Z)
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: pwdRules.lower ? "#16a34a" : "var(--text-muted)" }}>
+            <div className="pwd-checklist-item" style={{ color: pwdRules.lower ? "#16a34a" : "var(--text-muted)" }}>
               {pwdRules.lower ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Lowercase (a-z)
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: pwdRules.number ? "#16a34a" : "var(--text-muted)" }}>
+            <div className="pwd-checklist-item" style={{ color: pwdRules.number ? "#16a34a" : "var(--text-muted)" }}>
               {pwdRules.number ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Numeric (0-9)
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: pwdRules.special ? "#16a34a" : "var(--text-muted)", gridColumn: "span 2" }}>
+            <div className="pwd-checklist-item pwd-checklist-item-full" style={{ color: pwdRules.special ? "#16a34a" : "var(--text-muted)" }}>
               {pwdRules.special ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Special Character (!@#$%^&*)
             </div>
           </div>

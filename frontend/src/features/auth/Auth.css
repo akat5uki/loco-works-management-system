@@ -295,3 +295,41 @@
 
   /* captcha-input-wrapper already 100% by default — no override needed */
 }
+
+/* Live Password strength checklist wrapper */
+.pwd-checklist {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  font-size: 0.78rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.75rem;
+  margin-top: -0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pwd-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pwd-checklist-item-full {
+  grid-column: span 2;
+  white-space: normal;
+}
+
+@media (max-width: 480px) {
+  .pwd-checklist {
+    grid-template-columns: 1fr;
+    gap: 0.35rem 0;
+  }
+  .pwd-checklist-item-full {
+    grid-column: span 1;
+  }
+}
+
