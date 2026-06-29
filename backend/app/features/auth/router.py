@@ -19,7 +19,8 @@ from app.features.auth.schemas import (
     RegisterEmailRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
-    ResendOTPRequest
+    ResendOTPRequest,
+    EmployeeChangePasswordRequest
 )
 from datetime import datetime, timedelta, timezone
 from app.features.employees.models import Employee
@@ -652,6 +653,32 @@ async def reset_password(
     
     return {"message": "Password reset completed successfully"}
 
+
+@router.post("/change-password")
+async def change_employee_password(
+    pwd_data: EmployeeChangePasswordRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Employee).where(Employee.ticket_number == current_user.ticket_number)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Employee user record not found"
+        )
+        
+    if not verify_password(pwd_data.current_password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+        
+    user.password = get_password_hash(pwd_data.new_password)
+    await db.commit()
+    return {"message": "Employee password updated successfully"}
 
 @router.post("/resend-otp")
 async def resend_otp(

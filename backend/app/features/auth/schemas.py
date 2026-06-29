@@ -117,4 +117,6 @@ class ResendOTPRequest(BaseModel):
             raise ValueError("Ticket number must contain only digits")
         return int(v)
 
-
+class EmployeeChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
