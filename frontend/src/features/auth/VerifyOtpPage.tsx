@@ -16,12 +16,13 @@ const VerifyOtpPage = () => {
   const [resendSuccess, setResendSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [slipData, setSlipData] = useState<{ reg_code: string; valid_until: string } | null>(null);
+  const [slipData, setSlipData] = useState<{ reg_code: string; name?: string; valid_until: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   const state = location.state as {
     ticket_number: string | number;
+    name?: string;
     email: string;
     action: "registration" | "login" | "email_registration";
     expire_seconds?: number;
@@ -74,6 +75,7 @@ const VerifyOtpPage = () => {
       if (state.action === "registration" && res.data.registration_submitted) {
         setSlipData({
           reg_code: res.data.reg_code,
+          name: res.data.name || state.name,
           valid_until: res.data.valid_until,
         });
       } else {
@@ -214,7 +216,7 @@ const VerifyOtpPage = () => {
         <RegistrationSlipModal
           regCode={slipData.reg_code}
           ticketNumber={typeof state.ticket_number === "number" ? state.ticket_number : parseInt(state.ticket_number, 10)}
-          name="Employee"
+          name={slipData.name || state.name || "Employee"}
           email={state.email}
           validUntil={slipData.valid_until}
           onClose={() => {

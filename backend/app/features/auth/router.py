@@ -268,6 +268,7 @@ async def register(
         return {
             "otp_required": True, 
             "ticket_number": user_data.ticket_number, 
+            "name": user_data.name,
             "email": user_data.email,
             "expire_seconds": settings.OTP_EXPIRE_SECONDS
         }
@@ -434,6 +435,7 @@ async def verify_otp(
         return {
             "registration_submitted": True,
             "reg_code": reg_code,
+            "name": reg_data.get("name", ""),
             "valid_until": valid_until.isoformat(),
             "message": "Email verified and registration request submitted successfully. Pending Admin approval."
         }

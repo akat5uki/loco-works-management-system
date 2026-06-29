@@ -117,6 +117,7 @@ const RegisterPage = () => {
         navigate("/verify-otp", {
           state: {
             ticket_number: formData.ticket_number,
+            name: formData.name,
             email: formData.email,
             action: "registration",
             expire_seconds: res.data.expire_seconds,
