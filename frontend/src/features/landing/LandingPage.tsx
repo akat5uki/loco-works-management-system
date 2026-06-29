@@ -7,6 +7,8 @@ import {
   ChevronRight,
   LayoutDashboard,
   ShieldAlert,
+  Menu,
+  X,
 } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
@@ -40,6 +42,7 @@ const LandingPage = () => {
   const [empStats, setEmpStats] = useState<EmployeeStats | null>(null);
   const [hasEmployeeSession, setHasEmployeeSession] = useState(false);
   const [hasAdminSession, setHasAdminSession] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -104,7 +107,16 @@ const LandingPage = () => {
               LWMS
             </h1>
           </div>
-          <nav className="nav-links">
+
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+
+          <nav className={`nav-links ${mobileMenuOpen ? "mobile-open" : ""}`}>
             {hasEmployeeSession && (
               <Link to="/dashboard" className="btn-primary">
                 <LayoutDashboard size={16} /> Employee Dashboard
