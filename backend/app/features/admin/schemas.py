@@ -13,7 +13,7 @@ class AdminChangePasswordRequest(BaseModel):
     new_password: str = Field(..., description="New password")
     new_ticket_number: Optional[int] = Field(None, description="New admin employee ticket number for account migration")
     name: Optional[str] = Field(None, description="Full name if employee record needs creation")
-    email: Optional[str] = Field(None, description="Email address if employee record needs creation")
+    email: str = Field(..., description="Mandatory email address")
 
 
 class AdminSetEmployeePasswordRequest(BaseModel):
@@ -56,7 +56,7 @@ class RegistrationRequestRead(BaseModel):
 class LocoAdminRead(BaseModel):
     ticket_number: int
     name: str
-    email: Optional[str] = None
+    email: str
     is_default: bool
     must_change_password: bool
     created_at: datetime

@@ -210,8 +210,10 @@ async def admin_change_password(
         employee_portal_enabled = new_emp is not None
 
         if not new_emp:
+            if not data.email or not data.email.strip():
+                raise HTTPException(status_code=400, detail="Email address is mandatory for employee profile setup")
             name_val = data.name.strip() if data.name and data.name.strip() else f"Administrator #{new_ticket}"
-            email_val = data.email.strip() if data.email and data.email.strip() else f"admin_{new_ticket}@locoworks.com"
+            email_val = data.email.strip()
             # Security: Employee password is intentionally set to a random unusable value for new employees.
             # Admins authenticate exclusively through the Admin portal (loco_admin.password).
             # They may later set a separate employee password via /admin/set-employee-password (one-time).
@@ -760,6 +762,8 @@ async def admin_create_employee(payload: dict, current_user: AdminUser, db: Asyn
     name = str(payload.get("name", "")).strip()
     designation_id = int(payload.get("designation_id"))
     email = str(payload.get("email", "")).strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email address is mandatory for employee records")
     password = str(payload.get("password", "abcd")).strip()
 
     emp_check = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
@@ -792,7 +796,10 @@ async def admin_update_employee(ticket_number: int, payload: dict, current_user:
     if "designation_id" in payload:
         emp.designation_id = int(payload["designation_id"])
     if "email" in payload:
-        emp.email = str(payload["email"]).strip()
+        email_val = str(payload["email"]).strip()
+        if not email_val:
+            raise HTTPException(status_code=400, detail="Email address cannot be empty")
+        emp.email = email_val
     if "password" in payload and payload["password"]:
         emp.password = get_password_hash(str(payload["password"]))
     await db.commit()

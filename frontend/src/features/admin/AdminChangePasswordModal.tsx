@@ -53,6 +53,11 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
       setError("Please enter your personal employee ticket number.");
       return;
     }
+    const emailRegex = /^[\w.-]+@[\w.-]+\.\w+$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      setError("Please enter a valid mandatory email address.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -62,7 +67,7 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
         current_password: currentPassword,
         new_ticket_number: parseInt(newTicketNumber, 10),
         name: name.trim() || undefined,
-        email: email.trim() || undefined,
+        email: email.trim(),
         new_password: newPassword,
       });
       onSuccess();
@@ -132,7 +137,7 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
 
             <div style={{ background: "var(--bg-secondary)", padding: "0.85rem", borderRadius: "8px", marginBottom: "1.25rem", border: "1px dashed var(--border-color)" }}>
               <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-h)", display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
-                <UserCheck size={15} color="var(--primary-color)" /> Optional Profile Information (For New Employees)
+                <UserCheck size={15} color="var(--primary-color)" /> Mandatory Profile Information
               </span>
               <div className="form-group" style={{ marginBottom: "0.6rem" }}>
                 <input
@@ -146,9 +151,10 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <input
                   type="email"
-                  placeholder="Email Address (e.g. john.doe@locoworks.com)"
+                  placeholder="Mandatory Email Address (e.g. john.doe@locoworks.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                   style={{ fontSize: "0.85rem", padding: "0.55rem" }}
                 />
               </div>
