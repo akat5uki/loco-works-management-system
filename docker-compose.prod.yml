@@ -16,13 +16,24 @@ services:
       - postgres_primary_data:/bitnami/postgresql
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRESQL_USERNAME -d $$POSTGRESQL_DATABASE"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
 
   db-replica:
     image: bitnami/postgresql:latest
     container_name: loco_db_replica
     restart: always
     depends_on:
-      - db-primary
+      db-primary:
+        condition: service_healthy
     environment:
       POSTGRESQL_REPLICATION_MODE: slave
       POSTGRESQL_REPLICATION_USER: ${POSTGRES_REPLICATION_USER}
@@ -36,6 +47,16 @@ services:
       - postgres_replica_data:/bitnami/postgresql
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRESQL_USERNAME -d $$POSTGRESQL_DATABASE"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
 
   redis-master:
     image: bitnami/redis:latest
@@ -46,13 +67,24 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   redis-sentinel-1:
     image: bitnami/redis-sentinel:latest
     container_name: loco_redis_sentinel_1
     restart: always
     depends_on:
-      - redis-master
+      redis-master:
+        condition: service_healthy
     entrypoint:
       - /bin/bash
       - -c
@@ -66,13 +98,24 @@ services:
       REDIS_MASTER_SET: mymaster
       REDIS_MASTER_PASSWORD: ${REDIS_PASSWORD}
       REDIS_SENTINEL_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   redis-sentinel-2:
     image: bitnami/redis-sentinel:latest
     container_name: loco_redis_sentinel_2
     restart: always
     depends_on:
-      - redis-master
+      redis-master:
+        condition: service_healthy
     entrypoint:
       - /bin/bash
       - -c
@@ -86,13 +129,24 @@ services:
       REDIS_MASTER_SET: mymaster
       REDIS_MASTER_PASSWORD: ${REDIS_PASSWORD}
       REDIS_SENTINEL_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   redis-sentinel-3:
     image: bitnami/redis-sentinel:latest
     container_name: loco_redis_sentinel_3
     restart: always
     depends_on:
-      - redis-master
+      redis-master:
+        condition: service_healthy
     entrypoint:
       - /bin/bash
       - -c
@@ -106,6 +160,16 @@ services:
       REDIS_MASTER_SET: mymaster
       REDIS_MASTER_PASSWORD: ${REDIS_PASSWORD}
       REDIS_SENTINEL_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   web-1:
     build:
@@ -115,19 +179,29 @@ services:
     restart: always
     env_file:
       - .env
-    volumes:
-      - ./backend/app:/app/app
-      - ./backend/alembic:/app/alembic
-      - ./backend/main.py:/app/main.py
-      - ./backend/pyproject.toml:/app/pyproject.toml
-      - ./backend/uv.lock:/app/uv.lock
     depends_on:
-      - db-primary
-      - db-replica
-      - redis-master
-      - redis-sentinel-1
-      - redis-sentinel-2
-      - redis-sentinel-3
+      db-primary:
+        condition: service_healthy
+      db-replica:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   web-2:
     build:
@@ -137,19 +211,29 @@ services:
     restart: always
     env_file:
       - .env
-    volumes:
-      - ./backend/app:/app/app
-      - ./backend/alembic:/app/alembic
-      - ./backend/main.py:/app/main.py
-      - ./backend/pyproject.toml:/app/pyproject.toml
-      - ./backend/uv.lock:/app/uv.lock
     depends_on:
-      - db-primary
-      - db-replica
-      - redis-master
-      - redis-sentinel-1
-      - redis-sentinel-2
-      - redis-sentinel-3
+      db-primary:
+        condition: service_healthy
+      db-replica:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   web-3:
     build:
@@ -159,19 +243,29 @@ services:
     restart: always
     env_file:
       - .env
-    volumes:
-      - ./backend/app:/app/app
-      - ./backend/alembic:/app/alembic
-      - ./backend/main.py:/app/main.py
-      - ./backend/pyproject.toml:/app/pyproject.toml
-      - ./backend/uv.lock:/app/uv.lock
     depends_on:
-      - db-primary
-      - db-replica
-      - redis-master
-      - redis-sentinel-1
-      - redis-sentinel-2
-      - redis-sentinel-3
+      db-primary:
+        condition: service_healthy
+      db-replica:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   nginx:
     image: nginx:stable-alpine
@@ -186,9 +280,22 @@ services:
       - ./infrastructure/nginx/certbot/conf:/etc/letsencrypt:ro
       - ./infrastructure/nginx/certbot/www:/var/www/certbot:ro
     depends_on:
-      - web-1
-      - web-2
-      - web-3
+      web-1:
+        condition: service_healthy
+      web-2:
+        condition: service_healthy
+      web-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   certbot:
     image: certbot/certbot
@@ -198,28 +305,11 @@ services:
       - ./infrastructure/nginx/certbot/conf:/etc/letsencrypt
       - ./infrastructure/nginx/certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
-
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: loco_ngrok
-    restart: always
-    environment:
-      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-      NGROK_API_KEY: ${NGROK_APIKEY}
-    command:
-      - "http"
-      - "--url=${NGROK_URL}"
-      - "nginx:80"
-    depends_on:
-      - nginx
-
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: loco_mailpit
-    restart: always
-    ports:
-      - "1025:1025" # SMTP port
-      - "8025:8025" # Web GUI port
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
 volumes:
   postgres_primary_data:

@@ -137,6 +137,9 @@ async def get_chat_history(
 
 @router.websocket("/ws/{room}")
 async def chat_websocket(websocket: WebSocket, room: str):
+    """
+    Establish a WebSocket connection to the chat room for real-time messaging.
+    """
     if room not in VALID_ROOMS:
         await websocket.close(code=4004, reason="Room not found")
         return

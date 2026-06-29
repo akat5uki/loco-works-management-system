@@ -115,6 +115,9 @@ async def chat_pubsub_listener():
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """
+    Establish a WebSocket connection for real-time dashboard events and notifications.
+    """
     await websocket.accept()
     active_connections.add(websocket)
     try:

@@ -28,6 +28,10 @@ router = APIRouter()
 # Stats
 @router.get("/stats/production")
 async def get_production_stats(db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve yearly and monthly production count statistics.
+    Returns counts of unique locomotives commissioned aggregated by year and months of the current year.
+    """
     year_query = select(
         extract("year", LocoBooking.date_time).label("year"),
         func.count(func.distinct(LocoBooking.loco_number)).label("count"),
@@ -53,6 +57,10 @@ async def get_production_stats(db: AsyncSession = Depends(get_db)):
 # Loco Types CRUD
 @router.get("/types", response_model=List[LocoTypeRead])
 async def get_loco_types(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve all registered locomotive types.
+    Accessible by any authenticated user.
+    """
     result = await db.execute(select(LocoType))
     return result.scalars().all()
 
@@ -63,6 +71,10 @@ async def create_loco_type(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Register a new locomotive type.
+    Requires Supervisor or Admin privileges. Validates the new type ID schema.
+    """
     db_type = LocoType(**loco_type.model_dump())
     db.add(db_type)
     try:
@@ -77,6 +89,9 @@ async def create_loco_type(
 # Locos CRUD
 @router.get("/", response_model=List[LocoRead])
 async def get_locos(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve all locomotives currently registered in the works system.
+    """
     result = await db.execute(select(Loco))
     return result.scalars().all()
 
@@ -112,6 +127,10 @@ async def get_loco_type_counts(db: AsyncSession = Depends(get_db)):
 async def create_loco(
     loco: LocoBase, current_user: SupervisorOrAdminUser, db: AsyncSession = Depends(get_db)
 ):
+    """
+    Register a new locomotive in the works system.
+    Requires Supervisor or Admin privileges. Stage must match configuration parameters.
+    """
     if loco.stage not in settings.loco_stages_list:
         valid_stages_str = ", ".join(map(str, settings.loco_stages_list))
         raise HTTPException(
@@ -147,6 +166,10 @@ async def create_loco(
 
 @router.get("/ongoing-jobs")
 async def get_ongoing_jobs(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve jobs associated with active stages.
+    Returns list of jobs where stages are greater than 0.
+    """
     result = await db.execute(select(Job).where(Job.stage > 0))
     jobs = result.scalars().all()
     return jobs
@@ -159,6 +182,10 @@ async def update_loco_type(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Update locomotive type definition.
+    Requires Supervisor or Admin privileges.
+    """
     result = await db.execute(select(LocoType).where(LocoType.loco_type_id == loco_type_id))
     db_type = result.scalar_one_or_none()
     if not db_type:
@@ -182,6 +209,10 @@ async def delete_loco_type(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Delete locomotive type definition.
+    Requires Supervisor or Admin privileges.
+    """
     result = await db.execute(select(LocoType).where(LocoType.loco_type_id == loco_type_id))
     db_type = result.scalar_one_or_none()
     if not db_type:
@@ -202,6 +233,10 @@ async def update_loco(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Update details of a registered locomotive (e.g. Stage level, dispatch status).
+    Requires Supervisor or Admin privileges.
+    """
     if loco.stage not in settings.loco_stages_list:
         valid_stages_str = ", ".join(map(str, settings.loco_stages_list))
         raise HTTPException(
@@ -254,6 +289,10 @@ async def delete_loco(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Remove a locomotive record from the database.
+    Requires Supervisor or Admin privileges.
+    """
     loco_number_int = encode_loco_number(loco_number)
     result = await db.execute(select(Loco).where(Loco.loco_number == loco_number_int))
     db_loco = result.scalar_one_or_none()

@@ -31,6 +31,9 @@ router = APIRouter()
 
 @router.get("/me")
 async def get_me(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve profile details of the currently logged-in employee session.
+    """
     # get_current_user only passes session_type="employee" JWTs, so this is always an employee session
     admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
     admin_info = admin_res.scalar_one_or_none()
@@ -55,6 +58,10 @@ async def login(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Log in an employee using ticket number and password.
+    Supports email OTP challenge response routing if enabled.
+    """
     # Prevent Default System Administrator account from logging in via Employees Login Portal
     if login_data.ticket_number == settings.DEFAULT_ADMIN_TICKET:
         raise HTTPException(
@@ -158,6 +165,9 @@ async def login(
 
 @router.post("/logout")
 async def logout(request: Request, response: Response):
+    """
+    Log out employee session and clear authentication cookies.
+    """
     # Try to clear session from Redis if cookies exist
     token = request.cookies.get("session_id_strict") or request.cookies.get("session_id_embed")
     if token:
@@ -206,6 +216,10 @@ async def register(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Submit employee registration request.
+    Generates a unique registration code, QR code, and sends a notification email.
+    """
     # Check if user already exists in employees table
     result = await db.execute(
         select(Employee).where(Employee.ticket_number == user_data.ticket_number)
@@ -449,6 +463,10 @@ async def forgot_password(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Request a password reset email token.
+    Triggers generation and transmission of reset verification code if OTP is enabled.
+    """
     if settings.ENABLE_EMAIL_OTP == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -492,6 +510,9 @@ async def reset_password(
     reset_data: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Reset employee password using the reset email OTP token.
+    """
     if settings.ENABLE_EMAIL_OTP == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -534,6 +555,10 @@ async def change_employee_password(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Change the currently authenticated employee's password.
+    Requires validation of current password.
+    """
     result = await db.execute(
         select(Employee).where(Employee.ticket_number == current_user.ticket_number)
     )
@@ -554,12 +579,16 @@ async def change_employee_password(
     await db.commit()
     return {"message": "Employee password updated successfully"}
 
+
 @router.post("/resend-otp")
 async def resend_otp(
     resend_data: ResendOTPRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Resend verification OTP (login or registration types) to employee email.
+    """
     if settings.ENABLE_EMAIL_OTP == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -57,6 +57,9 @@ async def seed_default_admin_if_needed(db: AsyncSession):
 
 @router.get("/me")
 async def get_admin_me(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve the current admin profile info.
+    """
     admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == current_user.ticket_number))
     admin_info = admin_res.scalar_one_or_none()
 
@@ -84,6 +87,9 @@ async def admin_login(
     response: Response,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Authenticate administrative account and return session token.
+    """
     await seed_default_admin_if_needed(db)
 
     is_temp_default = False
@@ -176,7 +182,7 @@ async def admin_change_password(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Handles administrator password update or first-time account migration.
+    Change the password of the currently authenticated administrator. Handles administrator password update or first-time account migration.
     When logging in with the default admin account, creates a new admin account with the user's ticket number
     and new password, and immediately deletes the default admin account completely.
     """
@@ -309,6 +315,9 @@ async def admin_change_password(
 
 @router.post("/logout")
 async def admin_logout(request: Request, response: Response):
+    """
+    Log out the administrator session and clear authentication cookies.
+    """
     token = request.cookies.get("admin_session_id_strict") or request.cookies.get("admin_session_id_embed")
     if token:
         try:
@@ -345,7 +354,7 @@ async def admin_set_employee_password(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    One-time setup: allows an admin whose employee record was auto-created during setup
+    Force-reset an employee's password directly. Requires Admin privileges. One-time setup: allows an admin whose employee record was auto-created during setup
     (employee_portal_enabled=False) to set a separate Employee Portal password.
     Once set, this endpoint cannot be used again.
     """
@@ -393,6 +402,9 @@ async def list_registration_requests(
     status_filter: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    List employee registration requests pending or processed. Requires Admin privileges.
+    """
     # Check for expired pending requests and update status
     now = datetime.now(timezone.utc)
     expired_res = await db.execute(
@@ -460,6 +472,9 @@ async def take_registration_action(
     current_user: AdminUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Approve or reject a pending employee registration request. Requires Admin privileges.
+    """
     res = await db.execute(select(RegistrationRequest).where(RegistrationRequest.reg_code == reg_code))
     req = res.scalar_one_or_none()
     if not req:
@@ -537,6 +552,9 @@ async def extend_registration_validity(
     current_user: AdminUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Extend validity period for a registration request. Requires Admin privileges.
+    """
     res = await db.execute(select(RegistrationRequest).where(RegistrationRequest.reg_code == reg_code))
     req = res.scalar_one_or_none()
     if not req:
@@ -551,6 +569,9 @@ async def extend_registration_validity(
 
 @router.get("/admins", response_model=List[LocoAdminRead])
 async def list_admins(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
+    """
+    List all registered administrative accounts. Requires Admin privileges.
+    """
     res = await db.execute(select(LocoAdmin).options(joinedload(LocoAdmin.employee)))
     admins = res.scalars().all()
     return [
@@ -572,6 +593,9 @@ async def add_admin(
     current_user: AdminUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Grant administrative privileges to an employee. Requires Admin privileges.
+    """
     emp_res = await db.execute(select(Employee).where(Employee.ticket_number == data.ticket_number))
     emp = emp_res.scalar_one_or_none()
     if not emp:
@@ -600,7 +624,9 @@ async def get_audit_logs(
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db)
 ):
-    """Read-only audit log query interface for Admin compliance reporting."""
+    """
+    Retrieve administrator audit trail log actions. Requires Admin privileges. Read-only audit log query interface for Admin compliance reporting.
+    """
     sql = "SELECT id, table_name, operation, record_pk, old_data, new_data, changed_by, changed_at FROM public.audit_logs WHERE 1=1"
     params = {}
     if table_name and table_name.lower() != "all":
@@ -638,14 +664,18 @@ async def get_audit_logs(
 
 @router.get("/master-data/categories")
 async def admin_get_categories(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Retrieve all employee categories for admin wizard management."""
+    """
+    List all employee category master data. Requires Admin privileges. Retrieve all employee categories for admin wizard management.
+    """
     res = await db.execute(select(EmployeeCategory).order_by(EmployeeCategory.category_id.asc()))
     return res.scalars().all()
 
 
 @router.post("/master-data/categories")
 async def admin_create_category(payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Create a new employee category."""
+    """
+    Create a new employee category. Requires Admin privileges. Create a new employee category.
+    """
     category_id = int(payload.get("category_id"))
     category_name = str(payload.get("category_name", "")).strip()
     if not category_name:
@@ -659,7 +689,9 @@ async def admin_create_category(payload: dict, current_user: AdminUser, db: Asyn
 
 @router.put("/master-data/categories/{category_id}")
 async def admin_update_category(category_id: int, payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Update an existing employee category."""
+    """
+    Update an existing employee category. Requires Admin privileges. Update an existing employee category.
+    """
     res = await db.execute(select(EmployeeCategory).where(EmployeeCategory.category_id == category_id))
     cat = res.scalar_one_or_none()
     if not cat:
@@ -673,7 +705,9 @@ async def admin_update_category(category_id: int, payload: dict, current_user: A
 
 @router.delete("/master-data/categories/{category_id}")
 async def admin_delete_category(category_id: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Delete an employee category."""
+    """
+    Delete an employee category. Requires Admin privileges. Delete an employee category.
+    """
     res = await db.execute(select(EmployeeCategory).where(EmployeeCategory.category_id == category_id))
     cat = res.scalar_one_or_none()
     if not cat:
@@ -685,14 +719,18 @@ async def admin_delete_category(category_id: int, current_user: AdminUser, db: A
 
 @router.get("/master-data/designations")
 async def admin_get_designations(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Retrieve all designations for admin wizard management."""
+    """
+    List all employee designation master data. Requires Admin privileges. Retrieve all designations for admin wizard management.
+    """
     res = await db.execute(select(Designation).order_by(Designation.designation_id.asc()))
     return res.scalars().all()
 
 
 @router.post("/master-data/designations")
 async def admin_create_designation(payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Create a new designation."""
+    """
+    Create a new employee designation. Requires Admin privileges. Create a new designation.
+    """
     designation_id = int(payload.get("designation_id"))
     designation_name = str(payload.get("designation_name", "")).strip()
     category_id = int(payload.get("category_id"))
@@ -705,7 +743,9 @@ async def admin_create_designation(payload: dict, current_user: AdminUser, db: A
 
 @router.put("/master-data/designations/{designation_id}")
 async def admin_update_designation(designation_id: int, payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Update an existing designation."""
+    """
+    Update an existing employee designation. Requires Admin privileges. Update an existing designation.
+    """
     res = await db.execute(select(Designation).where(Designation.designation_id == designation_id))
     desig = res.scalar_one_or_none()
     if not desig:
@@ -721,7 +761,9 @@ async def admin_update_designation(designation_id: int, payload: dict, current_u
 
 @router.delete("/master-data/designations/{designation_id}")
 async def admin_delete_designation(designation_id: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Delete a designation."""
+    """
+    Delete an employee designation. Requires Admin privileges. Delete a designation.
+    """
     res = await db.execute(select(Designation).where(Designation.designation_id == designation_id))
     desig = res.scalar_one_or_none()
     if not desig:
@@ -733,7 +775,9 @@ async def admin_delete_designation(designation_id: int, current_user: AdminUser,
 
 @router.get("/master-data/employees")
 async def admin_get_employees(current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Retrieve all employees in staff directory."""
+    """
+    List all employee accounts master data. Requires Admin privileges. Retrieve all employees in staff directory.
+    """
     res = await db.execute(
         select(Employee, Designation, EmployeeCategory)
         .join(Designation, Employee.designation_id == Designation.designation_id)
@@ -757,7 +801,9 @@ async def admin_get_employees(current_user: AdminUser, db: AsyncSession = Depend
 
 @router.post("/master-data/employees")
 async def admin_create_employee(payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Create a new active employee directly."""
+    """
+    Create a new employee account record. Requires Admin privileges. Create a new active employee directly.
+    """
     ticket_number = int(payload.get("ticket_number"))
     name = str(payload.get("name", "")).strip()
     designation_id = int(payload.get("designation_id"))
@@ -785,7 +831,9 @@ async def admin_create_employee(payload: dict, current_user: AdminUser, db: Asyn
 
 @router.put("/master-data/employees/{ticket_number}")
 async def admin_update_employee(ticket_number: int, payload: dict, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Update an existing employee record."""
+    """
+    Update an existing employee account record. Requires Admin privileges. Update an existing employee record.
+    """
     res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
     emp = res.scalar_one_or_none()
     if not emp:
@@ -808,7 +856,9 @@ async def admin_update_employee(ticket_number: int, payload: dict, current_user:
 
 @router.delete("/master-data/employees/{ticket_number}")
 async def admin_delete_employee(ticket_number: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Delete an employee record. Ensures last administrator account is protected."""
+    """
+    Delete an employee account record. Requires Admin privileges. Delete an employee record. Ensures last administrator account is protected.
+    """
     res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
     emp = res.scalar_one_or_none()
     if not emp:
@@ -832,7 +882,9 @@ async def admin_delete_employee(ticket_number: int, current_user: AdminUser, db:
 
 @router.delete("/admins/{ticket_number}")
 async def admin_remove_admin(ticket_number: int, current_user: AdminUser, db: AsyncSession = Depends(get_db)):
-    """Revoke Administrator privileges. Prevents deletion if only one administrator exists."""
+    """
+    Revoke administrator privileges from an account. Requires Admin privileges. Revoke Administrator privileges. Prevents deletion if only one administrator exists.
+    """
     res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number))
     adm = res.scalar_one_or_none()
     if not adm:

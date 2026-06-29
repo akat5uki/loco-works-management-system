@@ -12,6 +12,10 @@ router = APIRouter()
 
 @router.get("/")
 async def get_employees(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve all registered employees.
+    Provides detailed profile structure including designation and category mapping details.
+    """
     result = await db.execute(
         select(Employee, Designation, EmployeeCategory)
         .join(Designation, Employee.designation_id == Designation.designation_id)
@@ -33,12 +37,20 @@ async def get_employees(current_user: CurrentUser, db: AsyncSession = Depends(ge
 
 @router.get("/designations")
 async def get_designations(db: AsyncSession = Depends(get_db)):
+    """
+    Get all designation definitions.
+    Returns master designations configuration details (e.g. Supervisor, Staff).
+    """
     result = await db.execute(select(Designation))
     return result.scalars().all()
 
 
 @router.get("/categories")
 async def get_categories(db: AsyncSession = Depends(get_db)):
+    """
+    Get all employee category definitions.
+    Returns master classification groupings.
+    """
     result = await db.execute(select(EmployeeCategory))
     return result.scalars().all()
 

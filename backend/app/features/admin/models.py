@@ -14,7 +14,7 @@ class LocoAdmin(Base):
     __tablename__ = "loco_admin"
 
     ticket_number: Mapped[int] = mapped_column(
-        Integer, ForeignKey("employees.ticket_number"), primary_key=True
+        Integer, ForeignKey("employees.ticket_number", ondelete="CASCADE"), primary_key=True
     )
     password: Mapped[str] = mapped_column(String, nullable=False)
     nonce: Mapped[str] = mapped_column(String, nullable=False, default=lambda: secrets.token_hex(16))

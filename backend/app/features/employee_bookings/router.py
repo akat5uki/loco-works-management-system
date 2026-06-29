@@ -51,6 +51,10 @@ def get_next_shift_dt_shift(current_date_str: str, current_shift: int) -> tuple[
 # 1. Availability Endpoints
 @router.get("/availabilities")
 async def get_availabilities(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve list of available employee tickets for a specific date and shift.
+    Filters out employees marked absent in the availability records.
+    """
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     # Query absences (employees stored in EmployeeAvailability are absent)
     query = select(EmployeeAvailability.ticket_number).where(
@@ -78,6 +82,10 @@ async def update_availabilities(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Update employee availability records for a date and shift.
+    Requires Supervisor privileges. Computes absences based on available list.
+    """
     parsed_date = parse_local_date(payload.date_str)
     local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     
@@ -120,6 +128,10 @@ async def update_availabilities(
 # 2. Available Locos Endpoint
 @router.get("/locos")
 async def get_available_locos(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve distinct booked locomotives for a date and shift.
+    Used to identify active locos requiring employee bookings.
+    """
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     # Fetch distinct loco numbers booked in loco_bookings for this date and shift
     query = (
@@ -140,6 +152,10 @@ async def get_available_locos(date_str: str, shift: int, current_user: CurrentUs
 # 3. Lock Endpoints
 @router.post("/bookings/lock")
 async def acquire_lock(payload: LockPayload, current_user: SupervisorUser):
+    """
+    Acquire or renew an exclusive editing lock on bookings for a date and shift.
+    Requires Supervisor privileges. Lock is stored in Redis.
+    """
     lock_key = f"lock:employee-booking:{payload.date_str}:{payload.shift}"
     
     # Try to set lock
@@ -172,6 +188,10 @@ async def acquire_lock(payload: LockPayload, current_user: SupervisorUser):
 
 @router.post("/bookings/unlock")
 async def release_lock(payload: LockPayload, current_user: SupervisorUser):
+    """
+    Release a held editing lock on bookings.
+    Requires Supervisor privileges.
+    """
     lock_key = f"lock:employee-booking:{payload.date_str}:{payload.shift}"
     current_lock = await redis_client.get(lock_key)
     if current_lock:
@@ -192,6 +212,10 @@ async def save_bookings(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Allocate/Assign supervisors and staff members to a locomotive booking.
+    Requires Supervisor privileges.
+    """
     parsed_date = parse_local_date(payload.date_str)
     local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     loco_number_int = encode_loco_number(payload.loco_number)
@@ -398,6 +422,9 @@ async def save_bookings(
 # 5. Get Bookings
 @router.get("/bookings")
 async def get_bookings(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve all employee allocations for a specific date and shift.
+    """
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(EmployeeBooking).where(
         and_(
@@ -424,6 +451,9 @@ async def get_bookings(date_str: str, shift: int, current_user: CurrentUser, db:
 # 6. Notifications Endpoints
 @router.get("/notifications")
 async def get_notifications(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve shift/assignment notifications for the currently logged-in employee.
+    """
     query = (
         select(EmployeeNotification)
         .where(EmployeeNotification.ticket_number == current_user.ticket_number)
@@ -438,6 +468,9 @@ async def get_notifications(current_user: CurrentUser, db: AsyncSession = Depend
 async def mark_notification_read(
     notification_id: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
 ):
+    """
+    Mark an assignment notification as read.
+    """
     query = select(EmployeeNotification).where(
         and_(
             EmployeeNotification.notification_id == notification_id,
@@ -457,6 +490,9 @@ async def mark_notification_read(
 # 7. Views Endpoints (By Loco, By Supervisor, By Staff)
 @router.get("/views")
 async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Fetch comprehensive assignment views grouped by locomotive, supervisor, and staff member.
+    """
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     
     # Query all bookings joined with Employee names and their designations
@@ -696,6 +732,9 @@ async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser
 # 8. Remarks & Carry Forward Endpoints
 @router.get("/remarks")
 async def get_remarks(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve task and job remarks for a given date and shift.
+    """
     local_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     query = select(LocoBookingRemarks).where(
         and_(
@@ -727,6 +766,10 @@ async def submit_remarks(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Submit completed task remarks and automatically carry forward incomplete tasks/jobs to the next shift.
+    Requires Supervisor privileges.
+    """
     parsed_date = parse_local_date(payload.date_str)
     local_date = datetime.strptime(payload.date_str, "%Y-%m-%d").date()
     next_date, next_shift, next_local_date = get_next_shift_dt_shift(payload.date_str, payload.shift)

@@ -16,6 +16,10 @@ router = APIRouter()
 # Jobs CRUD
 @router.get("/", response_model=List[JobRead])
 async def get_jobs(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve all job definitions.
+    Accessible by any authenticated portal user. Returns a list of all active jobs.
+    """
     result = await db.execute(select(Job))
     return result.scalars().all()
 
@@ -24,6 +28,10 @@ async def get_jobs(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
 async def create_job(
     job: JobCreate, current_user: SupervisorOrAdminUser, db: AsyncSession = Depends(get_db)
 ):
+    """
+    Create a new job definition.
+    Requires Supervisor or Admin privileges. Validates that the job ID is unique and consists of numeric digits.
+    """
     db_job = Job(**job.model_dump())
     db.add(db_job)
     try:
@@ -42,6 +50,10 @@ async def update_job(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Update an existing job definition.
+    Requires Supervisor or Admin privileges. Modifies description or target stage attributes.
+    """
     result = await db.execute(select(Job).where(Job.job_id == job_id))
     db_job = result.scalar_one_or_none()
     if not db_job:
@@ -65,6 +77,10 @@ async def delete_job(
     current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Delete a job definition.
+    Requires Supervisor or Admin privileges. Removes the job configuration from the master records database.
+    """
     result = await db.execute(select(Job).where(Job.job_id == job_id))
     db_job = result.scalar_one_or_none()
     if not db_job:

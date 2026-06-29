@@ -20,12 +20,8 @@ from app.features.admin.router import router as admin_router, seed_default_admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure all tables are created on startup (including any newly defined feature tables)
-    from app.core.base import Base
     from app.core.database import primary_engine
     from sqlalchemy.ext.asyncio import AsyncSession
-    async with primary_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSession(primary_engine) as session:
         await seed_default_admin_if_needed(session)
@@ -110,11 +106,17 @@ app.include_router(
 
 @app.get(f"{settings.API_V1_STR}/")
 async def root():
+    """
+    Retrieve entrypoint root welcome message.
+    """
     return {"message": "Welcome to Loco Works Management System API"}
 
 
 @app.get(f"{settings.API_V1_STR}/health")
 async def health_check():
+    """
+    Check the health status of the application.
+    """
     return {"status": "healthy"}
 
 

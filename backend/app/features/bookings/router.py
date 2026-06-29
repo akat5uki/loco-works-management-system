@@ -31,6 +31,10 @@ async def create_booking(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Batch-create multiple job bookings for a locomotive on a specific date/shift.
+    Requires Supervisor privileges. Overwrites existing bookings on the same date and shift.
+    """
     if booking.shift not in [1, 2]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -139,6 +143,10 @@ async def add_booking_task(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Append a single task to a specific locomotive's job booking.
+    Requires Supervisor privileges.
+    """
     loco_number_int = encode_loco_number(task_in.loco_number)
     query = select(LocoBooking).where(
         LocoBooking.loco_number == loco_number_int,
@@ -167,6 +175,10 @@ async def add_job_booking(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Append a single job booking to a locomotive.
+    Requires Supervisor privileges.
+    """
     if job_in.shift not in [1, 2]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -264,7 +276,10 @@ async def get_bookings(
     tz: str = "Asia/Kolkata",
     db: AsyncSession = Depends(get_db)
 ):
-    """Return bookings, optionally filtered by start_date and end_date."""
+    """
+    Retrieve list of bookings.
+    Supports optional date range query filtering. Returns structured booking dictionaries.
+    """
     query = _base_booking_query()
     if start_date:
         query = query.where(func.date(func.timezone(tz, LocoBooking.date_time)) >= start_date)
@@ -280,7 +295,10 @@ async def get_loco_history(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
-    """Return the full job history for a single locomotive, newest first."""
+    """
+    Retrieve full job history for a single locomotive.
+    Sorted in descending chronological order (newest first).
+    """
     loco_number_int = encode_loco_number(loco_number)
     query = _base_booking_query().where(
         LocoBooking.loco_number == loco_number_int
@@ -304,6 +322,10 @@ async def delete_loco_booking_batch(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Delete a batch of locomotive bookings for a specific date and time.
+    Requires Supervisor privileges.
+    """
     loco_number_int = encode_loco_number(loco_number)
     query = select(LocoBooking).where(
         LocoBooking.loco_number == loco_number_int,
@@ -326,6 +348,10 @@ async def delete_job_booking(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Delete a specific job booking for a locomotive on a date/time.
+    Requires Supervisor privileges.
+    """
     loco_number_int = encode_loco_number(loco_number)
     query = select(LocoBooking).where(
         LocoBooking.loco_number == loco_number_int,
@@ -339,12 +365,17 @@ async def delete_job_booking(
     await db.delete(booking)
     await db.commit()
 
+
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_booking_task(
     task_id: int,
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Remove a specific task from a booking.
+    Requires Supervisor privileges.
+    """
     query = select(BookingTask).where(BookingTask.task_id == task_id)
     result = await db.execute(query)
     task = result.scalar_one_or_none()
@@ -353,6 +384,7 @@ async def delete_booking_task(
     await db.delete(task)
     await db.commit()
 
+
 @router.put("/tasks/{task_id}")
 async def update_booking_task(
     task_id: int,
@@ -360,6 +392,10 @@ async def update_booking_task(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Update the description of a specific booking task.
+    Requires Supervisor privileges.
+    """
     query = select(BookingTask).where(BookingTask.task_id == task_id)
     result = await db.execute(query)
     task = result.scalar_one_or_none()
@@ -378,6 +414,10 @@ async def update_job_booking(
     current_user: SupervisorUser,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Update/Migrate an existing job booking for a locomotive (e.g. swap target Job ID).
+    Requires Supervisor privileges.
+    """
     loco_number_int = encode_loco_number(loco_number)
     # This is tricky because job_id is part of the primary key.
     # The safest way is to insert a new LocoBooking and its tasks, then delete the old one.
