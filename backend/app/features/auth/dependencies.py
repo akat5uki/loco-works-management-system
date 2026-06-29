@@ -287,7 +287,62 @@ async def require_admin(
     return user
 
 
-# Type alias for cleaner dependency injection
+async def get_current_user_or_admin(
+    request: Request,
+    response: Response,
+    token: Annotated[Optional[str], Depends(oauth2_scheme)],
+    db: AsyncSession = Depends(get_db),
+) -> Employee:
+    """
+    Dependency that accepts either a valid employee session or a valid admin session.
+    """
+    final_token = token
+    if not final_token:
+        final_token = request.cookies.get("session_id_strict") or request.cookies.get("session_id_embed")
+    if not final_token:
+        final_token = request.cookies.get("admin_session_id_strict") or request.cookies.get("admin_session_id_embed")
+
+    if not final_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        payload = jwt.decode(final_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        session_type = payload.get("session_type", "employee")
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+    if session_type == "admin":
+        return await require_admin(request, token, db)
+    else:
+        return await get_current_user(request, response, token, db)
+
+
+async def require_supervisor_or_admin(
+    request: Request,
+    user: Annotated[Employee, Depends(get_current_user_or_admin)],
+    db: AsyncSession = Depends(get_db),
+) -> Employee:
+    if user.designation and user.designation.category_id == 1:
+        return user
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == user.ticket_number))
+    if admin_res.scalar_one_or_none():
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Insufficient permissions. Supervisor or Administrative access required.",
+    )
+
+
+# Type aliases for cleaner dependency injection
 CurrentUser = Annotated[Employee, Depends(get_current_user)]
 SupervisorUser = Annotated[Employee, Depends(require_supervisor)]
 AdminUser = Annotated[Employee, Depends(require_admin)]
+AnyUser = Annotated[Employee, Depends(get_current_user_or_admin)]
+SupervisorOrAdminUser = Annotated[Employee, Depends(require_supervisor_or_admin)]

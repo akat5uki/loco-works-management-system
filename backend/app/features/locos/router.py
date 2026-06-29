@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import handle_db_error
 from app.core.loco_encoder import LocoNumberStr, encode_loco_number
-from app.features.auth.dependencies import CurrentUser, SupervisorUser
+from app.features.auth.dependencies import AnyUser, SupervisorOrAdminUser
 from app.features.jobs.models import Job
 from app.features.locos.models import Loco, LocoType
 from app.features.bookings.models import LocoBooking
@@ -86,7 +86,7 @@ async def get_production_stats(db: AsyncSession = Depends(get_db)):
 
 # Loco Types CRUD
 @router.get("/types", response_model=List[LocoTypeRead])
-async def get_loco_types(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+async def get_loco_types(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(LocoType))
     return result.scalars().all()
 
@@ -94,7 +94,7 @@ async def get_loco_types(current_user: CurrentUser, db: AsyncSession = Depends(g
 @router.post("/types", response_model=LocoTypeRead, status_code=status.HTTP_201_CREATED)
 async def create_loco_type(
     loco_type: LocoTypeCreate,
-    current_user: SupervisorUser,
+    current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     db_type = LocoType(**loco_type.model_dump())
@@ -110,7 +110,7 @@ async def create_loco_type(
 
 # Locos CRUD
 @router.get("/", response_model=List[LocoRead])
-async def get_locos(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+async def get_locos(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Loco))
     return result.scalars().all()
 
@@ -144,7 +144,7 @@ async def get_loco_type_counts(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", response_model=LocoRead, status_code=status.HTTP_201_CREATED)
 async def create_loco(
-    loco: LocoBase, current_user: SupervisorUser, db: AsyncSession = Depends(get_db)
+    loco: LocoBase, current_user: SupervisorOrAdminUser, db: AsyncSession = Depends(get_db)
 ):
     if loco.stage not in settings.loco_stages_list:
         valid_stages_str = ", ".join(map(str, settings.loco_stages_list))
@@ -180,7 +180,7 @@ async def create_loco(
 
 
 @router.get("/ongoing-jobs")
-async def get_ongoing_jobs(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+async def get_ongoing_jobs(current_user: AnyUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Job).where(Job.stage > 0))
     jobs = result.scalars().all()
     return jobs
@@ -190,7 +190,7 @@ async def get_ongoing_jobs(current_user: CurrentUser, db: AsyncSession = Depends
 async def update_loco_type(
     loco_type_id: int,
     loco_type: LocoTypeBase,
-    current_user: SupervisorUser,
+    current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(LocoType).where(LocoType.loco_type_id == loco_type_id))
@@ -213,7 +213,7 @@ async def update_loco_type(
 @router.delete("/types/{loco_type_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_loco_type(
     loco_type_id: int,
-    current_user: SupervisorUser,
+    current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(LocoType).where(LocoType.loco_type_id == loco_type_id))
@@ -233,7 +233,7 @@ async def delete_loco_type(
 async def update_loco(
     loco_number: str,
     loco: LocoBase,
-    current_user: SupervisorUser,
+    current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     if loco.stage not in settings.loco_stages_list:
@@ -285,7 +285,7 @@ async def update_loco(
 @router.delete("/{loco_number}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_loco(
     loco_number: str,
-    current_user: SupervisorUser,
+    current_user: SupervisorOrAdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     loco_number_int = encode_loco_number(loco_number)
