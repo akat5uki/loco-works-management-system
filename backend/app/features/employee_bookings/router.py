@@ -1,17 +1,15 @@
 import json
 from datetime import datetime, timedelta, time, date
-from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy import and_, func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.redis import redis_client
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
-from app.core.loco_encoder import LocoNumberStr, encode_loco_number, decode_loco_number
+from app.core.loco_encoder import encode_loco_number, decode_loco_number
 from app.features.employees.models import Employee, Designation
 from app.features.bookings.models import LocoBooking, BookingTask
 from app.features.employee_bookings.models import (
@@ -21,51 +19,14 @@ from app.features.employee_bookings.models import (
     LocoBookingRemarks,
 )
 from app.features.realtime.router import broadcast_event
+from app.features.employee_bookings.schemas import (
+    AvailabilityUpdatePayload,
+    BookingSavePayload,
+    LockPayload,
+    RemarksSubmitPayload,
+)
 
 router = APIRouter()
-
-# Input Schemas
-class AvailabilityUpdatePayload(BaseModel):
-    date_str: str  # YYYY-MM-DD
-    shift: int
-    ticket_numbers: List[int]
-
-class BookingSavePayload(BaseModel):
-    date_str: str  # YYYY-MM-DD
-    shift: int
-    loco_number: LocoNumberStr
-    supervisor_ticket_numbers: Optional[List[int]] = None
-    supervisor_ticket_number: Optional[int] = None
-    staff_ticket_numbers: Optional[List[int]] = None
-    forward: bool = False
-    phase: Optional[int] = None
-
-class LockPayload(BaseModel):
-    date_str: str
-    shift: int
-
-class TaskRemarkPayload(BaseModel):
-    task_id: int
-    completed: bool
-    remarks: str
-
-class JobRemarkPayload(BaseModel):
-    job_id: int
-    completed: bool
-    remarks: str
-    task_remarks: List[TaskRemarkPayload] = []
-
-class NewTaskPayload(BaseModel):
-    job_id: int
-    task_description: str
-
-class RemarksSubmitPayload(BaseModel):
-    loco_number: LocoNumberStr
-    date_str: str  # YYYY-MM-DD
-    shift: int
-    job_remarks: List[JobRemarkPayload]
-    new_jobs: List[int] = []  # carry forward new jobs to next shift
-    new_tasks: List[NewTaskPayload] = []  # carry forward new tasks to next shift
 
 
 # Helpers

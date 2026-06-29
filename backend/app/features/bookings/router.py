@@ -1,52 +1,28 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy import and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
-from app.core.loco_encoder import LocoNumberStr, encode_loco_number, decode_loco_number
+from app.core.loco_encoder import encode_loco_number, decode_loco_number
 from app.features.auth.dependencies import CurrentUser, SupervisorUser
 from app.features.bookings.models import BookingTask, LocoBooking
 from app.features.employees.models import Employee
 from app.features.jobs.models import Job
 from app.features.locos.models import Loco
 from app.features.realtime.router import broadcast_event
+from app.features.bookings.schemas import (
+    BookingCreateBatch,
+    SingleTaskAddInput,
+    SingleJobAddInput,
+    TaskUpdateInput,
+    JobUpdateInput,
+)
 
 router = APIRouter()
-
-
-class TaskCreateInput(BaseModel):
-    task_description: str
-
-
-class JobBookingInput(BaseModel):
-    job_id: int
-    tasks: List[TaskCreateInput]
-
-
-class BookingCreateBatch(BaseModel):
-    loco_number: LocoNumberStr
-    date_time: datetime
-    shift: int          # now supplied by the user, not inferred from loco
-    bookings: List[JobBookingInput]
-
-
-class SingleTaskAddInput(BaseModel):
-    loco_number: LocoNumberStr
-    date_time: datetime
-    job_id: int
-    task_description: str
-
-
-class SingleJobAddInput(BaseModel):
-    loco_number: LocoNumberStr
-    date_time: datetime
-    job_id: int
-    shift: int
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -377,9 +353,6 @@ async def delete_booking_task(
     await db.delete(task)
     await db.commit()
 
-class TaskUpdateInput(BaseModel):
-    task_description: str
-
 @router.put("/tasks/{task_id}")
 async def update_booking_task(
     task_id: int,
@@ -395,9 +368,6 @@ async def update_booking_task(
     task.task_description = task_in.task_description
     await db.commit()
     return {"message": "Task updated successfully"}
-
-class JobUpdateInput(BaseModel):
-    new_job_id: int
 
 @router.put("/{loco_number}/{date_time}/{job_id}")
 async def update_job_booking(

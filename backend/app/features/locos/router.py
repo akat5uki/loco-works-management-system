@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import Integer, extract, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -10,53 +9,20 @@ from sqlalchemy.future import select
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import handle_db_error
-from app.core.loco_encoder import LocoNumberStr, encode_loco_number
+from app.core.loco_encoder import encode_loco_number
 from app.features.auth.dependencies import AnyUser, SupervisorOrAdminUser
 from app.features.jobs.models import Job
 from app.features.locos.models import Loco, LocoType
 from app.features.bookings.models import LocoBooking
+from app.features.locos.schemas import (
+    LocoTypeBase,
+    LocoTypeCreate,
+    LocoTypeRead,
+    LocoBase,
+    LocoRead,
+)
 
 router = APIRouter()
-
-
-# Schemas
-class LocoTypeBase(BaseModel):
-    loco_type_name: str
-
-
-class LocoTypeCreate(LocoTypeBase):
-    loco_type_id: str
-
-    @field_validator('loco_type_id')
-    @classmethod
-    def validate_id(cls, v: str) -> int:
-        if not v.isdigit():
-            raise ValueError("Type ID must contain only digits")
-        return int(v)
-
-
-class LocoTypeRead(LocoTypeBase):
-    loco_type_id: int
-    model_config = ConfigDict(from_attributes=True)
-
-
-class LocoBase(BaseModel):
-    loco_number: LocoNumberStr
-    loco_type_id: int
-    date_time: Optional[datetime] = None
-    stage: int
-    shift: Optional[int] = None
-    despatched: bool = False
-
-
-class LocoRead(BaseModel):
-    loco_number: LocoNumberStr
-    loco_type_id: int
-    stage: int
-    despatched: bool = False
-    despatch_date: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 # Stats
