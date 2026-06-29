@@ -11,6 +11,17 @@ interface RegistrationSlipModalProps {
   onClose: () => void;
 }
 
+const getBase64ImageFromUrl = async (url: string): Promise<string> => {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
 const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
   regCode,
   ticketNumber,
@@ -23,7 +34,7 @@ const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
     regCode
   )}`;
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
@@ -49,20 +60,20 @@ const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
     // 12-Character Code Highlight Box
     doc.setFillColor(243, 244, 246);
     doc.setDrawColor(209, 213, 219);
-    doc.rect(15, 38, 118, 22, "FD");
+    doc.rect(15, 36, 118, 20, "FD");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text("VERIFICATION CODE", 74, 44, { align: "center" });
+    doc.text("VERIFICATION CODE", 74, 42, { align: "center" });
 
-    doc.setFontSize(16);
+    doc.setFontSize(15);
     doc.setTextColor(30, 58, 138);
-    doc.text(regCode, 74, 54, { align: "center" });
+    doc.text(regCode, 74, 51, { align: "center" });
 
     // Employee Details
-    let y = 70;
-    doc.setFontSize(10);
+    let y = 64;
+    doc.setFontSize(9.5);
     doc.setTextColor(33, 37, 41);
 
     const addDetailRow = (label: string, value: string) => {
@@ -70,7 +81,7 @@ const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
       doc.text(label, 15, y);
       doc.setFont("helvetica", "normal");
       doc.text(value, 55, y);
-      y += 8;
+      y += 7;
     };
 
     addDetailRow("Employee Ticket #:", `#${ticketNumber}`);
@@ -79,8 +90,17 @@ const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
     addDetailRow("Submission Date:", new Date().toLocaleDateString());
     addDetailRow("Validity Window:", `Valid until ${new Date(validUntil).toLocaleDateString()}`);
 
+    // Embed QR Code Image into PDF
+    try {
+      const qrDataUrl = await getBase64ImageFromUrl(qrImageUrl);
+      doc.addImage(qrDataUrl, "PNG", 56.5, y + 2, 35, 35);
+      y += 40;
+    } catch (err) {
+      console.error("Failed to load QR image for PDF", err);
+      y += 5;
+    }
+
     // Verification Instructions
-    y += 5;
     doc.setFillColor(254, 243, 199);
     doc.rect(15, y, 118, 22, "F");
     doc.setFont("helvetica", "bold");
@@ -89,7 +109,7 @@ const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
     doc.text("IMPORTANT INSTRUCTIONS FOR VERIFICATION:", 18, y + 6);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("1. Present this 12-character code to the Administrator.", 18, y + 12);
+    doc.text("1. Present this 12-character code or QR code to the Administrator.", 18, y + 12);
     doc.text("2. Admin will verify details and activate your account.", 18, y + 17);
 
     // Footer
@@ -136,9 +156,9 @@ const RegistrationSlipModal: React.FC<RegistrationSlipModalProps> = ({
           <div style={{ fontWeight: 700, color: "#f59e0b", display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.2rem" }}>
             <AlertTriangle size={15} /> Next Steps for Account Activation:
           </div>
-          1. Download or save your 12-character verification code.<br />
-          2. Visit the Administrator and present your verification code within <strong>7 days</strong>.<br />
-          3. Once approved, you will receive an email confirmation and will be able to log in.
+          1. Download or save your 12-character verification code &amp; QR code.<br />
+          2. A copy of this verification card has been dispatched to your registered email.<br />
+          3. Visit the Administrator and present your verification code within <strong>7 days</strong>.
         </div>
 
         <div style={{ display: "flex", gap: "0.75rem" }}>

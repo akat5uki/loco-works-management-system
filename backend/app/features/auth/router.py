@@ -365,6 +365,7 @@ async def register_email(
 async def verify_otp(
     verify_data: VerifyOTPRequest,
     response: Response,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     ticket_number = verify_data.ticket_number
@@ -416,6 +417,15 @@ async def verify_otp(
         )
         db.add(reg_req)
         await db.commit()
+        
+        background_tasks.add_task(
+            send_registration_notification_email,
+            reg_data["email"],
+            reg_data["name"],
+            "SUBMITTED (Pending Verification)",
+            f"Your registration request has been submitted successfully. Please present your 12-character verification code ({reg_code}) to the Administrator within 7 days for verification.",
+            reg_code
+        )
         
         # Clean up Redis
         await redis_client.delete(otp_key)

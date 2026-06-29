@@ -145,7 +145,17 @@ async def send_registration_notification_email(
     Sends registration workflow updates (Pending, Approved, Rejected, Remarks) to employees.
     """
     subject = f"Loco Works System - Registration Request {status_title}"
-    code_html = f'<div class="otp-box">{reg_code}</div>' if reg_code else ''
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={reg_code}" if reg_code else ""
+    qr_html = f'<div style="margin-top: 15px;"><img src="{qr_url}" alt="Verification QR Code" width="160" height="160" style="border: 1px solid #d1d5db; border-radius: 8px; padding: 6px; background: #ffffff;" /></div>' if reg_code else ""
+
+    code_html = f'''
+    <div style="text-align: center; margin: 15px 0;">
+        <div style="display: inline-block; padding: 12px 25px; font-size: 22px; font-weight: bold; letter-spacing: 3px; color: #1e3a8a; background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px;">
+            {reg_code}
+        </div>
+        {qr_html}
+    </div>
+    ''' if reg_code else ""
 
     html_content = f"""
     <!DOCTYPE html>
@@ -173,19 +183,6 @@ async def send_registration_notification_email(
                 color: #333333;
                 line-height: 1.6;
             }}
-            .otp-box {{
-                display: inline-block;
-                margin: 15px 0;
-                padding: 12px 25px;
-                font-size: 22px;
-                font-weight: bold;
-                letter-spacing: 3px;
-                color: #1e3a8a;
-                background-color: #f3f4f6;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                text-align: center;
-            }}
             .footer {{
                 margin-top: 20px;
                 font-size: 12px;
@@ -204,9 +201,7 @@ async def send_registration_notification_email(
             <div class="content">
                 <p>Hello <strong>{name}</strong>,</p>
                 <p>Status Update: <strong>{status_title}</strong></p>
-                <div style="text-align: center;">
-                    {code_html}
-                </div>
+                {code_html}
                 <p>{message_body}</p>
             </div>
             <div class="footer">
