@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Users, Layers, ShieldCheck, UserPlus, LogOut, UserCog } from "lucide-react";
+import { ShieldAlert, Users, Layers, ShieldCheck, UserPlus, LogOut, UserCog, User } from "lucide-react";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import RegistrationRequestsManager from "./components/RegistrationRequestsManager";
 import MasterDataCrudWizard from "./components/MasterDataCrudWizard";
 import AuditLogsViewer from "./components/AuditLogsViewer";
 import AdminStaffManager from "./components/AdminStaffManager";
+import AdminProfileView from "./components/AdminProfileView";
 import AdminSetEmployeePasswordModal from "./AdminSetEmployeePasswordModal";
 import api from "../../shared/services/api";
 import "./AdminDashboard.css";
 
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState<"requests" | "crud" | "audit" | "admins">("requests");
+  const [activeView, setActiveView] = useState<"requests" | "crud" | "audit" | "admins" | "profile">("requests");
   const [employeePortalEnabled, setEmployeePortalEnabled] = useState<boolean | null>(null);
   const [showSetEmployeePasswordModal, setShowSetEmployeePasswordModal] = useState(false);
 
@@ -121,6 +122,12 @@ const AdminDashboardPage: React.FC = () => {
         >
           <UserPlus size={18} /> Admin Personnel Management
         </button>
+        <button
+          className={`nav-tab-btn ${activeView === "profile" ? "active" : ""}`}
+          onClick={() => setActiveView("profile")}
+        >
+          <User size={18} /> Admin Profile
+        </button>
       </nav>
 
       {/* Main Workspace Body */}
@@ -129,6 +136,9 @@ const AdminDashboardPage: React.FC = () => {
         {activeView === "crud" && <MasterDataCrudWizard />}
         {activeView === "audit" && <AuditLogsViewer />}
         {activeView === "admins" && <AdminStaffManager />}
+        {activeView === "profile" && (
+          <AdminProfileView onEnablePortalClick={() => setShowSetEmployeePasswordModal(true)} />
+        )}
       </main>
 
       {/* One-time Employee Portal Password Setup Modal */}

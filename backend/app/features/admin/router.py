@@ -68,6 +68,8 @@ async def get_admin_me(current_user: AdminUser, db: AsyncSession = Depends(get_d
         "ticket_number": current_user.ticket_number,
         "name": current_user.name,
         "email": current_user.email,
+        "designation_name": current_user.designation.designation_name if current_user.designation else "Administrator",
+        "category_name": current_user.designation.category.category_name if current_user.designation and current_user.designation.category else "Executive Management",
         "is_admin": True,
         "is_default": is_default,
         "must_change_password": must_change,
