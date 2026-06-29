@@ -25,10 +25,10 @@ from app.features.employees.models import Employee, Designation
 
 router = APIRouter()
 
-ROOM_ALL = "all"
-ROOM_SUPERVISOR = "supervisor"
+ROOM_ALL = settings.CHAT_ROOM_ALL
+ROOM_SUPERVISOR = settings.CHAT_ROOM_SUPERVISOR
 VALID_ROOMS = {ROOM_ALL, ROOM_SUPERVISOR}
-MAX_HISTORY = 100
+MAX_HISTORY = settings.CHAT_MAX_HISTORY
 
 
 # ---------------------------------------------------------------------------

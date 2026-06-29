@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_PASSWORD: str = "AdminPassword123!"
     REGISTRATION_VALIDITY_DAYS: int = 7
 
+    # Chat Configuration Settings
+    CHAT_MAX_HISTORY: int = 100
+    CHAT_ROOM_ALL: str = "all"
+    CHAT_ROOM_SUPERVISOR: str = "supervisor"
+
     @property
     def loco_stages_list(self) -> list[int]:
         return [int(s.strip()) for s in self.LOCO_STAGES.split(",") if s.strip()]
