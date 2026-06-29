@@ -9,7 +9,6 @@ import RegisterPage from "./features/auth/RegisterPage";
 import SessionExpiredPage from "./features/auth/SessionExpiredPage";
 import NotFoundPage from "./features/auth/NotFoundPage";
 import VerifyOtpPage from "./features/auth/VerifyOtpPage";
-import RegisterEmailPage from "./features/auth/RegisterEmailPage";
 import ForgotPasswordPage from "./features/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./features/auth/ResetPasswordPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
@@ -33,7 +32,6 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
-        <Route path="/register-email" element={<RegisterEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/session-expired" element={<SessionExpiredPage />} />

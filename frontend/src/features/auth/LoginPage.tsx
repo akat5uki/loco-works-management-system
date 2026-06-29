@@ -60,12 +60,6 @@ const LoginPage = () => {
             expire_seconds: res.data.expire_seconds,
           },
         });
-      } else if (res.data.email_required) {
-        navigate("/register-email", {
-          state: {
-            ticket_number: ticketNumber,
-          },
-        });
       } else {
         navigate("/dashboard");
       }

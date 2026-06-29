@@ -16,7 +16,6 @@ from app.features.auth.schemas import (
     LoginRequest, 
     UserRegister,
     VerifyOTPRequest,
-    RegisterEmailRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ResendOTPRequest,
@@ -102,10 +101,6 @@ async def login(
 
     # If Email OTP is enabled, handle OTP routing
     if settings.ENABLE_EMAIL_OTP == 1:
-        # Graceful check for users without an email registered
-        if not user.email:
-            return {"email_required": True, "ticket_number": user.ticket_number}
-        
         # Generate 6-digit OTP
         otp = f"{secrets.randbelow(900000) + 100000}"
         otp_key = f"otp:login:{user.ticket_number}"
@@ -307,61 +302,6 @@ async def register(
     }
 
 
-@router.post("/register-email")
-async def register_email(
-    reg_email_data: RegisterEmailRequest,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db)
-):
-    if settings.ENABLE_EMAIL_OTP == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email OTP verification is disabled"
-        )
-        
-    ticket_number = reg_email_data.ticket_number
-    email = reg_email_data.email
-
-    # Check if user exists
-    result = await db.execute(
-        select(Employee).where(Employee.ticket_number == ticket_number)
-    )
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-
-    # Check if email is already taken
-    email_check = await db.execute(
-        select(Employee).where(Employee.email == email)
-    )
-    if email_check.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email address is already registered by another employee",
-        )
-
-    # Save to temp email and generate OTP
-    email_key = f"temp_email:{ticket_number}"
-    otp_key = f"otp:email_reg:{ticket_number}"
-    
-    otp = f"{secrets.randbelow(900000) + 100000}"
-    
-    await redis_client.set(email_key, email, ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
-    await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
-    
-    # Send email
-    background_tasks.add_task(send_otp_email, email, otp, "Email Registration")
-    
-    return {
-        "message": "Verification code sent to your email", 
-        "otp_required": True,
-        "expire_seconds": settings.OTP_EXPIRE_SECONDS
-    }
-
-
 @router.post("/verify-otp")
 async def verify_otp(
     verify_data: VerifyOTPRequest,
@@ -493,84 +433,6 @@ async def verify_otp(
                     
         # Clean up OTP
         await redis_client.delete(otp_key)
-        
-        return {"access_token": access_token, "token_type": "bearer"}
-
-    elif otp_type == "email_registration":
-        otp_key = f"otp:email_reg:{ticket_number}"
-        stored_otp = await redis_client.get(otp_key)
-        if not stored_otp or stored_otp != otp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired OTP"
-            )
-            
-        # Retrieve temp email
-        email_key = f"temp_email:{ticket_number}"
-        email = await redis_client.get(email_key)
-        if not email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email registration session expired. Please try again."
-            )
-            
-        result = await db.execute(
-            select(Employee).where(Employee.ticket_number == ticket_number)
-        )
-        user = result.scalar_one_or_none()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-            
-        # Verify email not already taken
-        email_check = await db.execute(
-            select(Employee).where(Employee.email == email)
-        )
-        if email_check.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email address is already registered by another employee",
-            )
-            
-        # Update user email
-        user.email = email
-        await db.commit()
-        
-        # Complete login
-        access_token = create_access_token(
-            subject=user.ticket_number,
-            nonce=user.nonce,
-            session_type="employee",
-        )
-        session_key = f"session:{user.ticket_number}:employee"
-        await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
-        
-        response.set_cookie(
-            key="session_id_strict",
-            value=access_token,
-            httponly=True,
-            secure=settings.COOKIE_SECURE_STRICT,
-            samesite="strict",
-            max_age=settings.SESSION_EXPIRE_SECONDS,
-        )
-        response.set_cookie(
-            key="session_id_embed",
-            value=access_token,
-            httponly=True,
-            secure=settings.COOKIE_SECURE_EMBED,
-            samesite="none",
-            max_age=settings.SESSION_EXPIRE_SECONDS,
-        )
-        for i, (header_name, header_value) in enumerate(response.raw_headers):
-            if header_name == b"set-cookie" and b"session_id_embed" in header_value:
-                if b"Partitioned" not in header_value:
-                    response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
-                    
-        # Clean up Redis
-        await redis_client.delete(otp_key)
-        await redis_client.delete(email_key)
         
         return {"access_token": access_token, "token_type": "bearer"}
 
@@ -742,22 +604,6 @@ async def resend_otp(
         otp_key = f"otp:login:{ticket_number}"
         await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
         background_tasks.add_task(send_otp_email, email, otp, "Login (Resend)")
-        
-    elif otp_type == "email_registration":
-        email_key = f"temp_email:{ticket_number}"
-        email = await redis_client.get(email_key)
-        if not email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email registration session expired. Please try again."
-            )
-            
-        # Extend email registration session in Redis
-        await redis_client.set(email_key, email, ex=settings.REGISTRATION_SESSION_EXPIRE_SECONDS)
-            
-        otp_key = f"otp:email_reg:{ticket_number}"
-        await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
-        background_tasks.add_task(send_otp_email, email, otp, "Email Registration (Resend)")
         
     else:
         raise HTTPException(
