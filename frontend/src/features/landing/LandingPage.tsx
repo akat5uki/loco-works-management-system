@@ -104,24 +104,24 @@ const LandingPage = () => {
               LWMS
             </h1>
           </div>
-          <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <nav className="nav-links">
             {hasEmployeeSession && (
-              <Link to="/dashboard" className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <Link to="/dashboard" className="btn-primary">
                 <LayoutDashboard size={16} /> Employee Dashboard
               </Link>
             )}
             {hasAdminSession && (
-              <Link to="/admin/dashboard" className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.4rem", backgroundColor: "#6366f1", borderColor: "#6366f1" }}>
+              <Link to="/admin/dashboard" className="btn-primary btn-admin">
                 <ShieldAlert size={16} /> Admin Dashboard
               </Link>
             )}
             {!hasEmployeeSession && !hasAdminSession && (
               <>
-                <Link to="/login" className="nav-link" style={{ fontSize: "0.875rem", fontWeight: "600" }}>
+                <Link to="/login" className="nav-link">
                   Employee Login
                 </Link>
-                <Link to="/admin/login" className="nav-link" style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6366f1" }}>
-                  Admin Login
+                <Link to="/admin/login" className="nav-link nav-link-admin">
+                  <ShieldAlert size={15} /> Admin Login
                 </Link>
                 <Link to="/register" className="btn-primary">
                   Get Started
