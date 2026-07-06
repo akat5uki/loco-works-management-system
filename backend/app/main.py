@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from app.core.config import settings
@@ -40,6 +41,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS middleware — allow explicitly configured origins only.
+# Uses allow_credentials=True to support HTTP-only cookie-based authentication.
+# Origins are read from CORS_ALLOWED_ORIGINS in .env (comma-separated).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.middleware("http")
 async def db_routing_middleware(request: Request, call_next):

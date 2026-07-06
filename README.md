@@ -52,7 +52,7 @@ LWMS utilizes a modern, resilient microservices architecture orchestrated with D
                └────────────────────┘      └──────┬─────────────┬───┘
                                                   │             │
                        ┌──────────────────────────┘             │
-                       │ (SQL over asyncpg)      (Redis Commands)│
+                       │ (SQL over asyncpg)     (Redis Commands)│
                        ▼                                        ▼
           ┌────────────────────────┐              ┌───────────────────────┐
           │  PostgreSQL Database   │              │  Redis Sentinel       │

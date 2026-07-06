@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     BACKEND_HOST: str
     BACKEND_PORT: int
     LOCO_STAGES: str
+    CORS_ALLOWED_ORIGINS: str
 
     # Database Configuration
     POSTGRES_USER: str
@@ -61,7 +62,13 @@ class Settings(BaseSettings):
 
     @property
     def loco_stages_list(self) -> list[int]:
+        """Parse the comma-separated LOCO_STAGES string into a list of integers."""
         return [int(s.strip()) for s in self.LOCO_STAGES.split(",") if s.strip()]
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse the comma-separated CORS_ALLOWED_ORIGINS string into a list of origin strings."""
+        return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"
