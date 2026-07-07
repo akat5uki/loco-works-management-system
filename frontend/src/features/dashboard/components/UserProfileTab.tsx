@@ -84,7 +84,16 @@ const UserProfileTab: React.FC<UserProfileTabProps> = ({ userProfile }) => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem", padding: "0.5rem 0" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "1.75rem",
+        padding: "0.5rem 0.75rem 1.5rem 0.75rem",
+        flex: 1,
+        overflowY: "auto",
+      }}
+    >
       {/* Profile Hero Header Banner */}
       <div
         style={{
