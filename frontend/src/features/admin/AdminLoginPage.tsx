@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, KeyRound, ArrowLeft, Lock } from "lucide-react";
+import { ShieldAlert, KeyRound, ArrowLeft, Lock, Home } from "lucide-react";
 import api from "../../shared/services/api";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import AdminChangePasswordModal from "./AdminChangePasswordModal";
@@ -84,6 +84,9 @@ const AdminLoginPage: React.FC = () => {
           </div>
           <button className="admin-back-btn" onClick={() => navigate("/login")}>
             <ArrowLeft size={16} /> Employees Login Portal
+          </button>
+          <button className="admin-back-btn" style={{ marginLeft: "0.75rem", display: "flex", alignItems: "center", gap: "0.4rem" }} onClick={() => navigate("/")}>
+            <Home size={16} /> Landing Page
           </button>
         </div>
         <ThemeToggle />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Users, Layers, ShieldCheck, UserPlus, LogOut, UserCog, User } from "lucide-react";
+import { ShieldAlert, Users, Layers, ShieldCheck, UserPlus, LogOut, UserCog, User, Home } from "lucide-react";
 import ThemeToggle from "../../shared/components/ThemeToggle";
 import RegistrationRequestsManager from "./components/RegistrationRequestsManager";
 import MasterDataCrudWizard from "./components/MasterDataCrudWizard";
@@ -61,6 +61,27 @@ const AdminDashboardPage: React.FC = () => {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button
+              onClick={() => navigate("/")}
+              className="pagination-btn"
+              style={{
+                padding: "0.5rem 1rem",
+                fontSize: "0.82rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                borderRadius: "6px",
+                border: "1px solid var(--border-color)",
+                background: "var(--bg-card)",
+                color: "var(--text-h)",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+              title="Go to Landing Page"
+            >
+              <Home size={15} /> Home
+            </button>
+
             <ThemeToggle />
 
             {/* One-time: Show "Enable Employee Portal Access" only when not yet enabled */}
