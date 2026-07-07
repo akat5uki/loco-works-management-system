@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Train, Users, ClipboardList, FileText, Settings } from "lucide-react";
+import { Train, Users, ClipboardList, FileText, Settings, BookOpen, Award } from "lucide-react";
 
 interface DashboardTilesProps {
   isSupervisor: boolean;
@@ -39,6 +39,20 @@ const DashboardTiles: React.FC<DashboardTilesProps> = ({ isSupervisor }) => {
             color: "#f59e0b",
             description: "Submit remarks and carry forward jobs/tasks to the next shift",
             path: "/bookings/carry-forward",
+          },
+          {
+            title: "Knowledge Base",
+            icon: <BookOpen size={32} />,
+            color: "#f43f5e",
+            description: "Browse engineering manuals and safety checklists",
+            path: "/bookings/knowledge-base",
+          },
+          {
+            title: "Staff Assessment",
+            icon: <Award size={32} />,
+            color: "#8b5cf6",
+            description: "Manage staff skills matrix and competency scorecards",
+            path: "/bookings/staff-assessment",
           },
         ]
       : []),

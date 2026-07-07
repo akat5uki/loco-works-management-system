@@ -18,6 +18,8 @@ import EmployeeAvailability from "./features/bookings/EmployeeAvailability";
 import BookingPreview from "./features/bookings/BookingPreview";
 import JobCarryForwardPage from "./features/bookings/JobCarryForwardPage";
 import MasterDataPage from "./features/crud/MasterDataPage";
+import KnowledgeBaseUI from "./features/bookings/KnowledgeBaseUI";
+import StaffAssessmentUI from "./features/bookings/StaffAssessmentUI";
 import AdminLoginPage from "./features/admin/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/AdminDashboardPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
@@ -97,6 +99,22 @@ function App() {
           element={
             <ProtectedRoute requireSupervisor={true}>
               <MasterDataPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings/knowledge-base"
+          element={
+            <ProtectedRoute requireSupervisor={true}>
+              <KnowledgeBaseUI />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings/staff-assessment"
+          element={
+            <ProtectedRoute requireSupervisor={true}>
+              <StaffAssessmentUI />
             </ProtectedRoute>
           }
         />
