@@ -10,6 +10,7 @@ import {
   Briefcase,
   Layers,
   ShieldAlert,
+  Hash,
 } from "lucide-react";
 import api from "../../../shared/services/api";
 
@@ -204,79 +205,189 @@ const UserProfileTab: React.FC<UserProfileTabProps> = ({ userProfile }) => {
             <User size={18} color="#0284c7" /> Employee Profile Credentials
           </h3>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Ticket / Employee ID
-              </label>
-              <div style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text)", marginTop: "0.2rem" }}>
-                #{userProfile.ticket_number}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(2, 132, 199, 0.1)",
+                    color: "#0284c7",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Hash size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Ticket / Employee ID
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    #{userProfile.ticket_number}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Full Name
-              </label>
-              <div style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text)", marginTop: "0.2rem" }}>
-                {userProfile.name}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(16, 185, 129, 0.1)",
+                    color: "#10b981",
+                    flexShrink: 0,
+                  }}
+                >
+                  <User size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Full Name
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    {userProfile.name}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Registered Email Address
-              </label>
-              <div
-                style={{
-                  fontSize: "0.95rem",
-                  fontWeight: "500",
-                  color: "var(--text)",
-                  marginTop: "0.2rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                }}
-              >
-                <Mail size={15} color="var(--text-muted)" /> {userProfile.email || "Not Specified"}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(245, 158, 11, 0.1)",
+                    color: "#f59e0b",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Mail size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Registered Email Address
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    {userProfile.email || "Not Specified"}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Official Designation
-              </label>
-              <div
-                style={{
-                  fontSize: "0.95rem",
-                  fontWeight: "600",
-                  color: "var(--text)",
-                  marginTop: "0.2rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                }}
-              >
-                <Briefcase size={15} color="var(--text-muted)" /> {userProfile.designation_name || "Staff Personnel"}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(139, 92, 246, 0.1)",
+                    color: "#8b5cf6",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Briefcase size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Official Designation
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    {userProfile.designation_name || "Staff Personnel"}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Role Category & Authorization Scope
-              </label>
-              <div
-                style={{
-                  fontSize: "0.95rem",
-                  fontWeight: "600",
-                  color: "var(--text)",
-                  marginTop: "0.2rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                }}
-              >
-                <Layers size={15} color="var(--text-muted)" /> {userProfile.category_name || (userProfile.is_supervisor ? "Supervisor" : "Staff")}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(236, 72, 153, 0.1)",
+                    color: "#ec4899",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Layers size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Role Category & Authorization Scope
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    {userProfile.category_name || (userProfile.is_supervisor ? "Supervisor" : "Staff")}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
