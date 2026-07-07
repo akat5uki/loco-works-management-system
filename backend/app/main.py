@@ -17,6 +17,7 @@ from app.features.realtime.router import router as realtime_router
 from app.features.chat.router import router as chat_router
 from app.features.employee_bookings.router import router as employee_bookings_router
 from app.features.admin.router import router as admin_router, seed_default_admin_if_needed
+from app.features.assessments.router import router as assessments_router
 
 
 @asynccontextmanager
@@ -111,6 +112,9 @@ app.include_router(
 )
 app.include_router(
     admin_router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"]
+)
+app.include_router(
+    assessments_router, prefix=f"{settings.API_V1_STR}/assessments", tags=["assessments"]
 )
 
 

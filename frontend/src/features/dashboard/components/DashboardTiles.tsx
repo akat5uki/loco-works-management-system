@@ -56,6 +56,17 @@ const DashboardTiles: React.FC<DashboardTilesProps> = ({ isSupervisor }) => {
           },
         ]
       : []),
+    ...(!isSupervisor
+      ? [
+          {
+            title: "Self Assessment",
+            icon: <Award size={32} />,
+            color: "#8b5cf6",
+            description: "Submit and track your self-competency assessments for approval",
+            path: "/bookings/self-assessment",
+          },
+        ]
+      : []),
     {
       title: "Booking Preview & Export",
       icon: <FileText size={32} />,

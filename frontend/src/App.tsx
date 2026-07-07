@@ -20,6 +20,7 @@ import JobCarryForwardPage from "./features/bookings/JobCarryForwardPage";
 import MasterDataPage from "./features/crud/MasterDataPage";
 import KnowledgeBaseUI from "./features/bookings/KnowledgeBaseUI";
 import StaffAssessmentUI from "./features/bookings/StaffAssessmentUI";
+import SelfAssessmentUI from "./features/bookings/SelfAssessmentUI";
 import AdminLoginPage from "./features/admin/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/AdminDashboardPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
@@ -115,6 +116,14 @@ function App() {
           element={
             <ProtectedRoute requireSupervisor={true}>
               <StaffAssessmentUI />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings/self-assessment"
+          element={
+            <ProtectedRoute requireSupervisor={false}>
+              <SelfAssessmentUI />
             </ProtectedRoute>
           }
         />
