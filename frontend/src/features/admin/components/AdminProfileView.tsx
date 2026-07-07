@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldAlert,
+  Hash,
 } from "lucide-react";
 import api from "../../../shared/services/api";
 
@@ -212,101 +213,201 @@ const AdminProfileView: React.FC<AdminProfileViewProps> = ({ onEnablePortalClick
             <User size={18} color="#6366f1" /> Profile Credentials & Information
           </h3>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Admin Ticket Number
-              </label>
-              <div style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text)", marginTop: "0.2rem" }}>
-                #{profile?.ticket_number}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Full Name
-              </label>
-              <div style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text)", marginTop: "0.2rem" }}>
-                {profile?.name}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Registered Email Address
-              </label>
-              <div
-                style={{
-                  fontSize: "0.95rem",
-                  fontWeight: "500",
-                  color: "var(--text)",
-                  marginTop: "0.2rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                }}
-              >
-                <Mail size={15} color="var(--text-muted)" /> {profile?.email}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Employee Portal Status
-              </label>
-              <div style={{ marginTop: "0.35rem" }}>
-                {profile?.employee_portal_enabled ? (
-                  <span
-                    style={{
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      padding: "0.25rem 0.6rem",
-                      borderRadius: "4px",
-                      background: "rgba(34, 197, 94, 0.12)",
-                      color: "#16a34a",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.3rem",
-                    }}
-                  >
-                    <CheckCircle2 size={14} /> Enabled (Separate Employee Password Set)
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(99, 102, 241, 0.1)",
+                    color: "#6366f1",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Hash size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Admin Ticket Number
                   </span>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                        padding: "0.25rem 0.6rem",
-                        borderRadius: "4px",
-                        background: "rgba(234, 88, 12, 0.12)",
-                        color: "#ea580c",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.3rem",
-                      }}
-                    >
-                      <AlertCircle size={14} /> Not Enabled
-                    </span>
-                    {onEnablePortalClick && (
-                      <button
-                        onClick={onEnablePortalClick}
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    #{profile?.ticket_number}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(16, 185, 129, 0.1)",
+                    color: "#10b981",
+                    flexShrink: 0,
+                  }}
+                >
+                  <User size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Full Name
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    {profile?.name}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(245, 158, 11, 0.1)",
+                    color: "#f59e0b",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Mail size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Registered Email Address
+                  </span>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-h)" }}>
+                    {profile?.email}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem", width: "100%" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(139, 92, 246, 0.1)",
+                    color: "#8b5cf6",
+                    flexShrink: 0,
+                  }}
+                >
+                  <KeyRound size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Employee Portal Status
+                  </span>
+                  <div style={{ marginTop: "0.2rem", display: "flex", alignItems: "center" }}>
+                    {profile?.employee_portal_enabled ? (
+                      <span
                         style={{
-                          fontSize: "0.78rem",
-                          fontWeight: 600,
-                          padding: "0.25rem 0.65rem",
-                          borderRadius: "4px",
-                          border: "1px solid #6366f1",
-                          background: "transparent",
-                          color: "#6366f1",
-                          cursor: "pointer",
+                          fontSize: "0.85rem",
+                          fontWeight: 700,
+                          color: "#16a34a",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem",
                         }}
                       >
-                        Enable Now
-                      </button>
+                        <CheckCircle2 size={15} /> Enabled (Separate Employee Password Set)
+                      </span>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                        <span
+                          style={{
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            padding: "0.25rem 0.6rem",
+                            borderRadius: "4px",
+                            background: "rgba(234, 88, 12, 0.12)",
+                            color: "#ea580c",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.3rem",
+                          }}
+                        >
+                          <AlertCircle size={14} /> Not Enabled
+                        </span>
+                        {onEnablePortalClick && (
+                          <button
+                            onClick={onEnablePortalClick}
+                            style={{
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              padding: "0.25rem 0.65rem",
+                              borderRadius: "4px",
+                              border: "1px solid #6366f1",
+                              background: "transparent",
+                              color: "#6366f1",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            Enable Now
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
