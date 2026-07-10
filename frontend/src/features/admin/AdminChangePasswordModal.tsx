@@ -1,9 +1,9 @@
 /**
  * ==============================================================================
  * ADMIN INITIAL SETUP & ACCOUNT MIGRATION MODAL
- * Prompts the administrator during first-time default login to migrate off
- * the default admin account, create their personal admin account, and delete default admin.
- * Handles scenarios where the employee profile already exists or needs creation.
+ * Prompts the administrator during first-time login to set their dedicated
+ * admin password. For the default system admin, handles migration to their personal
+ * employee account. For promoted existing employees, only asks for password setup.
  * ==============================================================================
  */
 
@@ -14,11 +14,20 @@ import api from "../../shared/services/api";
 interface AdminChangePasswordModalProps {
   onSuccess: () => void;
   onCancel?: () => void;
+  isDefaultAdmin?: boolean;
+  initialTicketNumber?: string;
+  initialCurrentPassword?: string;
 }
 
-const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onSuccess, onCancel }) => {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newTicketNumber, setNewTicketNumber] = useState("");
+const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({
+  onSuccess,
+  onCancel,
+  isDefaultAdmin = true,
+  initialTicketNumber = "",
+  initialCurrentPassword = "",
+}) => {
+  const [currentPassword, setCurrentPassword] = useState(initialCurrentPassword);
+  const [newTicketNumber, setNewTicketNumber] = useState(initialTicketNumber);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -37,10 +46,6 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d+$/.test(newTicketNumber)) {
-      setError("Ticket number must contain only numeric digits.");
-      return;
-    }
     if (newPassword !== confirmPassword) {
       setError("New password and confirmation do not match.");
       return;
@@ -49,14 +54,21 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
       setError("Password must be at least 8 characters long.");
       return;
     }
-    if (!newTicketNumber) {
-      setError("Please enter your personal employee ticket number.");
-      return;
-    }
-    const emailRegex = /^[\w.-]+@[\w.-]+\.\w+$/;
-    if (!email.trim() || !emailRegex.test(email.trim())) {
-      setError("Please enter a valid mandatory email address.");
-      return;
+
+    if (isDefaultAdmin) {
+      if (!/^\d+$/.test(newTicketNumber)) {
+        setError("Ticket number must contain only numeric digits.");
+        return;
+      }
+      if (!newTicketNumber) {
+        setError("Please enter your personal employee ticket number.");
+        return;
+      }
+      const emailRegex = /^[\w.-]+@[\w.-]+\.\w+$/;
+      if (!email.trim() || !emailRegex.test(email.trim())) {
+        setError("Please enter a valid mandatory email address.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -65,9 +77,9 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
     try {
       await api.post("/admin/change-password", {
         current_password: currentPassword,
-        new_ticket_number: parseInt(newTicketNumber, 10),
-        name: name.trim() || undefined,
-        email: email.trim(),
+        new_ticket_number: isDefaultAdmin ? parseInt(newTicketNumber, 10) : undefined,
+        name: isDefaultAdmin && name.trim() ? name.trim() : undefined,
+        email: isDefaultAdmin ? email.trim() : "n/a",
         new_password: newPassword,
       });
       onSuccess();
@@ -85,7 +97,7 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
       <div className="modal-content" style={{ maxWidth: "500px" }}>
         <div className="modal-header" style={{ borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--primary-color)", fontSize: "1.25rem" }}>
-            <ShieldCheck size={22} /> Administrator Account Setup
+            <ShieldCheck size={22} /> {isDefaultAdmin ? "Administrator Account Setup" : "Configure Admin Password"}
           </h2>
           <button
             type="button"
@@ -99,7 +111,9 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
 
         <div className="modal-body" style={{ padding: "1.25rem 0" }}>
           <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
-            Assign administrative privileges to your employee ticket number. If your employee record is not yet in the system, it will be automatically created. The default admin account will be permanently removed.
+            {isDefaultAdmin
+              ? "Assign administrative privileges to your employee ticket number. If your employee record is not yet in the system, it will be automatically created. The default admin account will be permanently removed."
+              : "You have been promoted to administrator. Please configure a dedicated admin password to secure your Control Center access."}
           </p>
 
           {error && (
@@ -110,55 +124,59 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
 
           <form onSubmit={handleSubmit} className="admin-form">
             <div className="form-group">
-              <label>Default Admin Password</label>
+              <label>{isDefaultAdmin ? "Default Admin Password" : "Current Password (Employee Password)"}</label>
               <input
                 type="password"
-                placeholder="Current default password"
+                placeholder={isDefaultAdmin ? "Current default password" : "Enter your employee password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label>Your Personal Employee Ticket #</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 1001"
-                value={newTicketNumber}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "" || /^\d+$/.test(val)) setNewTicketNumber(val);
-                }}
-                required
-              />
-            </div>
+            {isDefaultAdmin && (
+              <>
+                <div className="form-group">
+                  <label>Your Personal Employee Ticket #</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 1001"
+                    value={newTicketNumber}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || /^\d+$/.test(val)) setNewTicketNumber(val);
+                    }}
+                    required
+                  />
+                </div>
 
-            <div style={{ background: "var(--bg-secondary)", padding: "0.85rem", borderRadius: "8px", marginBottom: "1.25rem", border: "1px dashed var(--border-color)" }}>
-              <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-h)", display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
-                <UserCheck size={15} color="var(--primary-color)" /> Mandatory Profile Information
-              </span>
-              <div className="form-group" style={{ marginBottom: "0.6rem" }}>
-                <input
-                  type="text"
-                  placeholder="Full Name (e.g. John Doe)"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{ fontSize: "0.85rem", padding: "0.55rem" }}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <input
-                  type="email"
-                  placeholder="Mandatory Email Address (e.g. john.doe@locoworks.com)"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  style={{ fontSize: "0.85rem", padding: "0.55rem" }}
-                />
-              </div>
-            </div>
+                <div style={{ background: "var(--bg-secondary)", padding: "0.85rem", borderRadius: "8px", marginBottom: "1.25rem", border: "1px dashed var(--border-color)" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-h)", display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
+                    <UserCheck size={15} color="var(--primary-color)" /> Mandatory Profile Information
+                  </span>
+                  <div className="form-group" style={{ marginBottom: "0.6rem" }}>
+                    <input
+                      type="text"
+                      placeholder="Full Name (e.g. John Doe)"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{ fontSize: "0.85rem", padding: "0.55rem" }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <input
+                      type="email"
+                      placeholder="Mandatory Email Address (e.g. john.doe@locoworks.com)"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      style={{ fontSize: "0.85rem", padding: "0.55rem" }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="form-group">
               <label>New Admin Dedicated Password</label>
@@ -198,7 +216,14 @@ const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> = ({ onS
                 disabled={loading}
                 style={{ flex: 2 }}
               >
-                <CheckCircle2 size={18} /> {loading ? "Creating & Migrating..." : "Complete Setup & Delete Default Admin"}
+                <CheckCircle2 size={18} />{" "}
+                {loading
+                  ? isDefaultAdmin
+                    ? "Creating & Migrating..."
+                    : "Saving Password..."
+                  : isDefaultAdmin
+                    ? "Complete Setup & Delete Default Admin"
+                    : "Save Password & Enter Dashboard"}
               </button>
             </div>
           </form>

@@ -15,6 +15,7 @@ const AdminLoginPage: React.FC = () => {
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [isDefaultAdmin, setIsDefaultAdmin] = useState(true);
 
   // Auto-redirect if already authenticated as Admin
   useEffect(() => {
@@ -57,6 +58,7 @@ const AdminLoginPage: React.FC = () => {
       });
 
       if (res.data.must_change_password) {
+        setIsDefaultAdmin(res.data.is_default_admin);
         setShowPasswordModal(true);
       } else {
         navigate("/admin/dashboard");
@@ -146,6 +148,9 @@ const AdminLoginPage: React.FC = () => {
 
       {showPasswordModal && (
         <AdminChangePasswordModal
+          isDefaultAdmin={isDefaultAdmin}
+          initialTicketNumber={ticketNumber}
+          initialCurrentPassword={password}
           onSuccess={() => {
             setShowPasswordModal(false);
             navigate("/admin/dashboard");
