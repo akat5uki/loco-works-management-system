@@ -310,7 +310,39 @@ async def admin_change_password(
     admin_info.must_change_password = False
 
     await db.commit()
-    return {"message": "Admin password changed successfully"}
+
+    # Issue new JWT access token and session cookies for the updated admin account
+    access_token = create_access_token(
+        subject=admin_info.ticket_number,
+        nonce=admin_info.nonce,
+        session_type="admin",
+    )
+    session_key = f"session:{admin_info.ticket_number}:admin"
+    await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
+
+    response.set_cookie(
+        key="admin_session_id_strict",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE_STRICT,
+        samesite="strict",
+        max_age=settings.SESSION_EXPIRE_SECONDS,
+    )
+    response.set_cookie(
+        key="admin_session_id_embed",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE_EMBED,
+        samesite="none",
+        max_age=settings.SESSION_EXPIRE_SECONDS,
+    )
+
+    for i, (header_name, header_value) in enumerate(response.raw_headers):
+        if header_name == b"set-cookie" and b"admin_session_id_embed" in header_value:
+            if b"Partitioned" not in header_value:
+                response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
+
+    return {"message": "Admin password changed successfully", "access_token": access_token}
 
 
 @router.post("/logout")
