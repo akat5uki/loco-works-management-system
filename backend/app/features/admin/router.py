@@ -642,6 +642,7 @@ async def add_admin(
         password=emp.password,
         is_default=False,
         must_change_password=True,
+        employee_portal_enabled=True,
     )
     db.add(new_admin)
     await db.commit()
