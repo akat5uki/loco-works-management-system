@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     REGISTRATION_SESSION_EXPIRE_SECONDS: int
 
     # Administrator Personnel & Registration Staging Configuration
-    DEFAULT_ADMIN_TICKET: int = 9999
-    DEFAULT_ADMIN_EMAIL: str = "admin@locoworks.local"
-    DEFAULT_ADMIN_PASSWORD: str = "AdminPassword123!"
+    DEFAULT_ADMIN_TICKET: int
+    DEFAULT_ADMIN_EMAIL: str
+    DEFAULT_ADMIN_PASSWORD: str
     REGISTRATION_VALIDITY_DAYS: int = 7
 
     # Chat Configuration Settings
