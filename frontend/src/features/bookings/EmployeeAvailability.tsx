@@ -141,7 +141,11 @@ const EmployeeAvailability = () => {
       setEmployees(empRes.data);
 
       // 2. Fetch availabilities
-      const availRes = await api.get(`/bookings/employees/availabilities?date_str=${dateStr}&shift=${shift}`);
+      const availRes = await api.request({
+        method: "QUERY",
+        url: "/bookings/employees/availabilities",
+        data: { date_str: dateStr, shift: shift }
+      });
       setAvailableTickets(new Set(availRes.data.available_tickets));
     } catch (err) {
       console.error("Error fetching availability data", err);

@@ -195,11 +195,19 @@ const BookingPreview = () => {
       setEmployees(empRes.data);
 
       // 2. Fetch availabilities
-      const availRes = await api.get(`/bookings/employees/availabilities?date_str=${dateStr}&shift=${shift}`);
+      const availRes = await api.request({
+        method: "QUERY",
+        url: "/bookings/employees/availabilities",
+        data: { date_str: dateStr, shift: shift }
+      });
       setAvailableTickets(new Set(availRes.data.available_tickets));
 
       // 3. Fetch views
-      const viewsRes = await api.get(`/bookings/employees/views?date_str=${dateStr}&shift=${shift}`);
+      const viewsRes = await api.request({
+        method: "QUERY",
+        url: "/bookings/employees/views",
+        data: { date_str: dateStr, shift: shift }
+      });
       setViewsData(viewsRes.data);
 
       // 4. Fetch loco bookings (jobs & tasks)

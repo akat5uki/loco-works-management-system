@@ -81,7 +81,11 @@ const DashboardPage = () => {
 
       const dateStr = todayISO();
       const shift = guessShift();
-      const viewsRes = await api.get(`/bookings/employees/views?date_str=${dateStr}&shift=${shift}`);
+      const viewsRes = await api.request({
+        method: "QUERY",
+        url: "/bookings/employees/views",
+        data: { date_str: dateStr, shift: shift }
+      });
       const data = viewsRes.data;
 
       if (profile.designation_id === 1 || profile.designation_id === 2) {
