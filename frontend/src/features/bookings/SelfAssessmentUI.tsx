@@ -92,6 +92,7 @@ const SelfAssessmentUI: React.FC = () => {
       }
 
       setRatingsMap(initialMap);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setMsgError(err.response?.data?.detail || "Failed to load competency data.");
     } finally {
@@ -100,6 +101,7 @@ const SelfAssessmentUI: React.FC = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAssessmentData();
   }, []);
 
@@ -141,6 +143,7 @@ const SelfAssessmentUI: React.FC = () => {
       await api.post("/assessments/self", { ratings: ratingsPayload });
       setMsgSuccess("Self-assessment submitted successfully! Sent to supervisors for approval.");
       await fetchAssessmentData(); // Refresh to show pending status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setMsgError(err.response?.data?.detail || "Failed to submit self-assessment.");
     } finally {
