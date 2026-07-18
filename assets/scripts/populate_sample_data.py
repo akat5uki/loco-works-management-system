@@ -76,7 +76,6 @@ async def populate():
                 employees,
                 loco,
                 jobs,
-                tasks,
                 designation,
                 employee_category,
                 loco_type
