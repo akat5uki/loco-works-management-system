@@ -76,3 +76,9 @@ class RegRequestsQueryRequest(BaseModel):
     status: Optional[str] = None
     search: Optional[str] = None
     limit: Optional[int] = 300
+
+
+class AdminVerifyOtpRequest(BaseModel):
+    """Schema for verifying administrator OTP verification codes."""
+    ticket_number: int
+    otp: str

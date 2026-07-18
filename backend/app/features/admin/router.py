@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.email import send_registration_notification_email
+from app.core.email import send_otp_email, send_registration_notification_email
 from app.core.redis import redis_client
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.features.admin.models import LocoAdmin, RegistrationRequest
@@ -26,6 +26,7 @@ from app.features.admin.schemas import (
     RegistrationRequestRead,
     AuditLogsQueryRequest,
     RegRequestsQueryRequest,
+    AdminVerifyOtpRequest,
 )
 from app.features.auth.dependencies import AdminUser
 from app.features.employees.models import Designation, Employee, EmployeeCategory
@@ -87,6 +88,7 @@ async def get_admin_me(current_user: AdminUser, db: AsyncSession = Depends(get_d
 async def admin_login(
     login_data: AdminLoginRequest,
     response: Response,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -120,7 +122,11 @@ async def admin_login(
 
     if not is_temp_default:
         # 1. Verify admin privilege and dedicated admin password from loco_admin table
-        admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == login_data.ticket_number))
+        admin_res = await db.execute(
+            select(LocoAdmin)
+            .options(joinedload(LocoAdmin.employee))
+            .where(LocoAdmin.ticket_number == login_data.ticket_number)
+        )
         admin_info = admin_res.scalar_one_or_none()
         if not admin_info:
             raise HTTPException(
@@ -137,6 +143,103 @@ async def admin_login(
         admin_nonce = admin_info.nonce
         must_change_password = admin_info.must_change_password
         is_default_admin = admin_info.is_default
+
+        # 2. Check if Email OTP is enabled and this is a non-default admin
+        if settings.ENABLE_EMAIL_OTP == 1 and not is_default_admin:
+            email = admin_info.employee.email if admin_info.employee else None
+            if not email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Administrator account lacks a linked employee profile or email address."
+                )
+            # Generate OTP
+            otp = f"{secrets.randbelow(900000) + 100000}"
+            # Cache in Redis
+            otp_key = f"otp:admin_login:{admin_ticket}"
+            await redis_client.set(otp_key, otp, ex=settings.OTP_EXPIRE_SECONDS)
+            # Send Email
+            background_tasks.add_task(send_otp_email, email, otp, "Admin Login Verification")
+
+            return {
+                "otp_required": True,
+                "ticket_number": admin_ticket,
+            }
+
+    access_token = create_access_token(
+        subject=admin_ticket,
+        nonce=admin_nonce,
+        session_type="admin",
+    )
+    session_key = f"session:{admin_ticket}:admin"
+    await redis_client.set(session_key, access_token, ex=settings.SESSION_EXPIRE_SECONDS)
+
+    response.set_cookie(
+        key="admin_session_id_strict",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE_STRICT,
+        samesite="strict",
+        max_age=settings.SESSION_EXPIRE_SECONDS,
+    )
+    response.set_cookie(
+        key="admin_session_id_embed",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE_EMBED,
+        samesite="none",
+        max_age=settings.SESSION_EXPIRE_SECONDS,
+    )
+
+    for i, (header_name, header_value) in enumerate(response.raw_headers):
+        if header_name == b"set-cookie" and b"admin_session_id_embed" in header_value:
+            if b"Partitioned" not in header_value:
+                response.raw_headers[i] = (header_name, header_value + b"; Partitioned")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "must_change_password": must_change_password,
+        "is_default_admin": is_default_admin,
+    }
+
+
+@router.post("/verify-login-otp")
+async def verify_login_otp(
+    verify_data: AdminVerifyOtpRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verify 6-digit email OTP for admin login and return session tokens/cookies.
+    """
+    ticket_number = verify_data.ticket_number
+    otp = verify_data.otp
+
+    # 1. Retrieve OTP from Redis
+    stored_otp = await redis_client.get(f"otp:admin_login:{ticket_number}")
+    if not stored_otp or stored_otp != otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP code"
+        )
+
+    # 2. Fetch Admin info to sign JWT
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number))
+    admin_info = admin_res.scalar_one_or_none()
+    if not admin_info:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Administrator account not found"
+        )
+
+    # 3. Clear OTP
+    await redis_client.delete(f"otp:admin_login:{ticket_number}")
+
+    # 4. Sign token, set cookies, and return token details
+    admin_ticket = admin_info.ticket_number
+    admin_nonce = admin_info.nonce
+    must_change_password = admin_info.must_change_password
+    is_default_admin = admin_info.is_default
 
     access_token = create_access_token(
         subject=admin_ticket,
@@ -642,6 +745,7 @@ async def list_admins(current_user: AdminUser, db: AsyncSession = Depends(get_db
 async def add_admin(
     data: AddAdminRequest,
     current_user: AdminUser,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -656,6 +760,26 @@ async def add_admin(
     if admin_res.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Employee is already an Administrator")
 
+    if settings.ENABLE_EMAIL_OTP == 1:
+        email = emp.email
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="Employee profile lacks an email address. Cannot verify registration OTP."
+            )
+        # Generate OTP
+        otp = f"{secrets.randbelow(900000) + 100000}"
+        # Cache in Redis for 5 minutes (300s)
+        otp_key = f"otp:admin_reg:{data.ticket_number}"
+        await redis_client.set(otp_key, otp, ex=300)
+        # Send Email
+        background_tasks.add_task(send_otp_email, email, otp, "Admin Promotion Verification")
+
+        return {
+            "otp_required": True,
+            "ticket_number": data.ticket_number,
+        }
+
     new_admin = LocoAdmin(
         ticket_number=data.ticket_number,
         password=emp.password,
@@ -665,6 +789,48 @@ async def add_admin(
     )
     db.add(new_admin)
     await db.commit()
+    return {"message": f"Granted Administrator privileges to {emp.name} (#{emp.ticket_number})."}
+
+
+@router.post("/verify-registration-otp")
+async def verify_registration_otp(
+    verify_data: AdminVerifyOtpRequest,
+    current_user: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verify registration OTP to complete administrator promotion. Requires Admin privileges.
+    """
+    ticket_number = verify_data.ticket_number
+    otp = verify_data.otp
+
+    stored_otp = await redis_client.get(f"otp:admin_reg:{ticket_number}")
+    if not stored_otp or stored_otp != otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP code"
+        )
+
+    emp_res = await db.execute(select(Employee).where(Employee.ticket_number == ticket_number))
+    emp = emp_res.scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    admin_res = await db.execute(select(LocoAdmin).where(LocoAdmin.ticket_number == ticket_number))
+    if admin_res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Employee is already an Administrator")
+
+    new_admin = LocoAdmin(
+        ticket_number=ticket_number,
+        password=emp.password,
+        is_default=False,
+        must_change_password=True,
+        employee_portal_enabled=True,
+    )
+    db.add(new_admin)
+    await db.commit()
+    await redis_client.delete(f"otp:admin_reg:{ticket_number}")
+
     return {"message": f"Granted Administrator privileges to {emp.name} (#{emp.ticket_number})."}
 
 
