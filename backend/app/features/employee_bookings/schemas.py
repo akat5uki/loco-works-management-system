@@ -50,3 +50,9 @@ class RemarksSubmitPayload(BaseModel):
     job_remarks: List[JobRemarkPayload]
     new_jobs: List[int] = []  # carry forward new jobs to next shift
     new_tasks: List[NewTaskPayload] = []  # carry forward new tasks to next shift
+
+
+class BookingQueryRequest(BaseModel):
+    """Schema for querying availabilities and views using HTTP QUERY method."""
+    date_str: str  # YYYY-MM-DD
+    shift: int

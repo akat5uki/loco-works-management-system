@@ -24,6 +24,7 @@ from app.features.employee_bookings.schemas import (
     BookingSavePayload,
     LockPayload,
     RemarksSubmitPayload,
+    BookingQueryRequest,
 )
 
 router = APIRouter()
@@ -74,6 +75,24 @@ async def get_availabilities(date_str: str, shift: int, current_user: CurrentUse
     # Available = All - Absent
     available_tickets = [t for t in all_tickets if t not in absent_tickets]
     return {"available_tickets": available_tickets}
+
+
+@router.api_route("/availabilities", methods=["QUERY"])
+async def get_availabilities_query(
+    payload: BookingQueryRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve list of available employee tickets for a specific date and shift via HTTP QUERY method.
+    Filters out employees marked absent in the availability records. Safe idempotent read.
+    """
+    return await get_availabilities(
+        date_str=payload.date_str,
+        shift=payload.shift,
+        current_user=current_user,
+        db=db
+    )
 
 
 @router.post("/availabilities")
@@ -488,6 +507,24 @@ async def mark_notification_read(
 
 
 # 7. Views Endpoints (By Loco, By Supervisor, By Staff)
+@router.api_route("/views", methods=["QUERY"])
+async def get_booking_views_query(
+    payload: BookingQueryRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Fetch comprehensive assignment views grouped by locomotive, supervisor, and staff member via HTTP QUERY method.
+    Safe idempotent read.
+    """
+    return await get_booking_views(
+        date_str=payload.date_str,
+        shift=payload.shift,
+        current_user=current_user,
+        db=db
+    )
+
+
 @router.get("/views")
 async def get_booking_views(date_str: str, shift: int, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
