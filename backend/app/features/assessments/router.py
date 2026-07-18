@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -10,6 +10,7 @@ from app.core.redis import redis_client
 from app.features.auth.dependencies import CurrentUser
 from app.features.jobs.models import Job, EmployeeJobRating
 from app.features.employee_bookings.models import EmployeeNotification
+from app.features.employees.models import Employee
 from app.features.assessments.schemas import (
     SelfAssessmentSubmit,
     SelfAssessmentRead,
