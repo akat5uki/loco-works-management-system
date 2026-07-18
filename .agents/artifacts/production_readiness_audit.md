@@ -69,7 +69,7 @@ The LWMS application exhibits a robust foundational architecture—featuring hig
 > **Issue: Development Mail Sinks in Production Compose**
 > The `mailpit` debugging container is included directly in `docker-compose.yml`.
 > - **Production Risk**: Exposes an unauthenticated web UI (`port 8025`) and SMTP port (`1025`) to the network.
-> - **Production Standard**: Decouple Mailpit into a development override file (`docker-compose.dev.yml`). Use production SMTP settings with TLS/STARTTLS authentication (`SMTP_USE_TLS=True`) for staging/production deployments as detailed in [assets/smtp_production_guide.md](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/smtp_production_guide.md).
+> - **Production Standard**: Decouple Mailpit into a development override file (`docker-compose.dev.yml`). Use production SMTP settings with TLS/STARTTLS authentication (`SMTP_USE_TLS=True`) for staging/production deployments as detailed in [assets/docs/smtp_production_guide.md](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/docs/smtp_production_guide.md).
 
 ---
 

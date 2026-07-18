@@ -16,7 +16,7 @@ To handle SSL certificates without restarting Nginx or failing on startup becaus
 ## Setup Steps
 
 ### 1. Update Script Details
-Open the [init-letsencrypt.sh](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/init-letsencrypt.sh) script and update:
+Open the [init-letsencrypt.sh](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/scripts/init-letsencrypt.sh) script and update:
 - `domains`: Space-separated domain names (e.g., `domains=("yourdomain.com" "www.yourdomain.com")`).
 - `email`: Your registration email (e.g., `email="admin@yourdomain.com"`).
 
@@ -28,8 +28,8 @@ Open [nginx.conf](file:///home/ansira-u/Documents/Development/loco-works-managem
 ### 3. Initialize Certificates
 Make the script executable (if not already) and run it:
 ```bash
-chmod +x assets/init-letsencrypt.sh
-./assets/init-letsencrypt.sh
+chmod +x assets/scripts/init-letsencrypt.sh
+./assets/scripts/init-letsencrypt.sh
 ```
 
 ## Automatic Renewal

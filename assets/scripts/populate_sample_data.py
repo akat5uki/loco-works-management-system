@@ -8,13 +8,15 @@ from zoneinfo import ZoneInfo
 
 # Find workspace root dynamically
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-if os.path.basename(CURRENT_DIR) in ("assets", "backend"):
+if os.path.basename(CURRENT_DIR) == "scripts":
+    WORKSPACE_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
+elif os.path.basename(CURRENT_DIR) in ("assets", "backend"):
     WORKSPACE_ROOT = os.path.dirname(CURRENT_DIR)
 else:
     WORKSPACE_ROOT = CURRENT_DIR
 
 # Robust paths
-SAMPLE_DATA_DIR = os.path.join(WORKSPACE_ROOT, "assets", "sample data")
+SAMPLE_DATA_DIR = os.path.join(WORKSPACE_ROOT, "assets", "db", "sample_data")
 env_path = os.path.join(WORKSPACE_ROOT, ".env")
 
 # Ensure backend directory is in python module path

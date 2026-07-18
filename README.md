@@ -551,7 +551,7 @@ docker compose exec web-1 alembic upgrade head
 
 **6. Seed initial master data** *(first run only)*:
 ```bash
-docker compose exec web-1 python assets/seed_data.sql
+docker compose exec web-1 python assets/db/seed_data.sql
 ```
 
 The application will be available at:
@@ -564,7 +564,7 @@ The application will be available at:
 
 ## 10. Production Deployment
 
-For a complete production deployment guide including server hardening, SSL certificate setup, and automated backups, refer to [assets/production_deployment_guide.md](assets/production_deployment_guide.md).
+For a complete production deployment guide including server hardening, SSL certificate setup, and automated backups, refer to [assets/docs/production_deployment_guide.md](assets/docs/production_deployment_guide.md).
 
 ### Quick Production Deploy
 
@@ -676,7 +676,10 @@ loco-works-management-system/
 │   └── database/
 │       ├── init.sql              # DB init, audit trigger function
 │       └── add_partitions.sql    # Partition setup for audit_logs
-├── assets/                       # Deployment guides and helper scripts
+├── assets/                       # Organized deployment resources
+│   ├── db/                       # Seed SQL and CSV sample data
+│   ├── docs/                     # Production deployment guides and plans
+│   └── scripts/                  # Seeding and Certbot configuration scripts
 ├── docker-compose.yml            # Development orchestration
 ├── docker-compose.prod.yml       # Production orchestration (immutable, health checks)
 ├── .env.example                  # Environment variable template

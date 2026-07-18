@@ -4,7 +4,9 @@ import sys
 
 # Find workspace root dynamically
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-if os.path.basename(CURRENT_DIR) in ("assets", "backend"):
+if os.path.basename(CURRENT_DIR) == "scripts":
+    WORKSPACE_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
+elif os.path.basename(CURRENT_DIR) in ("assets", "backend"):
     WORKSPACE_ROOT = os.path.dirname(CURRENT_DIR)
 else:
     WORKSPACE_ROOT = CURRENT_DIR

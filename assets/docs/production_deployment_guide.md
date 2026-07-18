@@ -252,7 +252,7 @@ docker compose exec web-1 alembic upgrade head
 If deploying to a fresh PostgreSQL database, initialize seed data:
 
 ```bash
-docker compose exec web-1 python assets/populate_sample_data.py
+docker compose exec web-1 python assets/scripts/populate_sample_data.py
 ```
 
 ---

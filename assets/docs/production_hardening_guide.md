@@ -1,6 +1,6 @@
 # Production Hardening & Remediation Guide
 
-This guide provides a comprehensive, step-by-step blueprint to remediate all security, architectural, and operational gaps identified in the [Production Readiness Audit](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/production_readiness_audit.md). Following these steps will transition the **Loco Works Management System (LWMS)** into a fully production-ready application.
+This guide provides a comprehensive, step-by-step blueprint to remediate all security, architectural, and operational gaps identified in the [Production Readiness Audit](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/docs/production_readiness_audit.md). Following these steps will transition the **Loco Works Management System (LWMS)** into a fully production-ready application.
 
 ---
 

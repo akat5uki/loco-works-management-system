@@ -26,7 +26,7 @@ This plan outlines the end-to-end architecture and implementation for introducin
 #### [NEW] [admin alembic migration](file:///home/ansira-u/Documents/Development/loco-works-management-system/backend/alembic/versions/add_loco_admin_and_registration_requests.py)
 * Create Alembic migration script to create `loco_admin` and `registration_requests` tables with unique constraint on `reg_code` and proper indexes (on `reg_code`, `ticket_number`, `status`, `valid_until`).
 
-#### [MODIFY] [init.sql](file:///home/ansira-u/Documents/Development/loco-works-management-system/infrastructure/database/init.sql) & [postgres.txt](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/postgres.txt)
+#### [MODIFY] [init.sql](file:///home/ansira-u/Documents/Development/loco-works-management-system/infrastructure/database/init.sql) & [postgres.txt](file:///home/ansira-u/Documents/Development/loco-works-management-system/assets/db/postgres.txt)
 * Update database initialization script and documentation with `loco_admin` and `registration_requests` definitions (enforcing `UNIQUE` on `reg_code`), foreign keys, and audit log triggers.
 
 #### [NEW] [admin schemas](file:///home/ansira-u/Documents/Development/loco-works-management-system/backend/app/features/admin/schemas.py)
