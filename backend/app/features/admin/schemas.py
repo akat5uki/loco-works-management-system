@@ -62,3 +62,17 @@ class LocoAdminRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AuditLogsQueryRequest(BaseModel):
+    """Schema for querying system audit logs using HTTP QUERY method."""
+    table_name: Optional[str] = None
+    operation: Optional[str] = None
+    limit: Optional[int] = 300
+
+
+class RegRequestsQueryRequest(BaseModel):
+    """Schema for querying registration requests using HTTP QUERY method."""
+    status: Optional[str] = None
+    search: Optional[str] = None
+    limit: Optional[int] = 300

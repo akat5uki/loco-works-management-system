@@ -24,6 +24,8 @@ from app.features.admin.schemas import (
     LocoAdminRead,
     RegistrationActionRequest,
     RegistrationRequestRead,
+    AuditLogsQueryRequest,
+    RegRequestsQueryRequest,
 )
 from app.features.auth.dependencies import AdminUser
 from app.features.employees.models import Designation, Employee, EmployeeCategory
@@ -496,6 +498,23 @@ async def list_registration_requests(
     return out
 
 
+@router.api_route("/registration-requests", methods=["QUERY"], response_model=List[RegistrationRequestRead])
+async def list_registration_requests_query(
+    payload: RegRequestsQueryRequest,
+    current_user: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List employee registration requests via HTTP QUERY method. Safe idempotent read.
+    """
+    return await list_registration_requests(
+        current_user=current_user,
+        search=payload.search,
+        status_filter=payload.status,
+        db=db
+    )
+
+
 @router.post("/registration-requests/{reg_code}/action")
 async def take_registration_action(
     reg_code: str,
@@ -688,6 +707,24 @@ async def get_audit_logs(
         }
         for r in rows
     ]
+
+
+@router.api_route("/audit-logs", methods=["QUERY"])
+async def get_audit_logs_query(
+    payload: AuditLogsQueryRequest,
+    current_user: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve administrator audit trail log actions via HTTP QUERY method. Requires Admin privileges. Safe idempotent read.
+    """
+    return await get_audit_logs(
+        current_user=current_user,
+        table_name=payload.table_name,
+        operation=payload.operation,
+        limit=payload.limit or 300,
+        db=db
+    )
 
 
 # ==============================================================================

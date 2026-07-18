@@ -47,8 +47,10 @@ const RegistrationRequestsManager: React.FC = () => {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/admin/registration-requests", {
-        params: { search: search || undefined, status_filter: statusFilter },
+      const res = await api.request({
+        method: "QUERY",
+        url: "/admin/registration-requests",
+        data: { search: search || undefined, status: statusFilter }
       });
       setRequests(res.data);
     } catch (err) {

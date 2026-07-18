@@ -38,8 +38,10 @@ const AuditLogsViewer: React.FC = () => {
   const fetchAuditLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/admin/audit-logs", {
-        params: { table_name: tableFilter, operation: operationFilter, limit: 300 },
+      const res = await api.request({
+        method: "QUERY",
+        url: "/admin/audit-logs",
+        data: { table_name: tableFilter, operation: operationFilter, limit: 300 }
       });
       setLogs(res.data);
     } catch (err) {
