@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 
 class JobBase(BaseModel):
@@ -20,3 +21,9 @@ class JobRead(JobBase):
     """Schema for loading/reading job records from the database."""
     job_id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class JobQueryRequest(BaseModel):
+    """Schema for experimental HTTP QUERY criteria filter."""
+    description: Optional[str] = None
+    stage: Optional[int] = None

@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.exceptions import handle_db_error
 from app.features.auth.dependencies import AnyUser, SupervisorOrAdminUser
 from app.features.jobs.models import Job
-from app.features.jobs.schemas import JobBase, JobCreate, JobRead
+from app.features.jobs.schemas import JobBase, JobCreate, JobRead, JobQueryRequest
 
 router = APIRouter()
 
@@ -92,3 +92,32 @@ async def delete_job(
     except Exception as e:
         await db.rollback()
         handle_db_error(e)
+
+
+@router.api_route("/query", methods=["QUERY"], response_model=List[JobRead])
+async def query_jobs(
+    request: JobQueryRequest,
+    current_user: AnyUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Experimental HTTP QUERY endpoint. Query jobs dynamically by description or stage filter.
+    Idempotent search utilizing request payload.
+    """
+    stmt = select(Job)
+    if request.description:
+        stmt = stmt.where(Job.job_description.ilike(f"%{request.description}%"))
+    if request.stage is not None:
+        stmt = stmt.where(Job.stage == request.stage)
+    
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.api_route("/query-public", methods=["QUERY"])
+async def query_public_test(payload: dict):
+    """
+    Experimental public HTTP QUERY endpoint. Simply echoes back the payload.
+    Used for testing the QUERY method compatibility.
+    """
+    return {"message": "Experimental HTTP QUERY method working!", "echo": payload}
