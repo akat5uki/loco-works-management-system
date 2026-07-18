@@ -8,4 +8,6 @@
 - **Double-Guarding Security Standard**: Always provide double-guarding with standard security checks, password complexities, format validations, and authentication checks for all API endpoints: enforce validation first at the frontend (client-side UX checks) and second at the backend (API schema/controller sanitization and checks).
 - **Environment Configuration Standard**: Always ensure sensitive information, connection strings, credentials, configurations, and environment-specific settings are stored in `.env` files rather than hardcoded in the codebase, and read as environment variables at runtime.
 - **Local AI Metadata Standard**: Always store and maintain all AI helper files, artifacts (plans, checklists, walkthroughs, audits), and testing/debugging scripts locally within the project's `.agents` directory under relevant subdirectories (e.g. `.agents/artifacts/` and `.agents/scripts/`) to keep the repository self-contained and allow easy rollback and tracking.
+- **Zero-Secrets Security Standard**: Never hardcode, commit, or upload sensitive information (including real credentials, emails, passwords, API keys, private tokens, or encryption secrets) to the git repository. Always use environment variables loaded from `.env` and configure `.gitignore` to prevent leakage.
+
 
