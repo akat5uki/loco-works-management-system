@@ -27,6 +27,12 @@ const AdminStaffManager: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // OTP Promotion Challenge States
+  const [otpRequired, setOtpRequired] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [pendingTicket, setPendingTicket] = useState<number | null>(null);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -66,15 +72,52 @@ const AdminStaffManager: React.FC = () => {
       const res = await api.post("/admin/add-admin", {
         ticket_number: parseInt(newAdminTicket, 10),
       });
-      setMessage(res.data.message);
-      setNewAdminTicket("");
-      fetchAdmins();
+
+      if (res.data.otp_required) {
+        setOtpRequired(true);
+        setPendingTicket(res.data.ticket_number);
+      } else {
+        setMessage(res.data.message);
+        setNewAdminTicket("");
+        fetchAdmins();
+      }
     } catch (err: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const axiosError = err as any;
       setError(axiosError.response?.data?.detail || "Failed to grant administrator privileges.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpValue || !/^\d{6}$/.test(otpValue) || !pendingTicket) {
+      setError("OTP must be exactly 6 digits.");
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const res = await api.post("/admin/verify-registration-otp", {
+        ticket_number: pendingTicket,
+        otp: otpValue,
+      });
+      setMessage(res.data.message);
+      setNewAdminTicket("");
+      setOtpRequired(false);
+      setOtpValue("");
+      setPendingTicket(null);
+      fetchAdmins();
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosError = err as any;
+      setError(axiosError.response?.data?.detail || "Invalid or expired OTP code.");
+    } finally {
+      setVerifyingOtp(false);
     }
   };
 
@@ -135,35 +178,83 @@ const AdminStaffManager: React.FC = () => {
       )}
 
       {/* Promote Form */}
-      <div style={{ background: "var(--bg-secondary)", padding: "1.25rem", borderRadius: "8px", marginBottom: "2rem", border: "1px solid var(--border-color)" }}>
-        <h3 style={{ fontSize: "1rem", marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <UserPlus size={18} color="var(--primary-color)" /> Grant Admin Privileges
-        </h3>
-        <form onSubmit={handleGrantAdmin} style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: "220px" }}>
-            <label style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>Employee Ticket Number</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="e.g. 1001"
-              value={newAdminTicket}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d+$/.test(val)) setNewAdminTicket(val);
+      {otpRequired ? (
+        <div className="admin-promotion-card" style={{ background: "var(--bg-card)", padding: "1.5rem", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "2rem" }}>
+          <h3 style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <UserPlus size={18} color="var(--primary-color)" /> Verify Administrator Promotion OTP
+          </h3>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
+            An email verification code has been dispatched to the employee's inbox. Please enter the OTP below to finalize.
+          </p>
+          <form onSubmit={handleVerifyOtp} style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: "220px" }}>
+              <label style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>6-Digit OTP Code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="e.g. 123456"
+                value={otpValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || /^\d+$/.test(val)) setOtpValue(val);
+                }}
+                style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={verifyingOtp}
+              style={{ padding: "0.65rem 1.25rem", background: "var(--primary-color)", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <CheckCircle size={16} /> {verifyingOtp ? "Verifying..." : "Verify & Finalize"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOtpRequired(false);
+                setOtpValue("");
+                setPendingTicket(null);
+                setError(null);
               }}
-              style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{ padding: "0.65rem 1.25rem", background: "var(--primary-color)", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
-          >
-            <Shield size={16} /> {submitting ? "Promoting..." : "Add Admin Privilege"}
-          </button>
-        </form>
-      </div>
+              style={{ padding: "0.65rem 1.25rem", background: "transparent", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: "6px", fontWeight: 600, cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="admin-promotion-card" style={{ background: "var(--bg-card)", padding: "1.5rem", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "2rem" }}>
+          <h3 style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <UserPlus size={18} color="var(--primary-color)" /> Grant Admin Privileges
+          </h3>
+          <form onSubmit={handleGrantAdmin} style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: "220px" }}>
+              <label style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>Employee Ticket Number</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 1001"
+                value={newAdminTicket}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || /^\d+$/.test(val)) setNewAdminTicket(val);
+                }}
+                style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{ padding: "0.65rem 1.25rem", background: "var(--primary-color)", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <Shield size={16} /> {submitting ? "Promoting..." : "Add Admin Privilege"}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Admin List */}
       <h3>Active System Administrators ({admins.length})</h3>
